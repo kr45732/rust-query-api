@@ -1,0 +1,8 @@
+{
+    "builds": [
+        {
+            "src": "src/*.rs",
+            "use": "now-rust"
+        }
+    ]
+}
