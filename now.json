@@ -2,7 +2,7 @@
     "builds": [
         {
             "src": "src/*.rs",
-            "use": "now-rust"
+            "use": "vercel-rust"
         }
     ]
 }
