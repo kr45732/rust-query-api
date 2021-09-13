@@ -3,6 +3,10 @@ name = "query_api"
 version = "0.1.0"
 edition = "2018"
 
+[[bin]]
+name = "query_api"
+path = "src/a_main.rs"
+
 [dependencies]
 serde_json = "1.0"
 hyper = { version = "0.14", features = ["full"] }

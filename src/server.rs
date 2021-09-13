@@ -1,6 +1,5 @@
-use std::io::Result;
-
 use crate::fetch::{DATABASE, IS_UPDATING, LAST_UPDATED, TOTAL_UPDATES};
+use crate::util::BASE_URL;
 use futures::StreamExt;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{header, Body, Method, Request, Response, Server, StatusCode};
@@ -8,12 +7,23 @@ use log::{error, info};
 use mongodb::bson::Document;
 use mongodb::options::FindOptions;
 use reqwest::Url;
+use std::env;
+use std::fmt::Write;
+use std::io::Result;
 use substring::Substring;
 
-static BASE_URL: &str = "127.0.0.1:1337";
-
 pub async fn start_server() {
-    let addr = BASE_URL.parse().unwrap();
+    let vercel_url = env::var("VERCEL_URL");
+
+    if vercel_url.is_ok() {
+        let _ = BASE_URL.lock().unwrap().write_str(&vercel_url.unwrap());
+    } else {
+        let _ = BASE_URL.lock().unwrap().write_str("127.0.0.1:1337");
+    }
+
+    println!("{}", BASE_URL.lock().unwrap());
+
+    let addr = BASE_URL.lock().unwrap().parse().unwrap();
 
     let make_service =
         make_service_fn(|_| async { Ok::<_, hyper::Error>(service_fn(response_examples)) });
@@ -55,10 +65,16 @@ async fn response_examples(req: Request<Body>) -> Result<Response<Body>> {
         let mut query = "{}".to_string();
         let mut sort = "{}".to_string();
 
-        for query_pair in
-            Url::parse(&format!("http://{}{}", BASE_URL, &req.uri().to_string()).to_string())
-                .unwrap()
-                .query_pairs()
+        for query_pair in Url::parse(
+            &format!(
+                "http://{}{}",
+                BASE_URL.lock().unwrap(),
+                &req.uri().to_string()
+            )
+            .to_string(),
+        )
+        .unwrap()
+        .query_pairs()
         {
             if query_pair.0 == "query" {
                 query = query_pair.1.to_string();

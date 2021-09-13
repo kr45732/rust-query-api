@@ -1,6 +1,6 @@
 use query_api::{fetch::fetch_auctions, server::start_server, util::set_interval};
 use simplelog::*;
-use std::{env, fs::File};
+use std::fs::File;
 use tokio::time::Duration;
 
 #[tokio::main]
@@ -32,8 +32,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     start_server().await;
-
-    println!("{}", env::var("$TEST").unwrap().to_string());
 
     Ok(())
 }

@@ -20,7 +20,7 @@ pub async fn fetch_auctions() {
 
     let r = get(1).await;
     auctions.append(&mut parse_hypixel(r.auctions));
-    for page_number in 2..4 {
+    for page_number in 2..3 {
         //r.total_pages {
         debug!("---------------- Fetching page {}", page_number);
 
