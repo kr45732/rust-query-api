@@ -1,7 +1,7 @@
 {
     "functions": {
         "src/**/*.rs": {
-            "runtime": "vercel-rust@latest"
+            "runtime": "vercel-rust@3.1.2"
         }
     }
 }
