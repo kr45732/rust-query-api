@@ -16,7 +16,7 @@ use simplelog::*;
 use std::collections::HashMap;
 use std::result::Result as StdResult;
 use std::time::Instant;
-use std::{env, fmt::Write, fs::File, sync::Mutex};
+use std::{fmt::Write, fs::File, sync::Mutex};
 use substring::Substring;
 use tokio::time::{self, Duration};
 
@@ -28,6 +28,8 @@ lazy_static! {
         .unwrap();
     static ref MC_CODE_REGEX: Regex = Regex::new("(?i)\u{00A7}[0-9A-FK-OR]").unwrap();
     static ref BASE_URL: Mutex<String> = Mutex::new("".to_string());
+    static ref API_KEY: Mutex<String> = Mutex::new("".to_string());
+    static ref MONGO_DB_URL: Mutex<String> = Mutex::new("".to_string());
 }
 
 static mut DATABASE: Option<Database> = None;
@@ -53,6 +55,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .unwrap();
     println!("Loggers created");
 
+    println!("Reading config");
+    let config: serde_json::Value =
+        serde_json::from_reader(File::open("config.json").unwrap()).unwrap();
+    let _ = BASE_URL
+        .lock()
+        .unwrap()
+        .write_str(config.get("base_url").unwrap().as_str().unwrap());
+    let _ = API_KEY
+        .lock()
+        .unwrap()
+        .write_str(config.get("api_key").unwrap().as_str().unwrap());
+    let _ = MONGO_DB_URL
+        .lock()
+        .unwrap()
+        .write_str(config.get("mongo_db_url").unwrap().as_str().unwrap());
+
     println!("Starting auction loop");
     fetch_auctions().await;
 
@@ -63,22 +81,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Duration::from_millis(300000),
     );
 
+    println!("Starting server");
     start_server().await;
 
     Ok(())
 }
 
 pub async fn start_server() {
-    let vercel_url = env::var("VERCEL_URL");
-
-    if vercel_url.is_ok() {
-        let _ = BASE_URL.lock().unwrap().write_str(&vercel_url.unwrap());
-    } else {
-        let _ = BASE_URL.lock().unwrap().write_str("127.0.0.1:1337");
-    }
-
-    println!("{}", BASE_URL.lock().unwrap());
-
     let addr = BASE_URL.lock().unwrap().parse().unwrap();
 
     let make_service =
@@ -120,6 +129,7 @@ async fn response_examples(req: Request<Body>) -> hyper::Result<Response<Body>> 
     } else if let (&Method::GET, "/query") = (req.method(), req.uri().path()) {
         let mut query = "{}".to_string();
         let mut sort = "{}".to_string();
+        let mut key = "".to_string();
 
         for query_pair in Url::parse(
             &format!(
@@ -136,7 +146,13 @@ async fn response_examples(req: Request<Body>) -> hyper::Result<Response<Body>> 
                 query = query_pair.1.to_string();
             } else if query_pair.0 == "sort" {
                 sort = query_pair.1.to_string();
+            } else if query_pair.0 == "key" {
+                key = query_pair.1.to_string();
             }
+        }
+
+        if key != API_KEY.lock().unwrap().as_str() {
+            return bad_request("Not authorized");
         }
 
         let query_result: std::result::Result<Document, serde_json::Error> =
@@ -254,9 +270,11 @@ pub async fn fetch_auctions() {
 
     debug!("Inserting into database");
     unsafe {
+        let mongo_url = MONGO_DB_URL.lock().unwrap().to_string();
+
         let collection = DATABASE
             .get_or_insert(
-                Client::with_uri_str(env::var("MONGO_DB_URL").unwrap())
+                Client::with_uri_str(mongo_url)
                     .await
                     .unwrap()
                     .database("skyblock"),
