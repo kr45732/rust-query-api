@@ -1,9 +1,6 @@
 /target
 debug.log
 info.log
-/node_modules
-package.json
-package-lock.json
 dev
-.vercel
 .DS_Store
+config.json
