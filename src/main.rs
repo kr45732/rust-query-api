@@ -37,9 +37,11 @@ static mut IS_UPDATING: bool = false;
 static mut TOTAL_UPDATES: i16 = 0;
 static mut LAST_UPDATED: i64 = 0;
 
+/* Entry point to the program. Creates loggers, reads config, starts auction loop and server.  */
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Creating loggers");
+    // Create log files
+    println!("Creating log files...");
     CombinedLogger::init(vec![
         WriteLogger::new(
             LevelFilter::Info,
@@ -53,8 +55,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ),
     ])
     .unwrap();
-    println!("Loggers created");
+    println!("Loggers created.");
 
+    // Read config
     println!("Reading config");
     let config: serde_json::Value =
         serde_json::from_reader(File::open("config.json").unwrap()).unwrap();
@@ -71,42 +74,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap()
         .write_str(config.get("mongo_db_url").unwrap().as_str().unwrap());
 
-    println!("Starting auction loop");
+    // Start the auction loop
+    println!("Starting auction loop...");
     fetch_auctions().await;
 
     set_interval(
         || async {
             fetch_auctions().await;
         },
-        Duration::from_millis(300000),
+        Duration::from_millis(150000),
     );
 
-    println!("Starting server");
+    // Start the server
+    println!("Starting server...");
     start_server().await;
 
     Ok(())
 }
 
+/* Starts the server listening on BASE_URL */
 pub async fn start_server() {
-    let addr = BASE_URL.lock().unwrap().parse().unwrap();
+    let server_address = BASE_URL.lock().unwrap().parse().unwrap();
 
     let make_service =
         make_service_fn(|_| async { Ok::<_, hyper::Error>(service_fn(response_examples)) });
 
-    let server = Server::bind(&addr).serve(make_service);
+    let server = Server::bind(&server_address).serve(make_service);
 
-    info!("Listening on http://{}", addr);
-    println!("Listening on http://{}", addr);
+    println!("Listening on http://{}", server_address);
 
     if let Err(e) = server.await {
         error!("Error when starting server: {}", e);
     }
 }
 
+/* Handles http requests to the server */
 async fn response_examples(req: Request<Body>) -> hyper::Result<Response<Body>> {
     info!("{} {}", req.method(), req.uri().path().substring(0, 30));
 
     if let (&Method::GET, "/") = (req.method(), req.uri().path()) {
+        // Returns information & statistics about the API
         unsafe {
             Ok(Response::builder()
             .status(StatusCode::OK)
@@ -127,10 +134,12 @@ async fn response_examples(req: Request<Body>) -> hyper::Result<Response<Body>> 
             .unwrap())
         }
     } else if let (&Method::GET, "/query") = (req.method(), req.uri().path()) {
+        // Query paremeters
         let mut query = "{}".to_string();
         let mut sort = "{}".to_string();
         let mut key = "".to_string();
 
+        // Reads the query parameters from the request and stores them in the corresponding variable
         for query_pair in Url::parse(
             &format!(
                 "http://{}{}",
@@ -151,52 +160,69 @@ async fn response_examples(req: Request<Body>) -> hyper::Result<Response<Body>> 
             }
         }
 
+        // The API key in request doesn't match
         if key != API_KEY.lock().unwrap().as_str() {
             return bad_request("Not authorized");
         }
 
+        if query == "{}" {
+            return bad_request("The query JSON cannot be empty");
+        }
+
+        // Parse the query and sort JSONs
         let query_result: std::result::Result<Document, serde_json::Error> =
             serde_json::from_str(&query);
         let sort_result: std::result::Result<Document, serde_json::Error> =
             serde_json::from_str(&sort);
 
+        // Invalid query JSONs
         if query_result.is_err() {
             return bad_request("Invalid query JSON");
         }
+        // Invalid sort JOSN
         if sort_result.is_err() {
             return bad_request("Invalid sort JSON");
         }
 
+        // Unwrap them to a Document
         let query_doc: Document = query_result.unwrap();
         let sort_doc: Document = sort_result.unwrap();
 
-        let query_options = FindOptions::builder()
-            .sort(sort_doc)
-            .allow_disk_use(true)
-            .build();
-
         unsafe {
+            // Reference to the database
             let database_ref = DATABASE.as_ref();
+
+            // Database isn't connected
             if database_ref.is_none() {
                 return internal_error("Database isn't connected");
             }
 
+            // Find and sort using query JSON
             let results_cursor = database_ref
                 .unwrap()
                 .collection::<Document>("rust-query")
-                .find(query_doc, query_options)
+                .find(
+                    query_doc,
+                    FindOptions::builder()
+                        .sort(sort_doc)
+                        .allow_disk_use(true)
+                        .build(),
+                )
                 .await;
 
+            // This shouldn't happen
             if results_cursor.is_err() {
                 return internal_error("Error when querying database");
             }
 
+            // Convert the cursor itterator to a vector
             let mut cursor = results_cursor.unwrap();
             let mut results_vec = vec![];
             while let Some(doc) = cursor.next().await {
                 results_vec.push(doc.unwrap());
             }
 
+            // Return the vector of auctions serialized into JSON
             Ok(Response::builder()
                 .status(StatusCode::OK)
                 .header(header::CONTENT_TYPE, "application/json")
@@ -208,6 +234,7 @@ async fn response_examples(req: Request<Body>) -> hyper::Result<Response<Body>> 
     }
 }
 
+/* 404 */
 fn not_found() -> hyper::Result<Response<Body>> {
     Ok(Response::builder()
         .status(StatusCode::NOT_FOUND)
@@ -216,6 +243,7 @@ fn not_found() -> hyper::Result<Response<Body>> {
         .unwrap())
 }
 
+/* 400 */
 fn bad_request(reason: &str) -> hyper::Result<Response<Body>> {
     Ok(Response::builder()
         .status(StatusCode::BAD_REQUEST)
@@ -227,6 +255,7 @@ fn bad_request(reason: &str) -> hyper::Result<Response<Body>> {
         .unwrap())
 }
 
+/* 500 */
 fn internal_error(reason: &str) -> hyper::Result<Response<Body>> {
     Ok(Response::builder()
         .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -238,35 +267,52 @@ fn internal_error(reason: &str) -> hyper::Result<Response<Body>> {
         .unwrap())
 }
 
+/* Gets all pages of auctions from the Hypixel API and inserts them into the database */
 pub async fn fetch_auctions() {
-    info!("Fetching auctions");
+    info!("Fetching auctions...");
+
     let started = Instant::now();
     unsafe {
         IS_UPDATING = true;
     }
 
+    // Stores all the auctions
     let mut auctions: Vec<Document> = Vec::new();
 
-    let r = get(1).await;
+    // First page to get the total number of pages
+    let r = get_auction_page(1).await;
     auctions.append(&mut parse_hypixel(r.auctions));
     for page_number in 2..r.total_pages {
         debug!("---------------- Fetching page {}", page_number);
 
-        // Make request
-        let now = Instant::now();
-        let page_request = get(page_number).await;
-        debug!("Request took {} ms", now.elapsed().as_millis());
+        // Get the page from the Hypixel API
+        let before_page_request = Instant::now();
+        let page_request = get_auction_page(page_number).await;
+        debug!(
+            "Request took {} ms",
+            before_page_request.elapsed().as_millis()
+        );
 
-        // Add auctions to array
-        let nowss = Instant::now();
+        // Parse the auctions and add them to the auctions array
+        let before_page_parse = Instant::now();
         auctions.append(&mut parse_hypixel(page_request.auctions));
-        debug!("Parsing took {} ms", nowss.elapsed().as_millis());
+        debug!(
+            "Parsing time: {} ms",
+            before_page_parse.elapsed().as_millis()
+        );
 
-        debug!("Total time is {} ms", now.elapsed().as_millis());
+        debug!(
+            "Total time: {} ms",
+            before_page_request.elapsed().as_millis()
+        );
     }
 
-    info!("Total fetch time taken {} ms", started.elapsed().as_secs());
+    info!(
+        "Total fetch time taken: {} seconds",
+        started.elapsed().as_secs()
+    );
 
+    // Update the auctions in the database
     debug!("Inserting into database");
     unsafe {
         let mongo_url = MONGO_DB_URL.lock().unwrap().to_string();
@@ -279,19 +325,101 @@ pub async fn fetch_auctions() {
                     .database("skyblock"),
             )
             .collection::<Document>("rust-query");
-        let _ = collection.drop_indexes(Option::None).await;
+        // Drop the collection to empty it
+        let _ = collection.drop(Option::None).await;
+        // Insert all the new auctions into the collection
         let _ = collection.insert_many(auctions, Option::None).await;
     }
-    log::debug!("Finished inserting into database");
+    debug!("Finished inserting into database");
 
     info!(
         "Total fetch and insert time taken {} ms",
         started.elapsed().as_secs()
     );
+
     unsafe {
         IS_UPDATING = false;
         TOTAL_UPDATES += 1;
     }
+}
+
+/* Gets an auction page from the Hypixel API */
+pub async fn get_auction_page(page_number: i64) -> AuctionResponse {
+    let res = HTTP_CLIENT
+        .get(format!(
+            "https://api.hypixel.net/skyblock/auctions?page={}",
+            page_number
+        ))
+        .send()
+        .await
+        .unwrap();
+    let text = res.text().await.unwrap();
+    serde_json::from_str(&text).unwrap()
+}
+
+/* Parses a page of auctions to a vector of documents  */
+pub fn parse_hypixel(auctions: Vec<Item>) -> Vec<Document> {
+    // Stores the parsed auctions
+    let mut new_auctions: Vec<Document> = Vec::new();
+
+    for auction in auctions {
+        /* Only bins (for now?) */
+        if let Some(true) = auction.bin {
+            // Parse the auction's nbt
+            let nbt = &auction.to_nbt().unwrap().i[0];
+            // Item id
+            let id = nbt.tag.extra_attributes.id.clone();
+
+            // Get enchants if the item is an enchanted book
+            let mut enchants = Vec::new();
+            if id == "ENCHANTED_BOOK" && nbt.tag.extra_attributes.enchantments.is_some() {
+                for entry in nbt.tag.extra_attributes.enchantments.as_ref().unwrap() {
+                    enchants.push(format!("{};{}", entry.0.to_uppercase(), entry.1));
+                }
+            }
+
+            // Push this auctions to the array
+            new_auctions.push(doc! {
+                "uuid": auction.uuid,
+                "auctioneer": auction.auctioneer,
+                "end": auction.end,
+                "item_name": if id != "ENCHANTED_BOOK" {
+                    auction.item_name
+                } else {
+                    MC_CODE_REGEX
+                        .replace_all(auction.item_lore.split("\n").next().unwrap_or(""), "")
+                        .to_string()
+                },
+                "tier": auction.tier,
+                "starting_bid": auction.starting_bid,
+                "item_id": id,
+                "enchants": enchants,
+            });
+        }
+    }
+
+    return new_auctions;
+}
+
+/* Repeat a task */
+pub fn set_interval<F, Fut>(mut f: F, dur: Duration)
+where
+    F: Send + 'static + FnMut() -> Fut,
+    Fut: Future<Output = ()> + Send + 'static,
+{
+    // Create stream of intervals.
+    let mut interval = time::interval(dur);
+    tokio::spawn(async move {
+        // Skip the first tick at 0ms.
+        interval.tick().await;
+        loop {
+            // Wait until next tick.
+            interval.tick().await;
+            // Spawn a task for this tick.
+
+            f().await;
+        }
+    });
 }
 
 #[derive(Deserialize)]
@@ -301,8 +429,8 @@ pub struct PartialNbt {
 
 #[derive(Deserialize)]
 pub struct PartialNbtElement {
-    #[serde(rename = "Count")]
-    pub count: i64,
+    // #[serde(rename = "Count")]
+    // pub count: i64,
     pub tag: PartialTag,
 }
 
@@ -325,22 +453,22 @@ pub struct Pet {
 #[derive(Deserialize)]
 pub struct PartialExtraAttr {
     pub id: String,
-    #[serde(rename = "petInfo")]
-    pub pet: Option<String>,
+    // #[serde(rename = "petInfo")]
+    // pub pet: Option<String>,
     pub enchantments: Option<HashMap<String, i32>>,
-    pub potion: Option<String>,
-    pub potion_level: Option<i16>,
-    pub anvil_uses: Option<i16>,
-    pub enhanced: Option<bool>,
-    pub runes: Option<HashMap<String, i32>>,
+    // pub potion: Option<String>,
+    // pub potion_level: Option<i16>,
+    // pub anvil_uses: Option<i16>,
+    // pub enhanced: Option<bool>,
+    // pub runes: Option<HashMap<String, i32>>,
 }
 
 #[derive(Deserialize)]
 pub struct DisplayInfo {
     #[serde(rename = "Name")]
     pub name: String,
-    #[serde(rename = "Lore")]
-    pub lore: Vec<String>,
+    // #[serde(rename = "Lore")]
+    // pub lore: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -355,8 +483,6 @@ pub struct Item {
     pub auctioneer: String,
     #[serde(rename = "end")]
     pub end: i64,
-    #[serde(rename = "item_count", skip_serializing_if = "Option::is_none")]
-    pub item_count: Option<i64>,
     #[serde(rename = "tier")]
     pub tier: String,
     #[serde(rename = "item_bytes")]
@@ -372,25 +498,6 @@ impl Item {
         let bytes: StdResult<Vec<u8>, _> = self.item_bytes.clone().into();
         let nbt: PartialNbt = nbt::from_gzip_reader(std::io::Cursor::new(bytes?))?;
         Ok(nbt)
-    }
-
-    /// Returns the count of items in the stack.
-    /// Attempts to count the items in the stack if no cached version is available.
-    /// Returns None otherwise
-    pub fn count(&mut self) -> Option<i64> {
-        if let Some(ref count) = &self.item_count {
-            return Some(*count);
-        }
-
-        if let Ok(nbt) = self.to_nbt() {
-            if let Some(pnbt) = nbt.i.first() {
-                self.item_count = Some(pnbt.count);
-
-                return Some(pnbt.count);
-            }
-        }
-
-        None
     }
 }
 
@@ -434,74 +541,4 @@ pub struct AuctionResponse {
 
     #[serde(rename = "auctions")]
     pub auctions: Vec<Item>,
-}
-
-pub async fn get(page: i64) -> AuctionResponse {
-    let res = HTTP_CLIENT
-        .get(format!(
-            "https://api.hypixel.net/skyblock/auctions?page={}",
-            page
-        ))
-        .send()
-        .await
-        .unwrap();
-    let text = res.text().await.unwrap();
-    serde_json::from_str(&text).unwrap()
-}
-
-pub fn parse_hypixel(auctions: Vec<Item>) -> Vec<Document> {
-    let mut new_auctions: Vec<Document> = Vec::new();
-
-    for auction in auctions {
-        if let Some(true) = auction.bin {
-            let nbt = &auction.to_nbt().unwrap().i[0];
-            let id = nbt.tag.extra_attributes.id.clone();
-
-            let mut enchants = Vec::new();
-            if auction.item_name == "Enchanted Book"
-                && nbt.tag.extra_attributes.enchantments.is_some()
-            {
-                for entry in nbt.tag.extra_attributes.enchantments.as_ref().unwrap() {
-                    enchants.push(format!("{};{}", entry.0.to_uppercase(), entry.1));
-                }
-            }
-
-            new_auctions.push(doc! {
-                "uuid": auction.uuid,
-                "auctioneer": auction.auctioneer,
-                "end": auction.end,
-                "item_name": if auction.item_name != "Enchanted Book" {
-                    auction.item_name
-                } else {
-                    MC_CODE_REGEX
-                        .replace_all(auction.item_lore.split("\n").next().unwrap_or(""), "")
-                        .to_string()
-                },
-                "tier": auction.tier,
-                "starting_bid": auction.starting_bid,
-                "item_id": id,
-                "enchants": enchants,
-            });
-        }
-    }
-    return new_auctions;
-}
-
-pub fn set_interval<F, Fut>(mut f: F, dur: Duration)
-where
-    F: Send + 'static + FnMut() -> Fut,
-    Fut: Future<Output = ()> + Send + 'static,
-{
-    // Create stream of intervals.
-    let mut interval = time::interval(dur);
-    tokio::spawn(async move {
-        // Skip the first tick at 0ms.
-        interval.tick().await;
-        loop {
-            // Wait until next tick.
-            interval.tick().await;
-            // Spawn a task for this tick.
-            tokio::spawn(f());
-        }
-    });
 }
