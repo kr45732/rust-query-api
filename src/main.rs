@@ -7,7 +7,7 @@ use hyper::{
 use lazy_static::lazy_static;
 use log::{debug, error, info};
 use mongodb::bson::doc;
-use mongodb::options::FindOptions;
+use mongodb::options::{FindOptions, InsertManyOptions};
 use mongodb::{bson::Document, Client, Database};
 use regex::Regex;
 use reqwest::Url;
@@ -328,7 +328,12 @@ pub async fn fetch_auctions() {
         // Drop the collection to empty it
         let _ = collection.drop(Option::None).await;
         // Insert all the new auctions into the collection
-        let _ = collection.insert_many(auctions, Option::None).await;
+        let _ = collection
+            .insert_many(
+                auctions,
+                InsertManyOptions::builder().ordered(false).build(),
+            )
+            .await;
     }
     debug!("Finished inserting into database");
 
