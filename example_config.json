@@ -1,5 +1,5 @@
 {
     "base_url": "",
     "api_key": "",
-    "mongo_db_url": ""
+    "postgres_db_url": ""
 }

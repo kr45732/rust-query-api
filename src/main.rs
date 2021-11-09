@@ -1,4 +1,4 @@
-use futures::{Future, StreamExt};
+use futures::Future;
 use hyper::{header, Method, StatusCode};
 use hyper::{
     service::{make_service_fn, service_fn},
@@ -6,19 +6,18 @@ use hyper::{
 };
 use lazy_static::lazy_static;
 use log::{debug, error, info};
-use mongodb::bson::doc;
-use mongodb::options::{FindOptions, InsertManyOptions};
-use mongodb::{bson::Document, Client, Database};
 use regex::Regex;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use simplelog::*;
+
 use std::collections::HashMap;
 use std::result::Result as StdResult;
 use std::time::Instant;
 use std::{fmt::Write, fs::File, sync::Mutex};
 use substring::Substring;
 use tokio::time::{self, Duration};
+use tokio_postgres::types::Json;
+use tokio_postgres::{Client, NoTls, Row};
 
 lazy_static! {
     static ref HTTP_CLIENT: reqwest::Client = reqwest::Client::builder()
@@ -29,10 +28,10 @@ lazy_static! {
     static ref MC_CODE_REGEX: Regex = Regex::new("(?i)\u{00A7}[0-9A-FK-OR]").unwrap();
     static ref BASE_URL: Mutex<String> = Mutex::new("".to_string());
     static ref API_KEY: Mutex<String> = Mutex::new("".to_string());
-    static ref MONGO_DB_URL: Mutex<String> = Mutex::new("".to_string());
+    static ref POSTGRES_DB_URL: Mutex<String> = Mutex::new("".to_string());
 }
 
-static mut DATABASE: Option<Database> = None;
+static mut DATABASE: Option<Client> = None;
 static mut IS_UPDATING: bool = false;
 static mut TOTAL_UPDATES: i16 = 0;
 static mut LAST_UPDATED: i64 = 0;
@@ -40,23 +39,6 @@ static mut LAST_UPDATED: i64 = 0;
 /* Entry point to the program. Creates loggers, reads config, starts auction loop and server.  */
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create log files
-    println!("Creating log files...");
-    CombinedLogger::init(vec![
-        WriteLogger::new(
-            LevelFilter::Info,
-            Config::default(),
-            File::create("info.log").unwrap(),
-        ),
-        WriteLogger::new(
-            LevelFilter::Debug,
-            Config::default(),
-            File::create("debug.log").unwrap(),
-        ),
-    ])
-    .unwrap();
-    println!("Loggers created.");
-
     // Read config
     println!("Reading config");
     let config: serde_json::Value =
@@ -69,10 +51,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .lock()
         .unwrap()
         .write_str(config.get("api_key").unwrap().as_str().unwrap());
-    let _ = MONGO_DB_URL
+    let _ = POSTGRES_DB_URL
         .lock()
         .unwrap()
-        .write_str(config.get("mongo_db_url").unwrap().as_str().unwrap());
+        .write_str(config.get("postgres_db_url").unwrap().as_str().unwrap());
+
+    // Connect to database
+    let (client, connection) =
+        tokio_postgres::connect(POSTGRES_DB_URL.lock().unwrap().as_str(), NoTls).await?;
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            error!("Error connecting to database: {}", e);
+        }
+    });
+    unsafe {
+        let _ = DATABASE.insert(client);
+    }
 
     // Start the auction loop
     println!("Starting auction loop...");
@@ -93,7 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /* Starts the server listening on BASE_URL */
-pub async fn start_server() {
+async fn start_server() {
     let server_address = BASE_URL.lock().unwrap().parse().unwrap();
 
     let make_service =
@@ -135,8 +129,8 @@ async fn response_examples(req: Request<Body>) -> hyper::Result<Response<Body>> 
         }
     } else if let (&Method::GET, "/query") = (req.method(), req.uri().path()) {
         // Query paremeters
-        let mut query = "{}".to_string();
-        let mut sort = "{}".to_string();
+        let mut query = "".to_string();
+        let mut sort = "".to_string();
         let mut key = "".to_string();
 
         // Reads the query parameters from the request and stores them in the corresponding variable
@@ -165,28 +159,9 @@ async fn response_examples(req: Request<Body>) -> hyper::Result<Response<Body>> 
             return bad_request("Not authorized");
         }
 
-        if query == "{}" {
-            return bad_request("The query JSON cannot be empty");
+        if query.len() == 0 {
+            return bad_request("The query paremeter cannot be empty");
         }
-
-        // Parse the query and sort JSONs
-        let query_result: std::result::Result<Document, serde_json::Error> =
-            serde_json::from_str(&query);
-        let sort_result: std::result::Result<Document, serde_json::Error> =
-            serde_json::from_str(&sort);
-
-        // Invalid query JSONs
-        if query_result.is_err() {
-            return bad_request("Invalid query JSON");
-        }
-        // Invalid sort JOSN
-        if sort_result.is_err() {
-            return bad_request("Invalid sort JSON");
-        }
-
-        // Unwrap them to a Document
-        let query_doc: Document = query_result.unwrap();
-        let sort_doc: Document = sort_result.unwrap();
 
         unsafe {
             // Reference to the database
@@ -200,27 +175,19 @@ async fn response_examples(req: Request<Body>) -> hyper::Result<Response<Body>> 
             // Find and sort using query JSON
             let results_cursor = database_ref
                 .unwrap()
-                .collection::<Document>("rust-query")
-                .find(
-                    query_doc,
-                    FindOptions::builder()
-                        .sort(sort_doc)
-                        .allow_disk_use(true)
-                        .build(),
-                )
+                .query("SELECT * FROM query WHERE $1 ORDER BY $2", &[&query, &sort])
                 .await;
 
-            // This shouldn't happen
             if results_cursor.is_err() {
+                // This shouldn't happen
                 return internal_error("Error when querying database");
             }
 
-            // Convert the cursor itterator to a vector
-            let mut cursor = results_cursor.unwrap();
+            // Convert the cursor iterator to a vector
             let mut results_vec = vec![];
-            while let Some(doc) = cursor.next().await {
-                results_vec.push(doc.unwrap());
-            }
+            results_cursor.unwrap().into_iter().for_each(|ele| {
+                results_vec.push(DatabaseItem::from(ele));
+            });
 
             // Return the vector of auctions serialized into JSON
             Ok(Response::builder()
@@ -268,7 +235,7 @@ fn internal_error(reason: &str) -> hyper::Result<Response<Body>> {
 }
 
 /* Gets all pages of auctions from the Hypixel API and inserts them into the database */
-pub async fn fetch_auctions() {
+async fn fetch_auctions() {
     info!("Fetching auctions...");
 
     let started = Instant::now();
@@ -277,7 +244,7 @@ pub async fn fetch_auctions() {
     }
 
     // Stores all the auctions
-    let mut auctions: Vec<Document> = Vec::new();
+    let mut auctions: Vec<DatabaseItem> = Vec::new();
 
     // First page to get the total number of pages
     let r = get_auction_page(1).await;
@@ -315,25 +282,29 @@ pub async fn fetch_auctions() {
     // Update the auctions in the database
     debug!("Inserting into database");
     unsafe {
-        let mongo_url = MONGO_DB_URL.lock().unwrap().to_string();
-
-        let collection = DATABASE
-            .get_or_insert(
-                Client::with_uri_str(mongo_url)
-                    .await
-                    .unwrap()
-                    .database("skyblock"),
-            )
-            .collection::<Document>("rust-query");
-        // Drop the collection to empty it
-        let _ = collection.drop(Option::None).await;
+        // Drop the table to empty it
+        let _ = DATABASE
+            .as_ref()
+            .unwrap()
+            .simple_query("DROP TABLE IF EXISTS query");
+        // Create new table
+        let _ = DATABASE.as_ref().unwrap().simple_query(
+            "CREATE TABLE query (
+                uuid SERIAL PRIMARY KEY,
+                auctioneer TEXT,
+                end BIGINT,
+                item_name TEXT,
+                tier TEXT,
+                item_id TEXT,
+                starting_bid BIGINT,
+                enchants TEXT[]
+            )",
+        );
         // Insert all the new auctions into the collection
-        let _ = collection
-            .insert_many(
-                auctions,
-                InsertManyOptions::builder().ordered(false).build(),
-            )
-            .await;
+        let _ = DATABASE
+            .as_ref()
+            .unwrap()
+            .execute("INSERT INTO query (data) VALUES ($1)", &[&Json(auctions)]);
     }
     debug!("Finished inserting into database");
 
@@ -349,7 +320,7 @@ pub async fn fetch_auctions() {
 }
 
 /* Gets an auction page from the Hypixel API */
-pub async fn get_auction_page(page_number: i64) -> AuctionResponse {
+async fn get_auction_page(page_number: i64) -> AuctionResponse {
     let res = HTTP_CLIENT
         .get(format!(
             "https://api.hypixel.net/skyblock/auctions?page={}",
@@ -363,9 +334,9 @@ pub async fn get_auction_page(page_number: i64) -> AuctionResponse {
 }
 
 /* Parses a page of auctions to a vector of documents  */
-pub fn parse_hypixel(auctions: Vec<Item>) -> Vec<Document> {
+fn parse_hypixel(auctions: Vec<Item>) -> Vec<DatabaseItem> {
     // Stores the parsed auctions
-    let mut new_auctions: Vec<Document> = Vec::new();
+    let mut new_auctions: Vec<DatabaseItem> = Vec::new();
 
     for auction in auctions {
         /* Only bins (for now?) */
@@ -384,21 +355,21 @@ pub fn parse_hypixel(auctions: Vec<Item>) -> Vec<Document> {
             }
 
             // Push this auctions to the array
-            new_auctions.push(doc! {
-                "uuid": auction.uuid,
-                "auctioneer": auction.auctioneer,
-                "end": auction.end,
-                "item_name": if id != "ENCHANTED_BOOK" {
+            new_auctions.push(DatabaseItem {
+                uuid: auction.uuid,
+                auctioneer: auction.auctioneer,
+                end: auction.end,
+                item_name: if id != "ENCHANTED_BOOK" {
                     auction.item_name
                 } else {
                     MC_CODE_REGEX
                         .replace_all(auction.item_lore.split("\n").next().unwrap_or(""), "")
                         .to_string()
                 },
-                "tier": auction.tier,
-                "starting_bid": auction.starting_bid,
-                "item_id": id,
-                "enchants": enchants,
+                tier: auction.tier,
+                starting_bid: auction.starting_bid,
+                item_id: id,
+                enchants,
             });
         }
     }
@@ -407,7 +378,7 @@ pub fn parse_hypixel(auctions: Vec<Item>) -> Vec<Document> {
 }
 
 /* Repeat a task */
-pub fn set_interval<F, Fut>(mut f: F, dur: Duration)
+fn set_interval<F, Fut>(mut f: F, dur: Duration)
 where
     F: Send + 'static + FnMut() -> Fut,
     Fut: Future<Output = ()> + Send + 'static,
@@ -425,6 +396,33 @@ where
             f().await;
         }
     });
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct DatabaseItem {
+    pub uuid: String,
+    pub auctioneer: String,
+    pub end: i64,
+    pub item_name: String,
+    pub tier: String,
+    pub item_id: String,
+    pub starting_bid: i64,
+    pub enchants: Vec<String>,
+}
+
+impl From<Row> for DatabaseItem {
+    fn from(row: Row) -> Self {
+        Self {
+            uuid: row.get("uuid"),
+            auctioneer: row.get("auctioneer"),
+            end: row.get("end"),
+            item_name: row.get("item_name"),
+            tier: row.get("tier"),
+            item_id: row.get("item_id"),
+            starting_bid: row.get("starting_bid"),
+            enchants: row.get("enchants"),
+        }
+    }
 }
 
 #[derive(Deserialize)]
