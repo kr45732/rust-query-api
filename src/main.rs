@@ -5,14 +5,12 @@ use hyper::{
     Body, Request, Response, Server,
 };
 use lazy_static::lazy_static;
-use log::{debug, error, info};
 use mongodb::bson::doc;
 use mongodb::options::{FindOptions, InsertManyOptions};
 use mongodb::{bson::Document, Client, Database};
 use regex::Regex;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use simplelog::*;
 use std::collections::HashMap;
 use std::result::Result as StdResult;
 use std::time::Instant;
@@ -40,23 +38,6 @@ static mut LAST_UPDATED: i64 = 0;
 /* Entry point to the program. Creates loggers, reads config, starts auction loop and server.  */
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create log files
-    println!("Creating log files...");
-    CombinedLogger::init(vec![
-        WriteLogger::new(
-            LevelFilter::Info,
-            Config::default(),
-            File::create("info.log").unwrap(),
-        ),
-        WriteLogger::new(
-            LevelFilter::Debug,
-            Config::default(),
-            File::create("debug.log").unwrap(),
-        ),
-    ])
-    .unwrap();
-    println!("Loggers created.");
-
     // Read config
     println!("Reading config");
     let config: serde_json::Value =
@@ -104,13 +85,13 @@ pub async fn start_server() {
     println!("Listening on http://{}", server_address);
 
     if let Err(e) = server.await {
-        error!("Error when starting server: {}", e);
+        println!("Error when starting server: {}", e);
     }
 }
 
 /* Handles http requests to the server */
 async fn response_examples(req: Request<Body>) -> hyper::Result<Response<Body>> {
-    info!("{} {}", req.method(), req.uri().path().substring(0, 30));
+    println!("{} {}", req.method(), req.uri().path().substring(0, 30));
 
     if let (&Method::GET, "/") = (req.method(), req.uri().path()) {
         // Returns information & statistics about the API
@@ -269,7 +250,7 @@ fn internal_error(reason: &str) -> hyper::Result<Response<Body>> {
 
 /* Gets all pages of auctions from the Hypixel API and inserts them into the database */
 pub async fn fetch_auctions() {
-    info!("Fetching auctions...");
+    println!("Fetching auctions...");
 
     let started = Instant::now();
     unsafe {
@@ -283,12 +264,12 @@ pub async fn fetch_auctions() {
     let r = get_auction_page(1).await;
     auctions.append(&mut parse_hypixel(r.auctions));
     for page_number in 2..r.total_pages {
-        debug!("---------------- Fetching page {}", page_number);
+        println!("---------------- Fetching page {}", page_number);
 
         // Get the page from the Hypixel API
         let before_page_request = Instant::now();
         let page_request = get_auction_page(page_number).await;
-        debug!(
+        println!(
             "Request took {} ms",
             before_page_request.elapsed().as_millis()
         );
@@ -296,24 +277,24 @@ pub async fn fetch_auctions() {
         // Parse the auctions and add them to the auctions array
         let before_page_parse = Instant::now();
         auctions.append(&mut parse_hypixel(page_request.auctions));
-        debug!(
+        println!(
             "Parsing time: {} ms",
             before_page_parse.elapsed().as_millis()
         );
 
-        debug!(
+        println!(
             "Total time: {} ms",
             before_page_request.elapsed().as_millis()
         );
     }
 
-    info!(
+    println!(
         "Total fetch time taken: {} seconds",
         started.elapsed().as_secs()
     );
 
     // Update the auctions in the database
-    debug!("Inserting into database");
+    println!("Inserting into database");
     unsafe {
         let mongo_url = MONGO_DB_URL.lock().unwrap().to_string();
 
@@ -331,14 +312,17 @@ pub async fn fetch_auctions() {
         let _ = collection
             .insert_many(
                 auctions,
-                InsertManyOptions::builder().ordered(false).build(),
+                InsertManyOptions::builder()
+                    .ordered(false)
+                    .bypass_document_validation(true)
+                    .build(),
             )
             .await;
     }
-    debug!("Finished inserting into database");
+    println!("Finished inserting into database");
 
-    info!(
-        "Total fetch and insert time taken {} ms",
+    println!(
+        "Total fetch and insert time taken {} seconds",
         started.elapsed().as_secs()
     );
 
