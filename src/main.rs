@@ -1,3 +1,21 @@
+/*
+ * Rust Query API - A versatile API facade for the Hypixel Auction API
+ * Copyright (c) 2021 kr45732
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 use futures::{pin_mut, Future};
 use hyper::{header, Method, StatusCode};
 use hyper::{
@@ -118,7 +136,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         || async {
             fetch_auctions().await;
         },
-        Duration::from_millis(150000),
+        Duration::from_millis(60000),
     );
 
     // Start the server
@@ -303,8 +321,7 @@ async fn fetch_auctions() {
     // First page to get the total number of pages
     let r = get_auction_page(1).await;
     auctions.append(&mut parse_hypixel(r.auctions));
-    for page_number in 2..5 {
-        //r.total_pages {
+    for page_number in 2..r.total_pages {
         debug!("---------------- Fetching page {}", page_number);
 
         // Get the page from the Hypixel API
