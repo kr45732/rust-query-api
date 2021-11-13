@@ -394,7 +394,7 @@ async fn fetch_auctions() {
                 debug!("Successfully inserting into database");
             }
             Err(error) => {
-                debug!("Error inserting into database: {}", error)
+                error!("Error inserting into database: {}", error)
             }
         }
     }
