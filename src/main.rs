@@ -1,4 +1,4 @@
-use futures::Future;
+use futures::{pin_mut, Future};
 use hyper::{header, Method, StatusCode};
 use hyper::{
     service::{make_service_fn, service_fn},
@@ -9,14 +9,15 @@ use log::{debug, error, info};
 use regex::Regex;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
-
+use simplelog::*;
 use std::collections::HashMap;
 use std::result::Result as StdResult;
 use std::time::Instant;
 use std::{fmt::Write, fs::File, sync::Mutex};
 use substring::Substring;
 use tokio::time::{self, Duration};
-use tokio_postgres::types::Json;
+use tokio_postgres::binary_copy::BinaryCopyInWriter;
+use tokio_postgres::types::{ToSql, Type};
 use tokio_postgres::{Client, NoTls, Row};
 
 lazy_static! {
@@ -39,6 +40,23 @@ static mut LAST_UPDATED: i64 = 0;
 /* Entry point to the program. Creates loggers, reads config, starts auction loop and server.  */
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create log files
+    println!("Creating log files...");
+    CombinedLogger::init(vec![
+        WriteLogger::new(
+            LevelFilter::Info,
+            Config::default(),
+            File::create("info.log").unwrap(),
+        ),
+        WriteLogger::new(
+            LevelFilter::Debug,
+            Config::default(),
+            File::create("debug.log").unwrap(),
+        ),
+    ])
+    .unwrap();
+    println!("Loggers created.");
+
     // Read config
     println!("Reading config");
     let config: serde_json::Value =
@@ -249,7 +267,8 @@ async fn fetch_auctions() {
     // First page to get the total number of pages
     let r = get_auction_page(1).await;
     auctions.append(&mut parse_hypixel(r.auctions));
-    for page_number in 2..r.total_pages {
+    for page_number in 2..5 {
+        //r.total_pages {
         debug!("---------------- Fetching page {}", page_number);
 
         // Get the page from the Hypixel API
@@ -286,27 +305,72 @@ async fn fetch_auctions() {
         let _ = DATABASE
             .as_ref()
             .unwrap()
-            .simple_query("DROP TABLE IF EXISTS query");
+            .simple_query("DROP TABLE IF EXISTS query")
+            .await;
         // Create new table
-        let _ = DATABASE.as_ref().unwrap().simple_query(
-            "CREATE TABLE query (
-                uuid SERIAL PRIMARY KEY,
-                auctioneer TEXT,
-                end BIGINT,
-                item_name TEXT,
-                tier TEXT,
-                item_id TEXT,
-                starting_bid BIGINT,
-                enchants TEXT[]
-            )",
-        );
-        // Insert all the new auctions into the collection
         let _ = DATABASE
             .as_ref()
             .unwrap()
-            .execute("INSERT INTO query (data) VALUES ($1)", &[&Json(auctions)]);
+            .simple_query(
+                "CREATE TABLE query (
+                    uuid TEXT NOT NULL PRIMARY KEY,
+                    auctioneer TEXT,
+                    end_t BIGINT,
+                    item_name TEXT,
+                    tier TEXT,
+                    item_id TEXT,
+                    starting_bid BIGINT,
+                    enchants TEXT[]
+                )",
+            )
+            .await;
+        // Prepare copy statement
+        let copy_statement = DATABASE
+            .as_ref()
+            .unwrap()
+            .prepare("COPY query FROM STDIN BINARY")
+            .await
+            .unwrap();
+        // Create a sink for the copy statement
+        let copy_sink = DATABASE
+            .as_ref()
+            .unwrap()
+            .copy_in(&copy_statement)
+            .await
+            .unwrap();
+        // Write used to write to the copy sink
+        let copy_writer = BinaryCopyInWriter::new(
+            copy_sink,
+            &[
+                Type::TEXT,
+                Type::TEXT,
+                Type::INT8,
+                Type::TEXT,
+                Type::TEXT,
+                Type::TEXT,
+                Type::INT8,
+                Type::TEXT_ARRAY,
+            ],
+        );
+        pin_mut!(copy_writer);
+        // Write to copy sink
+        let mut row: Vec<&'_ (dyn ToSql + Sync)> = Vec::new();
+        for m in &auctions {
+            row.clear();
+            row.push(&m.uuid);
+            row.push(&m.auctioneer);
+            row.push(&m.end_t);
+            row.push(&m.item_name);
+            row.push(&m.tier);
+            row.push(&m.item_id);
+            row.push(&m.starting_bid);
+            row.push(&m.enchants);
+            copy_writer.as_mut().write(&row).await.unwrap();
+        }
+        // Complete the copy statement
+        let out = copy_writer.finish().await;
+        debug!("Finished inserting into database. Success: {}", out.is_ok());
     }
-    debug!("Finished inserting into database");
 
     info!(
         "Total fetch and insert time taken {} ms",
@@ -358,7 +422,7 @@ fn parse_hypixel(auctions: Vec<Item>) -> Vec<DatabaseItem> {
             new_auctions.push(DatabaseItem {
                 uuid: auction.uuid,
                 auctioneer: auction.auctioneer,
-                end: auction.end,
+                end_t: auction.end,
                 item_name: if id != "ENCHANTED_BOOK" {
                     auction.item_name
                 } else {
@@ -402,7 +466,7 @@ where
 struct DatabaseItem {
     pub uuid: String,
     pub auctioneer: String,
-    pub end: i64,
+    pub end_t: i64,
     pub item_name: String,
     pub tier: String,
     pub item_id: String,
@@ -415,7 +479,7 @@ impl From<Row> for DatabaseItem {
         Self {
             uuid: row.get("uuid"),
             auctioneer: row.get("auctioneer"),
-            end: row.get("end"),
+            end_t: row.get("end_t"),
             item_name: row.get("item_name"),
             tier: row.get("tier"),
             item_id: row.get("item_id"),
