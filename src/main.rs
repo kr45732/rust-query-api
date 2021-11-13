@@ -37,7 +37,7 @@ static mut IS_UPDATING: bool = false;
 static mut TOTAL_UPDATES: i16 = 0;
 static mut LAST_UPDATED: i64 = 0;
 
-/* Entry point to the program. Creates loggers, reads config, starts auction loop and server.  */
+/* Entry point to the program. Creates loggers, reads config, creates query table, starts auction loop and server */
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create log files
@@ -84,6 +84,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
     unsafe {
         let _ = DATABASE.insert(client);
+
+        // Drop the table if exists
+        let _ = DATABASE
+            .as_ref()
+            .unwrap()
+            .simple_query("DROP TABLE IF EXISTS query")
+            .await;
+        // Create new table
+        let _ = DATABASE
+            .as_ref()
+            .unwrap()
+            .simple_query(
+                "CREATE TABLE query (
+                 uuid TEXT NOT NULL PRIMARY KEY,
+                 auctioneer TEXT,
+                 end_t BIGINT,
+                 item_name TEXT,
+                 tier TEXT,
+                 item_id TEXT,
+                 starting_bid BIGINT,
+                 enchants TEXT[]
+             )",
+            )
+            .await;
     }
 
     // Start the auction loop
@@ -190,11 +214,23 @@ async fn response_examples(req: Request<Body>) -> hyper::Result<Response<Body>> 
                 return internal_error("Database isn't connected");
             }
 
+            println!("QUERY: {} | SORT: {}", query, sort);
+            let results_cursor;
             // Find and sort using query JSON
-            let results_cursor = database_ref
-                .unwrap()
-                .query("SELECT * FROM query WHERE $1 ORDER BY $2", &[&query, &sort])
-                .await;
+            if sort.is_empty() {
+                results_cursor = database_ref
+                    .unwrap()
+                    .query(&format!("SELECT * FROM query WHERE {}", query), &[])
+                    .await;
+            } else {
+                results_cursor = database_ref
+                    .unwrap()
+                    .query(
+                        &format!("SELECT * FROM query WHERE {} ORDER BY {}", query, sort),
+                        &[],
+                    )
+                    .await;
+            }
 
             if results_cursor.is_err() {
                 // This shouldn't happen
@@ -301,28 +337,11 @@ async fn fetch_auctions() {
     // Update the auctions in the database
     debug!("Inserting into database");
     unsafe {
-        // Drop the table to empty it
+        // Empty table
         let _ = DATABASE
             .as_ref()
             .unwrap()
-            .simple_query("DROP TABLE IF EXISTS query")
-            .await;
-        // Create new table
-        let _ = DATABASE
-            .as_ref()
-            .unwrap()
-            .simple_query(
-                "CREATE TABLE query (
-                    uuid TEXT NOT NULL PRIMARY KEY,
-                    auctioneer TEXT,
-                    end_t BIGINT,
-                    item_name TEXT,
-                    tier TEXT,
-                    item_id TEXT,
-                    starting_bid BIGINT,
-                    enchants TEXT[]
-                )",
-            )
+            .simple_query("TRUNCATE TABLE query")
             .await;
         // Prepare copy statement
         let copy_statement = DATABASE
@@ -369,7 +388,15 @@ async fn fetch_auctions() {
         }
         // Complete the copy statement
         let out = copy_writer.finish().await;
-        debug!("Finished inserting into database. Success: {}", out.is_ok());
+
+        match out {
+            Ok(_) => {
+                debug!("Successfully inserting into database");
+            }
+            Err(error) => {
+                debug!("Error inserting into database: {}", error)
+            }
+        }
     }
 
     info!(
