@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::statics::WEBHOOK;
+use crate::statics::*;
 use chrono::prelude::{DateTime, Utc};
 use futures::Future;
 use hyper::{header, Body, Response, StatusCode};
@@ -88,6 +88,7 @@ pub async fn info(desc: String) {
                 message.embed(|embed| {
                     embed
                         .title("Information")
+                        .url(&BASE_URL.lock().unwrap())
                         .color(0x00FFFF)
                         .description(&desc)
                         .timestamp(&get_discord_timestamp())
@@ -107,6 +108,7 @@ pub async fn error(desc: String) {
                 message.embed(|embed| {
                     embed
                         .title("Error")
+                        .url(&BASE_URL.lock().unwrap())
                         .color(0xFF0000)
                         .description(&desc)
                         .timestamp(&get_discord_timestamp())

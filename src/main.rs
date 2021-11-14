@@ -25,7 +25,7 @@ use log::info;
 use query_api::{api_handler::*, statics::*, structs::*, utils::*, webhook::Webhook};
 use reqwest::Url;
 use simplelog::*;
-use std::{fmt::Write, fs::File};
+use std::{env, fmt::Write, fs::File};
 use substring::Substring;
 use tokio::time::Duration;
 use tokio_postgres::NoTls;
@@ -59,25 +59,47 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Read config
     println!("Reading config");
-    let config: serde_json::Value =
-        serde_json::from_reader(File::open("config.json").unwrap()).unwrap();
-    let _ = BASE_URL
-        .lock()
-        .unwrap()
-        .write_str(config.get("base_url").unwrap().as_str().unwrap());
-    let _ = API_KEY
-        .lock()
-        .unwrap()
-        .write_str(config.get("api_key").unwrap().as_str().unwrap());
-    let _ = POSTGRES_DB_URL
-        .lock()
-        .unwrap()
-        .write_str(config.get("postgres_db_url").unwrap().as_str().unwrap());
-    unsafe {
-        let _ = WEBHOOK.insert(Webhook::from_url(
-            config.get("webhook_url").unwrap().as_str().unwrap(),
-        ));
-    }
+    match File::open("config.json") {
+        Ok(file) => {
+            println!("Reading from config.json");
+            let config: serde_json::Value = serde_json::from_reader(file).unwrap();
+            let _ = BASE_URL
+                .lock()
+                .unwrap()
+                .write_str(config.get("base_url").unwrap().as_str().unwrap());
+            let _ = API_KEY
+                .lock()
+                .unwrap()
+                .write_str(config.get("api_key").unwrap().as_str().unwrap());
+            let _ = POSTGRES_DB_URL
+                .lock()
+                .unwrap()
+                .write_str(config.get("postgres_db_url").unwrap().as_str().unwrap());
+            unsafe {
+                let _ = WEBHOOK.insert(Webhook::from_url(
+                    config.get("webhook_url").unwrap().as_str().unwrap(),
+                ));
+            }
+        }
+        Err(_) => {
+            println!("Reading from enviorment variables");
+            let _ = BASE_URL
+                .lock()
+                .unwrap()
+                .write_str(&env::var("base_url").unwrap());
+            let _ = API_KEY
+                .lock()
+                .unwrap()
+                .write_str(&env::var("api_key").unwrap());
+            let _ = POSTGRES_DB_URL
+                .lock()
+                .unwrap()
+                .write_str(&env::var("postgres_db_url").unwrap());
+            unsafe {
+                let _ = WEBHOOK.insert(Webhook::from_url(&env::var("webhook_url").unwrap()));
+            }
+        }
+    };
 
     // Connect to database
     let (client, connection) =

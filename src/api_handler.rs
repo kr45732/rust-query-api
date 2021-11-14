@@ -45,6 +45,7 @@ pub async fn fetch_auctions() {
     let json = r.unwrap();
     auctions.append(&mut parse_hypixel(json.auctions));
 
+    let mut num_failed = 0;
     for page_number in 2..json.total_pages {
         debug!("---------------- Fetching page {}", page_number);
 
@@ -52,7 +53,12 @@ pub async fn fetch_auctions() {
         let before_page_request = Instant::now();
         let page_request = get_auction_page(page_number).await;
         if page_request.is_none() {
-            error("Failed to fetch auction page".to_string()).await;
+            num_failed += 1;
+            error(format!(
+                "Failed to fetch page {} with a total of {} failed pages",
+                page_number, num_failed
+            ))
+            .await;
             continue;
         }
         debug!(
