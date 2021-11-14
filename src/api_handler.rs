@@ -149,7 +149,7 @@ pub async fn fetch_auctions() {
     }
 
     info(format!(
-        "Total fetch and insert time taken {}ms",
+        "Total fetch and insert time taken {}s",
         started.elapsed().as_secs()
     ))
     .await;

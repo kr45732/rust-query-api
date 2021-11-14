@@ -33,6 +33,13 @@ use tokio_postgres::NoTls;
 /* Entry point to the program. Creates loggers, reads config, creates query table, starts auction loop and server */
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Check if debug or release build
+    if cfg!(debug_assertions) {
+        println!("Running a debug build");
+    } else {
+        println!("Running a release build");
+    }
+
     // Create log files
     println!("Creating log files...");
     CombinedLogger::init(vec![
@@ -67,7 +74,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap()
         .write_str(config.get("postgres_db_url").unwrap().as_str().unwrap());
     unsafe {
-        WEBHOOK = Some(Webhook::from_url(
+        let _ = WEBHOOK.insert(Webhook::from_url(
             config.get("webhook_url").unwrap().as_str().unwrap(),
         ));
     }
@@ -76,9 +83,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (client, connection) =
         tokio_postgres::connect(POSTGRES_DB_URL.lock().unwrap().as_str(), NoTls).await?;
     tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            error(format!("Error connecting to database: {}", e)).await;
-        }
+        match connection.await {
+            Ok(_) => {
+                info("Successfully connected to database".to_string()).await;
+            }
+            Err(e) => {
+                error(format!("Error connecting to database: {}", e)).await;
+            }
+        };
     });
 
     unsafe {
