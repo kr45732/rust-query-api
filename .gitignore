@@ -1,6 +1,5 @@
 /target
-debug.log
-info.log
+*.log
 dev
 .DS_Store
 config.json
