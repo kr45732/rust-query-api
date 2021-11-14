@@ -20,8 +20,8 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-serde_json = "1.0.69"
-hyper = { version = "0.14.14", features = ["full"] }
+serde_json = "1.0.70"
+hyper = { version = "0.14.14", features = ["server"] }
 serde = { version = "1.0.130", features = ["derive"] }
 tokio = { version = "1.13.0", features = ["full"] }
 reqwest = { version = "0.11.6", features = ["json", "gzip", "brotli"] }
@@ -35,3 +35,4 @@ futures = "0.3.17"
 tokio-postgres = { version = "0.7.5", features = ["with-serde_json-1"] }
 simplelog = "0.11.0"
 postgres-types = { version = "0.2.2", features = ["derive"] }
+chrono = "0.4.19"
