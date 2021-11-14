@@ -1,3 +1,3 @@
 FROM rust:1.31
 
-RUN ls -al
+RUN ls /home/* -al
