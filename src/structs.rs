@@ -47,6 +47,21 @@ impl From<Row> for DatabaseItem {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct PetsDatabaseItem {
+    pub name: String,
+    pub price: i64,
+}
+
+impl From<Row> for PetsDatabaseItem {
+    fn from(row: Row) -> Self {
+        Self {
+            name: row.get("name"),
+            price: row.get("price"),
+        }
+    }
+}
+
 #[derive(Deserialize)]
 pub struct PartialNbt {
     pub i: Vec<PartialNbtElement>,

@@ -22,9 +22,7 @@ use futures::{pin_mut, Future};
 use hyper::{header, Body, Response, StatusCode};
 use log::{error, info};
 use postgres_types::{ToSql, Type};
-use std::collections::HashMap;
-use std::result::Result as StdResult;
-use std::time::SystemTime;
+use std::{collections::HashMap, result::Result as StdResult, time::SystemTime};
 use tokio::time::{self, Duration};
 use tokio_postgres::{binary_copy::BinaryCopyInWriter, Error};
 
@@ -202,7 +200,7 @@ pub async fn update_pets_database(pet_prices: &mut HashMap<String, i64>) -> Resu
                 }
             }
             if !new_has {
-                pet_prices.insert(old_price_name, old_price.get("cost"));
+                pet_prices.insert(old_price_name, old_price.get("price"));
             }
         }
 

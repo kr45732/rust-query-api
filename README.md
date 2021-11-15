@@ -25,3 +25,4 @@ A versatile API facade for the Hypixel Auction API. The entire auction house is 
 - Improved error handling
 - Lowest bin prices
 - Average pet prices for all tiers and levels
+- Prevent SQL injection

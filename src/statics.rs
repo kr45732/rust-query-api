@@ -16,12 +16,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::webhook::Webhook;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::sync::Mutex;
 use tokio_postgres::Client;
-
-use crate::webhook::Webhook;
 
 lazy_static! {
     pub static ref HTTP_CLIENT: reqwest::Client = reqwest::Client::builder()

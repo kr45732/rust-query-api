@@ -22,7 +22,6 @@ use crate::{
     utils::{error, info, to_nbt, update_pets_database, update_query_database},
 };
 use log::debug;
-use regex::Regex;
 use std::{
     collections::{HashMap, HashSet},
     time::Instant,
@@ -56,7 +55,8 @@ pub async fn fetch_auctions() {
     ));
 
     let mut num_failed = 0;
-    for page_number in 2..json.total_pages {
+    for page_number in 2..5 {
+        //json.total_pages {
         debug!("---------------- Fetching page {}", page_number);
 
         // Get the page from the Hypixel API
@@ -192,14 +192,13 @@ pub fn parse_auctions(
 
                 // Pets API
                 if item_lore.contains("Right-click to add this pet to\n§eyour pet menu") {
-                    let pet_name = Regex::new("/ /g")
-                        .unwrap()
-                        .replace_all(&format!("{}_{}, ", item_name, tier), "_")
-                        .to_string();
+                    let pet_name = &format!("{}_{}", item_name, tier)
+                        .replace(" ", "_")
+                        .to_uppercase();
 
                     let mut found = false;
                     for mut ele in pet_prices.into_iter() {
-                        if *ele.0 == pet_name {
+                        if ele.0 == pet_name {
                             if starting_bid < *ele.1 {
                                 ele.1 = &mut starting_bid;
                                 found = true;
@@ -209,7 +208,7 @@ pub fn parse_auctions(
                     }
 
                     if !found {
-                        pet_prices.insert(pet_name, starting_bid);
+                        pet_prices.insert(pet_name.to_string(), starting_bid);
                     }
                 }
 

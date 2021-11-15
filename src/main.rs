@@ -115,11 +115,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
     });
 
+    // Create the tables
     unsafe {
         let client = DATABASE.insert(client);
-        // Drop the table if exists
+        // Drop the query table if exists
         let _ = client.simple_query("DROP TABLE IF EXISTS query").await;
-        // Create new table
+        // Create new query table
         let _ = client
             .simple_query(
                 "CREATE TABLE query (
@@ -131,6 +132,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                  item_id TEXT,
                  starting_bid BIGINT,
                  enchants TEXT[]
+                )",
+            )
+            .await;
+
+        // Drop the pets table if exists
+        let _ = client.simple_query("DROP TABLE IF EXISTS pets").await;
+        // Create new pets table
+        let _ = client
+            .simple_query(
+                "CREATE TABLE pets (
+                 name TEXT NOT NULL PRIMARY KEY,
+                 price BIGINT
                 )",
             )
             .await;
@@ -175,106 +188,187 @@ async fn handle_response(req: Request<Body>) -> hyper::Result<Response<Body>> {
     info!("{} {}", req.method(), req.uri().path().substring(0, 30));
 
     if let (&Method::GET, "/") = (req.method(), req.uri().path()) {
-        // Returns information & statistics about the API
-        Ok(Response::builder()
-            .status(StatusCode::OK)
-            .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(format!(
-                "{{
-                    \"success\":true,
-                    \"query\":
-                    {{
-                        \"is_updating\":{},
-                        \"total_updates\":{},
-                        \"last_updated\":{}
-                    }}
-                }}",
-                *IS_UPDATING.lock().unwrap(),
-                *TOTAL_UPDATES.lock().unwrap(),
-                *LAST_UPDATED.lock().unwrap()
-            )))
-            .unwrap())
+        base()
     } else if let (&Method::GET, "/query") = (req.method(), req.uri().path()) {
-        // Query paremeters
-        let mut query = "".to_string();
-        let mut sort = "".to_string();
-        let mut key = "".to_string();
-
-        // Reads the query parameters from the request and stores them in the corresponding variable
-        for query_pair in Url::parse(
-            &format!(
-                "http://{}{}",
-                BASE_URL.lock().unwrap(),
-                &req.uri().to_string()
-            )
-            .to_string(),
-        )
-        .unwrap()
-        .query_pairs()
-        {
-            if query_pair.0 == "query" {
-                query = query_pair.1.to_string();
-            } else if query_pair.0 == "sort" {
-                sort = query_pair.1.to_string();
-            } else if query_pair.0 == "key" {
-                key = query_pair.1.to_string();
-            }
-        }
-
-        // The API key in request doesn't match
-        if key != API_KEY.lock().unwrap().as_str() {
-            return bad_request("Not authorized");
-        }
-
-        if query.len() == 0 {
-            return bad_request("The query paremeter cannot be empty");
-        }
-
-        unsafe {
-            // Reference to the database
-            let database_ref = DATABASE.as_ref();
-
-            // Database isn't connected
-            if database_ref.is_none() {
-                return internal_error("Database isn't connected");
-            }
-
-            let results_cursor;
-            // Find and sort using query JSON
-            if sort.is_empty() {
-                results_cursor = database_ref
-                    .unwrap()
-                    .query(&format!("SELECT * FROM query WHERE {}", query), &[])
-                    .await;
-            } else {
-                results_cursor = database_ref
-                    .unwrap()
-                    .query(
-                        &format!("SELECT * FROM query WHERE {} ORDER BY {}", query, sort),
-                        &[],
-                    )
-                    .await;
-            }
-
-            if let Err(e) = results_cursor {
-                // This shouldn't happen
-                return internal_error(&format!("Error when querying database: {}", e).to_string());
-            }
-
-            // Convert the cursor iterator to a vector
-            let mut results_vec = vec![];
-            results_cursor.unwrap().into_iter().for_each(|ele| {
-                results_vec.push(DatabaseItem::from(ele));
-            });
-
-            // Return the vector of auctions serialized into JSON
-            Ok(Response::builder()
-                .status(StatusCode::OK)
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(serde_json::to_vec(&results_vec).unwrap()))
-                .unwrap())
-        }
+        query(req).await
+    } else if let (&Method::GET, "/pets") = (req.method(), req.uri().path()) {
+        pets(req).await
     } else {
         not_found()
     }
+}
+
+async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
+    let mut query = "".to_string();
+    let mut key = "".to_string();
+
+    // Reads the query parameters from the request and stores them in the corresponding variable
+    for query_pair in Url::parse(
+        &format!(
+            "http://{}{}",
+            BASE_URL.lock().unwrap(),
+            &req.uri().to_string()
+        )
+        .to_string(),
+    )
+    .unwrap()
+    .query_pairs()
+    {
+        if query_pair.0 == "query" {
+            query = query_pair.1.to_string();
+        } else if query_pair.0 == "key" {
+            key = query_pair.1.to_string();
+        }
+    }
+
+    // The API key in request doesn't match
+    if key != API_KEY.lock().unwrap().as_str() {
+        return bad_request("Not authorized");
+    }
+
+    if query.len() == 0 {
+        return bad_request("The query paremeter cannot be empty");
+    }
+
+    unsafe {
+        // Reference to the database
+        let database_ref = DATABASE.as_ref();
+
+        // Database isn't connected
+        if database_ref.is_none() {
+            return internal_error("Database isn't connected");
+        }
+
+        let results_cursor;
+        // Find and sort using query JSON
+        results_cursor = database_ref
+            .unwrap()
+            .query(
+                &format!("SELECT * FROM pets WHERE name IN ({})", query),
+                &[],
+            )
+            .await;
+
+        if let Err(e) = results_cursor {
+            // This shouldn't happen
+            return internal_error(&format!("Error when querying database: {}", e).to_string());
+        }
+
+        // Convert the cursor iterator to a vector
+        let mut results_vec = vec![];
+        results_cursor.unwrap().into_iter().for_each(|ele| {
+            results_vec.push(PetsDatabaseItem::from(ele));
+        });
+
+        // Return the vector of auctions serialized into JSON
+        Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(serde_json::to_vec(&results_vec).unwrap()))
+            .unwrap())
+    }
+}
+
+async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
+    // Query paremeters
+    let mut query = "".to_string();
+    let mut sort = "".to_string();
+    let mut key = "".to_string();
+
+    // Reads the query parameters from the request and stores them in the corresponding variable
+    for query_pair in Url::parse(
+        &format!(
+            "http://{}{}",
+            BASE_URL.lock().unwrap(),
+            &req.uri().to_string()
+        )
+        .to_string(),
+    )
+    .unwrap()
+    .query_pairs()
+    {
+        if query_pair.0 == "query" {
+            query = query_pair.1.to_string();
+        } else if query_pair.0 == "sort" {
+            sort = query_pair.1.to_string();
+        } else if query_pair.0 == "key" {
+            key = query_pair.1.to_string();
+        }
+    }
+
+    // The API key in request doesn't match
+    if key != API_KEY.lock().unwrap().as_str() {
+        return bad_request("Not authorized");
+    }
+
+    if query.len() == 0 {
+        return bad_request("The query paremeter cannot be empty");
+    }
+
+    unsafe {
+        // Reference to the database
+        let database_ref = DATABASE.as_ref();
+
+        // Database isn't connected
+        if database_ref.is_none() {
+            return internal_error("Database isn't connected");
+        }
+
+        let results_cursor;
+        // Find and sort using query JSON
+        if sort.is_empty() {
+            results_cursor = database_ref
+                .unwrap()
+                .query(&format!("SELECT * FROM query WHERE {}", query), &[])
+                .await;
+        } else {
+            results_cursor = database_ref
+                .unwrap()
+                .query(
+                    &format!("SELECT * FROM query WHERE {} ORDER BY {}", query, sort),
+                    &[],
+                )
+                .await;
+        }
+
+        if let Err(e) = results_cursor {
+            // This shouldn't happen
+            return internal_error(&format!("Error when querying database: {}", e).to_string());
+        }
+
+        // Convert the cursor iterator to a vector
+        let mut results_vec = vec![];
+        results_cursor.unwrap().into_iter().for_each(|ele| {
+            results_vec.push(DatabaseItem::from(ele));
+        });
+
+        // Return the vector of auctions serialized into JSON
+        Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(serde_json::to_vec(&results_vec).unwrap()))
+            .unwrap())
+    }
+}
+
+fn base() -> hyper::Result<Response<Body>> {
+    // Returns information & statistics about the API
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(format!(
+            "{{
+            \"success\":true,
+            \"query\":
+            {{
+                \"is_updating\":{},
+                \"total_updates\":{},
+                \"last_updated\":{}
+            }}
+        }}",
+            *IS_UPDATING.lock().unwrap(),
+            *TOTAL_UPDATES.lock().unwrap(),
+            *LAST_UPDATED.lock().unwrap()
+        )))
+        .unwrap())
 }
