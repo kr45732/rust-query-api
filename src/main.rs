@@ -116,18 +116,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     unsafe {
-        let _ = DATABASE.insert(client);
-
+        let client = DATABASE.insert(client);
         // Drop the table if exists
-        let _ = DATABASE
-            .as_ref()
-            .unwrap()
-            .simple_query("DROP TABLE IF EXISTS query")
-            .await;
+        let _ = client.simple_query("DROP TABLE IF EXISTS query").await;
         // Create new table
-        let _ = DATABASE
-            .as_ref()
-            .unwrap()
+        let _ = client
             .simple_query(
                 "CREATE TABLE query (
                  uuid TEXT NOT NULL PRIMARY KEY,
@@ -189,7 +182,7 @@ async fn handle_response(req: Request<Body>) -> hyper::Result<Response<Body>> {
             .body(Body::from(format!(
                 "{{
                     \"success\":true,
-                    \"statistics\":
+                    \"query\":
                     {{
                         \"is_updating\":{},
                         \"total_updates\":{},

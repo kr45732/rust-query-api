@@ -11,7 +11,7 @@ A versatile API facade for the Hypixel Auction API. The entire auction house is 
 ### Steps
 - Clone the repository
 - Copy the `example_config.json` file into a new `config.json` file and fill all fields out
-- Run `cargo run` with an optional `--release` flag for a much faster and more efficient program
+- Run `cargo run --release` (this may take some time to compile)
 - Use it!
 
 ### Configuration Fields
@@ -19,3 +19,9 @@ A versatile API facade for the Hypixel Auction API. The entire auction house is 
 - `api_key`: Api key needed to access this api (NOT a Hypixel API key)
 - `postgres_db_url`: Full url for the PostgreSQL database
 - `webhook_url`: Discord webhook url for logging
+
+
+### Todo
+- Improved error handling
+- Lowest bin prices
+- Average pet prices for all tiers and levels

@@ -18,7 +18,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::result::Result as StdResult;
 use tokio_postgres::Row;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -117,14 +116,6 @@ pub struct Item {
     pub starting_bid: i64,
     #[serde(rename = "bin")]
     pub bin: Option<bool>,
-}
-
-impl Item {
-    pub fn to_nbt(&self) -> Result<PartialNbt, Box<dyn std::error::Error>> {
-        let bytes: StdResult<Vec<u8>, _> = self.item_bytes.clone().into();
-        let nbt: PartialNbt = nbt::from_gzip_reader(std::io::Cursor::new(bytes?))?;
-        Ok(nbt)
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]

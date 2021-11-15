@@ -16,15 +16,17 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::statics::*;
-use crate::structs::*;
-use crate::utils::error;
-use crate::utils::info;
-use futures::pin_mut;
+use crate::{
+    statics::*,
+    structs::*,
+    utils::{error, info, to_nbt, update_pets_database, update_query_database},
+};
 use log::debug;
-use std::time::Instant;
-use tokio_postgres::binary_copy::BinaryCopyInWriter;
-use tokio_postgres::types::{ToSql, Type};
+use regex::Regex;
+use std::{
+    collections::{HashMap, HashSet},
+    time::Instant,
+};
 
 /* Gets all pages of auctions from the Hypixel API and inserts them into the database */
 pub async fn fetch_auctions() {
@@ -35,6 +37,10 @@ pub async fn fetch_auctions() {
 
     // Stores all the auctions
     let mut auctions: Vec<DatabaseItem> = Vec::new();
+    // Stores all auction uuids in auctions vector to prevent duplicates
+    let mut inserted_uuids: HashSet<String> = HashSet::new();
+    // Stores all pet prices
+    let mut pet_prices: HashMap<String, i64> = HashMap::new();
 
     // First page to get the total number of pages
     let r = get_auction_page(1).await;
@@ -43,7 +49,11 @@ pub async fn fetch_auctions() {
         return;
     }
     let json = r.unwrap();
-    auctions.append(&mut parse_hypixel(json.auctions));
+    auctions.append(&mut parse_auctions(
+        json.auctions,
+        &mut inserted_uuids,
+        &mut pet_prices,
+    ));
 
     let mut num_failed = 0;
     for page_number in 2..json.total_pages {
@@ -68,7 +78,11 @@ pub async fn fetch_auctions() {
 
         // Parse the auctions and add them to the auctions array
         let before_page_parse = Instant::now();
-        auctions.append(&mut parse_hypixel(page_request.unwrap().auctions));
+        auctions.append(&mut parse_auctions(
+            page_request.unwrap().auctions,
+            &mut inserted_uuids,
+            &mut pet_prices,
+        ));
         debug!(
             "Parsing time: {}ms",
             before_page_parse.elapsed().as_millis()
@@ -88,70 +102,21 @@ pub async fn fetch_auctions() {
 
     // Update the auctions in the database
     debug!("Inserting into database");
-    unsafe {
-        // Empty table
-        let _ = DATABASE
-            .as_ref()
-            .unwrap()
-            .simple_query("TRUNCATE TABLE query")
-            .await;
-        // Prepare copy statement
-        let copy_statement = DATABASE
-            .as_ref()
-            .unwrap()
-            .prepare("COPY query FROM STDIN BINARY")
-            .await
-            .unwrap();
-        // Create a sink for the copy statement
-        let copy_sink = DATABASE
-            .as_ref()
-            .unwrap()
-            .copy_in(&copy_statement)
-            .await
-            .unwrap();
-        // Write used to write to the copy sink
-        let copy_writer = BinaryCopyInWriter::new(
-            copy_sink,
-            &[
-                Type::TEXT,
-                Type::TEXT,
-                Type::INT8,
-                Type::TEXT,
-                Type::TEXT,
-                Type::TEXT,
-                Type::INT8,
-                Type::TEXT_ARRAY,
-            ],
-        );
-        pin_mut!(copy_writer);
-        // Write to copy sink
-        let mut row: Vec<&'_ (dyn ToSql + Sync)> = Vec::new();
-        let mut inserted_uuids: Vec<String> = Vec::new();
-        for m in &auctions {
-            // Prevent duplicates because for some reason there are duplicates
-            if !inserted_uuids.contains(&m.uuid) {
-                inserted_uuids.push(m.uuid.to_string());
-                row.clear();
-                row.push(&m.uuid);
-                row.push(&m.auctioneer);
-                row.push(&m.end_t);
-                row.push(&m.item_name);
-                row.push(&m.tier);
-                row.push(&m.item_id);
-                row.push(&m.starting_bid);
-                row.push(&m.enchants);
-                copy_writer.as_mut().write(&row).await.unwrap();
-            }
-        }
-        // Complete the copy statement
-        let out = copy_writer.finish().await;
 
-        match out {
-            Ok(_) => {
-                info("Successfully inserted into database".to_string()).await;
-            }
-            Err(e) => error(format!("Error inserting into database: {}", e)).await,
+    // Query API
+    match update_query_database(auctions).await {
+        Ok(_) => {
+            info("Successfully inserted query into database".to_string()).await;
         }
+        Err(e) => error(format!("Error inserting query into database: {}", e)).await,
+    }
+
+    // Pets API
+    match update_pets_database(&mut pet_prices).await {
+        Ok(_) => {
+            info("Successfully inserted pets into database".to_string()).await;
+        }
+        Err(e) => error(format!("Error inserting pets into database: {}", e)).await,
     }
 
     info(format!(
@@ -187,45 +152,87 @@ pub async fn get_auction_page(page_number: i64) -> Option<AuctionResponse> {
 }
 
 /* Parses a page of auctions to a vector of documents  */
-pub fn parse_hypixel(auctions: Vec<Item>) -> Vec<DatabaseItem> {
+pub fn parse_auctions(
+    auctions: Vec<Item>,
+    inserted_uuids: &mut HashSet<String>,
+    pet_prices: &mut HashMap<String, i64>,
+) -> Vec<DatabaseItem> {
     // Stores the parsed auctions
     let mut new_auctions: Vec<DatabaseItem> = Vec::new();
 
-    for auction in auctions {
-        /* Only bins (for now?) */
+    for auction in auctions.into_iter() {
+        // Only bins for now
         if let Some(true) = auction.bin {
-            // Parse the auction's nbt
-            let nbt = &auction.to_nbt().unwrap().i[0];
-            // Item id
-            let id = nbt.tag.extra_attributes.id.clone();
+            let Item {
+                uuid,
+                auctioneer,
+                end,
+                item_name,
+                tier,
+                mut starting_bid,
+                item_lore,
+                item_bytes,
+                bin: _,
+            } = auction;
 
-            // Get enchants if the item is an enchanted book
-            let mut enchants = Vec::new();
-            if id == "ENCHANTED_BOOK" && nbt.tag.extra_attributes.enchantments.is_some() {
-                for entry in nbt.tag.extra_attributes.enchantments.as_ref().unwrap() {
-                    enchants.push(format!("{};{}", entry.0.to_uppercase(), entry.1));
+            // Prevent duplicate auctions
+            if inserted_uuids.insert(uuid.clone()) {
+                // Parse the auction's nbt
+                let nbt = &to_nbt(item_bytes).unwrap().i[0];
+                // Item id
+                let id = nbt.tag.extra_attributes.id.clone();
+
+                // Get enchants if the item is an enchanted book
+                let mut enchants = Vec::new();
+                if id == "ENCHANTED_BOOK" && nbt.tag.extra_attributes.enchantments.is_some() {
+                    for entry in nbt.tag.extra_attributes.enchantments.as_ref().unwrap() {
+                        enchants.push(format!("{};{}", entry.0.to_uppercase(), entry.1));
+                    }
                 }
-            }
 
-            // Push this auctions to the array
-            new_auctions.push(DatabaseItem {
-                uuid: auction.uuid,
-                auctioneer: auction.auctioneer,
-                end_t: auction.end,
-                item_name: if id != "ENCHANTED_BOOK" {
-                    auction.item_name
-                } else {
-                    MC_CODE_REGEX
-                        .replace_all(auction.item_lore.split("\n").next().unwrap_or(""), "")
-                        .to_string()
-                },
-                tier: auction.tier,
-                starting_bid: auction.starting_bid,
-                item_id: id,
-                enchants,
-            });
+                // Pets API
+                if item_lore.contains("Right-click to add this pet to\n§eyour pet menu") {
+                    let pet_name = Regex::new("/ /g")
+                        .unwrap()
+                        .replace_all(&format!("{}_{}, ", item_name, tier), "_")
+                        .to_string();
+
+                    let mut found = false;
+                    for mut ele in pet_prices.into_iter() {
+                        if *ele.0 == pet_name {
+                            if starting_bid < *ele.1 {
+                                ele.1 = &mut starting_bid;
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if !found {
+                        pet_prices.insert(pet_name, starting_bid);
+                    }
+                }
+
+                // Push this auction to the array
+                new_auctions.push(DatabaseItem {
+                    uuid,
+                    auctioneer,
+                    end_t: end,
+                    item_name: if id != "ENCHANTED_BOOK" {
+                        item_name
+                    } else {
+                        MC_CODE_REGEX
+                            .replace_all(item_lore.split("\n").next().unwrap_or(""), "")
+                            .to_string()
+                    },
+                    tier,
+                    starting_bid,
+                    item_id: id,
+                    enchants,
+                });
+            }
         }
     }
 
-    return new_auctions;
+    new_auctions
 }
