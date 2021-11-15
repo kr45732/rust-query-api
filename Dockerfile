@@ -1,3 +1,8 @@
 FROM rust:1.31
 
-RUN ls .dockerenv -ls
+WORKDIR /app
+COPY . .
+
+RUN cargo build --release
+
+CMD ./target/release/query_api
