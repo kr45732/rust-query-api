@@ -2,4 +2,4 @@
 *.log
 dev
 .DS_Store
-config.json
+.env

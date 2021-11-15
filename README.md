@@ -14,12 +14,12 @@ A versatile API facade for the Hypixel Auction API. The entire auction house is 
 - Run `cargo run --release` (this may take some time to compile)
 - Use it!
 
-### Configuration Fields
-- `base_url`: The base url of the domain such as http://localhost:8080/
-- `api_key`: Api key needed to access this api (NOT a Hypixel API key)
-- `postgres_db_url`: Full url for the PostgreSQL database
-- `webhook_url`: Discord webhook url for logging
-
+### Configuration variables
+- `BASE_URL`: The base url of the domain such as http://localhost:8080/
+- `API_KEY`: Api key needed to access this api (NOT a Hypixel API key)
+- `POSTGRES_URL`: Full url for the PostgreSQL database
+- `WEBHOOK_URL`: Discord webhook url for logging
+these should all be in a .env file
 
 ### Todo
 - Improved error handling

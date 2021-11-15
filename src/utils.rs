@@ -89,7 +89,7 @@ pub async fn info(desc: String) {
                 message.embed(|embed| {
                     embed
                         .title("Information")
-                        .url(&BASE_URL.lock().unwrap())
+                        .url(&URL.lock().unwrap())
                         .color(0x00FFFF)
                         .description(&desc)
                         .timestamp(&get_discord_timestamp())
@@ -109,7 +109,7 @@ pub async fn error(desc: String) {
                 message.embed(|embed| {
                     embed
                         .title("Error")
-                        .url(&BASE_URL.lock().unwrap())
+                        .url(&URL.lock().unwrap())
                         .color(0xFF0000)
                         .description(&desc)
                         .timestamp(&get_discord_timestamp())

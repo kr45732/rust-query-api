@@ -30,6 +30,8 @@ lazy_static! {
         .unwrap();
     pub static ref MC_CODE_REGEX: Regex = Regex::new("(?i)\u{00A7}[0-9A-FK-OR]").unwrap();
     pub static ref BASE_URL: Mutex<String> = Mutex::new("".to_string());
+    pub static ref PORT: Mutex<String> = Mutex::new("".to_string());
+    pub static ref URL: Mutex<String> = Mutex::new("".to_string());
     pub static ref API_KEY: Mutex<String> = Mutex::new("".to_string());
     pub static ref POSTGRES_DB_URL: Mutex<String> = Mutex::new("".to_string());
     pub static ref IS_UPDATING: Mutex<bool> = Mutex::new(false);

@@ -29,6 +29,7 @@ use std::{env, fmt::Write, fs::File};
 use substring::Substring;
 use tokio::time::Duration;
 use tokio_postgres::NoTls;
+use dotenv::dotenv;
 
 /* Entry point to the program. Creates loggers, reads config, creates query table, starts auction loop and server */
 #[tokio::main]
@@ -59,47 +60,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Read config
     println!("Reading config");
-    match File::open("config.json") {
-        Ok(file) => {
-            println!("Reading from config.json");
-            let config: serde_json::Value = serde_json::from_reader(file).unwrap();
-            let _ = BASE_URL
+    dotenv().ok();
+    let _ = BASE_URL
                 .lock()
                 .unwrap()
-                .write_str(config.get("base_url").unwrap().as_str().unwrap());
-            let _ = API_KEY
+                .write_str(&env::var("BASE_URL").unwrap());
+    let _ = PORT
                 .lock()
                 .unwrap()
-                .write_str(config.get("api_key").unwrap().as_str().unwrap());
-            let _ = POSTGRES_DB_URL
+                .write_str(&env::var("PORT").unwrap());
+    let combined = format!("{}:{}", &env::var("BASE_URL").unwrap(), &env::var("PORT").unwrap());
+    println!("{}", combined);
+    let _ = URL
                 .lock()
                 .unwrap()
-                .write_str(config.get("postgres_db_url").unwrap().as_str().unwrap());
-            unsafe {
-                let _ = WEBHOOK.insert(Webhook::from_url(
-                    config.get("webhook_url").unwrap().as_str().unwrap(),
-                ));
-            }
-        }
-        Err(_) => {
-            println!("Reading from enviorment variables");
-            let _ = BASE_URL
+                .write_str(combined.as_str());
+    let _ = POSTGRES_DB_URL
                 .lock()
                 .unwrap()
-                .write_str(&env::var("base_url").unwrap());
-            let _ = API_KEY
+                .write_str(&env::var("POSTGRES_URL").unwrap());
+    let _ = API_KEY
                 .lock()
                 .unwrap()
-                .write_str(&env::var("api_key").unwrap());
-            let _ = POSTGRES_DB_URL
-                .lock()
-                .unwrap()
-                .write_str(&env::var("postgres_db_url").unwrap());
-            unsafe {
-                let _ = WEBHOOK.insert(Webhook::from_url(&env::var("webhook_url").unwrap()));
-            }
-        }
-    };
+                .write_str(&env::var("API_KEY").unwrap());
+    unsafe {
+        let _ = WEBHOOK.insert(Webhook::from_url(&env::var("WEBHOOK_URL").unwrap()));
+    }
 
     // Connect to database
     let (client, connection) =
@@ -167,9 +153,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/* Starts the server listening on BASE_URL */
+/* Starts the server listening on URL */
 async fn start_server() {
-    let server_address = BASE_URL.lock().unwrap().parse().unwrap();
+    let server_address = URL.lock().unwrap().parse().unwrap();
 
     let make_service =
         make_service_fn(|_| async { Ok::<_, hyper::Error>(service_fn(handle_response)) });
@@ -206,7 +192,7 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
     for query_pair in Url::parse(
         &format!(
             "http://{}{}",
-            BASE_URL.lock().unwrap(),
+            URL.lock().unwrap(),
             &req.uri().to_string()
         )
         .to_string(),
@@ -279,7 +265,7 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
     for query_pair in Url::parse(
         &format!(
             "http://{}{}",
-            BASE_URL.lock().unwrap(),
+            URL.lock().unwrap(),
             &req.uri().to_string()
         )
         .to_string(),
