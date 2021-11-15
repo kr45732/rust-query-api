@@ -1,9 +1,8 @@
-FROM rust:1.31
+FROM rust:1.56.1
 
 WORKDIR /app
 COPY . .
 
-RUN ls /app
 RUN cargo build --release
 
 CMD ./target/release/query_api
