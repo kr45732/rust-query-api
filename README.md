@@ -21,11 +21,11 @@ A versatile API facade for the Hypixel Auction API. The entire auction house is 
 - `POSTGRES_URL`: Full url of a PostgreSQL database
 - `WEBHOOK_URL`: Discord webhook url for logging
 
-### Endpoints
+## Endpoints
 - `/query?key=key&query=query&sort=sort`
 - `/pets?key=key&query=query`
 
-### Todo
+## Todo
 - Improved error handling
 - Lowest bin prices
 - Prevent SQL injection

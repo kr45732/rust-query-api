@@ -55,8 +55,7 @@ pub async fn fetch_auctions() {
     ));
 
     let mut num_failed = 0;
-    for page_number in 2..5 {
-        //json.total_pages {
+    for page_number in 2..json.total_pages {
         debug!("---------------- Fetching page {}", page_number);
 
         // Get the page from the Hypixel API
