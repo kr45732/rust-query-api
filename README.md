@@ -10,18 +10,23 @@ A versatile API facade for the Hypixel Auction API. The entire auction house is 
 
 ### Steps
 - Clone the repository
-- Copy the `example_config.json` file into a new `config.json` file and fill all fields out
+- Copy the `example_env` file into a new `.env` file and fill all fields out OR set all the fields using environment variables
 - Run `cargo run --release` (this may take some time to compile)
 - Use it!
 
-### Configuration variables
-- `BASE_URL`: The base url of the domain such as http://localhost:8080/
-- `API_KEY`: Api key needed to access this api (NOT a Hypixel API key)
-- `POSTGRES_URL`: Full url for the PostgreSQL database
+### Configuration Fields or Environment Variables
+- `BASE_URL`: The base url of the domain such as localhost
+- `PORT`: The port such as 8080
+- `API_KEY`: Key needed to access this api (NOT a Hypixel API key)
+- `POSTGRES_URL`: Full url of a PostgreSQL database
 - `WEBHOOK_URL`: Discord webhook url for logging
-these should all be in a .env file
+
+### Endpoints
+- `/query?key=key&query=query&sort=sort`
+- `/pets?key=key&query=query`
 
 ### Todo
 - Improved error handling
 - Lowest bin prices
 - Prevent SQL injection
+- Better documentation 

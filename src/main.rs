@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use dotenv::dotenv;
 use hyper::{
     header,
     service::{make_service_fn, service_fn},
@@ -29,7 +30,6 @@ use std::{env, fmt::Write, fs::File};
 use substring::Substring;
 use tokio::time::Duration;
 use tokio_postgres::NoTls;
-use dotenv::dotenv;
 
 /* Entry point to the program. Creates loggers, reads config, creates query table, starts auction loop and server */
 #[tokio::main]
@@ -62,27 +62,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Reading config");
     dotenv().ok();
     let _ = BASE_URL
-                .lock()
-                .unwrap()
-                .write_str(&env::var("BASE_URL").unwrap());
-    let _ = PORT
-                .lock()
-                .unwrap()
-                .write_str(&env::var("PORT").unwrap());
-    let combined = format!("{}:{}", &env::var("BASE_URL").unwrap(), &env::var("PORT").unwrap());
-    println!("{}", combined);
-    let _ = URL
-                .lock()
-                .unwrap()
-                .write_str(combined.as_str());
+        .lock()
+        .unwrap()
+        .write_str(&env::var("BASE_URL").unwrap());
+    let _ = PORT.lock().unwrap().write_str(&env::var("PORT").unwrap());
+    let _ = URL.lock().unwrap().write_str(
+        format!(
+            "{}:{}",
+            &env::var("BASE_URL").unwrap(),
+            &env::var("PORT").unwrap()
+        )
+        .as_str(),
+    );
     let _ = POSTGRES_DB_URL
-                .lock()
-                .unwrap()
-                .write_str(&env::var("POSTGRES_URL").unwrap());
+        .lock()
+        .unwrap()
+        .write_str(&env::var("POSTGRES_URL").unwrap());
     let _ = API_KEY
-                .lock()
-                .unwrap()
-                .write_str(&env::var("API_KEY").unwrap());
+        .lock()
+        .unwrap()
+        .write_str(&env::var("API_KEY").unwrap());
     unsafe {
         let _ = WEBHOOK.insert(Webhook::from_url(&env::var("WEBHOOK_URL").unwrap()));
     }
@@ -189,16 +188,10 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
     let mut key = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
-    for query_pair in Url::parse(
-        &format!(
-            "http://{}{}",
-            URL.lock().unwrap(),
-            &req.uri().to_string()
-        )
-        .to_string(),
-    )
-    .unwrap()
-    .query_pairs()
+    for query_pair in
+        Url::parse(&format!("http://{}{}", URL.lock().unwrap(), &req.uri().to_string()).to_string())
+            .unwrap()
+            .query_pairs()
     {
         if query_pair.0 == "query" {
             query = query_pair.1.to_string();
@@ -262,16 +255,10 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
     let mut key = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
-    for query_pair in Url::parse(
-        &format!(
-            "http://{}{}",
-            URL.lock().unwrap(),
-            &req.uri().to_string()
-        )
-        .to_string(),
-    )
-    .unwrap()
-    .query_pairs()
+    for query_pair in
+        Url::parse(&format!("http://{}{}", URL.lock().unwrap(), &req.uri().to_string()).to_string())
+            .unwrap()
+            .query_pairs()
     {
         if query_pair.0 == "query" {
             query = query_pair.1.to_string();
