@@ -27,7 +27,7 @@ A versatile API facade for the Hypixel Auction API. The entire auction house is 
 - `/pets?key=key&query=query`
 
 ### Examples
-- See examples [here](https://github.com/kr45732/rust-query-api/blob/main/examples/example.md)
+- See examples [here](https://github.com/kr45732/rust-query-api/blob/main/examples/examples.md)
 
 ## Todo
 - Improved error handling
