@@ -22,7 +22,7 @@ use futures::{pin_mut, Future};
 use hyper::{header, Body, Response, StatusCode};
 use log::{error, info};
 use postgres_types::{ToSql, Type};
-use std::{collections::HashMap, result::Result as StdResult, time::SystemTime};
+use std::{collections::HashMap, fs::OpenOptions, result::Result as StdResult, time::SystemTime};
 use tokio::time::{self, Duration};
 use tokio_postgres::{binary_copy::BinaryCopyInWriter, Error};
 
@@ -117,6 +117,27 @@ pub async fn error(desc: String) {
             })
             .await;
     }
+}
+
+pub async fn panic(desc: String) {
+    error!("{}", desc);
+    unsafe {
+        let _ = WEBHOOK
+            .as_ref()
+            .unwrap()
+            .send(|message| {
+                message.embed(|embed| {
+                    embed
+                        .title("Force panic")
+                        .url(&format!("http://{}", &URL.lock().unwrap()).to_string())
+                        .color(0xFF0000)
+                        .description(&desc)
+                        .timestamp(&get_discord_timestamp())
+                })
+            })
+            .await;
+    }
+    panic!("{}", desc);
 }
 
 fn get_discord_timestamp() -> String {
@@ -232,4 +253,14 @@ pub async fn update_pets_database(pet_prices: &mut HashMap<String, i64>) -> Resu
         // Complete the copy statement
         copy_writer.finish().await
     }
+}
+
+pub async fn update_bins_local(bin_prices: &HashMap<String, i64>) -> Result<(), serde_json::Error> {
+    let file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open("lowestbin.json")
+        .unwrap();
+    serde_json::to_writer(file, bin_prices)
 }

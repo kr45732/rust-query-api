@@ -1,5 +1,5 @@
 # Rust query API
-A versatile API facade for the Hypixel Auction API. The entire auction house is fetched and inserted into a PostgreSQL database with NBT parsing in under 12 seconds every minute! You can query and sort by auction uuid, auctioneer, end time, item name, item tier, item id, price, and enchants.
+A versatile API facade for the Hypixel Auction API. The entire auction house is fetched and inserted into a PostgreSQL database with NBT parsing in under 9 seconds every minute! You can query and sort by auction uuid, auctioneer, end time, item name, item tier, item id, price, and enchants. It also can track the last known price of each unique pet-level-rarity combintation. Lastly, it can track the lowest prices of all bins.
 
 ## Set up
 ### Prerequisites
@@ -20,18 +20,20 @@ A versatile API facade for the Hypixel Auction API. The entire auction house is 
 - `API_KEY`: Key needed to access this api (NOT a Hypixel API key)
 - `POSTGRES_URL`: Full url of a PostgreSQL database
 - `WEBHOOK_URL`: Discord webhook url for logging
+- `FEATURES`: The features (QUERY, PET, LOWESTBIN) you want enabled seperated with a '+' 
 
 ## Usage
 ### Endpoints
 - `/query?key=key&query=query&sort=sort`
 - `/pets?key=key&query=query`
+- `/lowestbin?key=key`
 
 ### Examples
 - See examples [here](https://github.com/kr45732/rust-query-api/blob/main/examples/examples.md)
 
 ## Todo
 - Improved error handling
-- Lowest bin prices
 - Prevent SQL injection
 - Better documentation 
 - Added regular auctions
+- Sync with cloudfare for update times

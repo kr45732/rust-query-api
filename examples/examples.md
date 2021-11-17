@@ -6,3 +6,7 @@
 ### [example_2.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_2.json)
 - Request: /pets?query='[LVL_100]_WITHER_SKELETON_LEGENDARY','[LVL_80]_BAL_EPIC','[LVL_25]_ROCK_COMMON'
 - Meaning: get the lowest/last pet prices for a level 100 legendary wither skeleton, a level 80 epic bal, and a level 25 common rock
+
+### [example_3.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_3.json)
+- Request /lowestbin
+- Meaning: get all lowest bins

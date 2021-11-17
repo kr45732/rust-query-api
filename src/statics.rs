@@ -37,6 +37,9 @@ lazy_static! {
     pub static ref IS_UPDATING: Mutex<bool> = Mutex::new(false);
     pub static ref TOTAL_UPDATES: Mutex<i16> = Mutex::new(0);
     pub static ref LAST_UPDATED: Mutex<i64> = Mutex::new(0);
+    pub static ref ENABLE_QUERY: Mutex<bool> = Mutex::new(false);
+    pub static ref ENABLE_PETS: Mutex<bool> = Mutex::new(false);
+    pub static ref ENABLE_LOWESTBIN: Mutex<bool> = Mutex::new(false);
 }
 
 pub static mut DATABASE: Option<Client> = None;

@@ -26,14 +26,19 @@ use log::info;
 use query_api::{api_handler::*, statics::*, structs::*, utils::*, webhook::Webhook};
 use reqwest::Url;
 use simplelog::*;
-use std::{env, fmt::Write, fs::File};
+use std::{
+    env,
+    error::Error,
+    fmt::Write,
+    fs::{self, File},
+};
 use substring::Substring;
 use tokio::time::Duration;
 use tokio_postgres::NoTls;
 
 /* Entry point to the program. Creates loggers, reads config, creates query table, starts auction loop and server */
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), Box<dyn Error>> {
     // Check if debug or release build
     if cfg!(debug_assertions) {
         println!("Running a debug build");
@@ -55,7 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             File::create("debug.log").unwrap(),
         ),
     ])
-    .unwrap();
+    .expect("Error when creating loggers");
     println!("Loggers created.");
 
     // Read config
@@ -64,8 +69,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = BASE_URL
         .lock()
         .unwrap()
-        .write_str(&env::var("BASE_URL").unwrap());
-    let _ = PORT.lock().unwrap().write_str(&env::var("PORT").unwrap());
+        .write_str(&env::var("BASE_URL").expect("Unable to find BASE_URL environment variable"));
+    let _ = PORT
+        .lock()
+        .unwrap()
+        .write_str(&env::var("PORT").expect("Unable to find PORT environment variable"));
     let _ = URL.lock().unwrap().write_str(
         format!(
             "{}:{}",
@@ -74,28 +82,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .as_str(),
     );
-    let _ = POSTGRES_DB_URL
-        .lock()
-        .unwrap()
-        .write_str(&env::var("POSTGRES_URL").unwrap());
+    let _ = POSTGRES_DB_URL.lock().unwrap().write_str(
+        &env::var("POSTGRES_URL").expect("Unable to find POSTGRES_URL environment variable"),
+    );
     let _ = API_KEY
         .lock()
         .unwrap()
-        .write_str(&env::var("API_KEY").unwrap());
+        .write_str(&env::var("API_KEY").expect("Unable to find API_KEY environment variable"));
+    for feature in env::var("FEATURES")
+        .expect("Unable to find FEATURES environment variable")
+        .split("+")
+    {
+        match feature {
+            "QUERY" => *ENABLE_QUERY.lock().unwrap() = true,
+            "PETS" => *ENABLE_PETS.lock().unwrap() = true,
+            "LOWESTBIN" => *ENABLE_LOWESTBIN.lock().unwrap() = true,
+            _ => panic!("Invalid feature type: {}", feature),
+        }
+    }
     unsafe {
-        let _ = WEBHOOK.insert(Webhook::from_url(&env::var("WEBHOOK_URL").unwrap()));
+        let _ = WEBHOOK.insert(Webhook::from_url(
+            &env::var("WEBHOOK_URL").expect("Unable to find WEBHOOK_URL environment variable"),
+        ));
     }
 
     // Connect to database
     let (client, connection) =
-        tokio_postgres::connect(POSTGRES_DB_URL.lock().unwrap().as_str(), NoTls).await?;
+        tokio_postgres::connect(POSTGRES_DB_URL.lock().unwrap().as_str(), NoTls)
+            .await
+            .unwrap();
     tokio::spawn(async move {
         match connection.await {
             Ok(_) => {
                 info("Successfully connected to database".to_string()).await;
             }
             Err(e) => {
-                error(format!("Error connecting to database: {}", e)).await;
+                panic(format!("Error connecting to database: {}", e)).await;
             }
         };
     });
@@ -136,11 +158,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Start the auction loop
     println!("Starting auction loop...");
-    fetch_auctions().await;
+    update_api().await;
 
     set_interval(
         || async {
-            fetch_auctions().await;
+            update_api().await;
         },
         Duration::from_millis(60000),
     );
@@ -175,9 +197,23 @@ async fn handle_response(req: Request<Body>) -> hyper::Result<Response<Body>> {
     if let (&Method::GET, "/") = (req.method(), req.uri().path()) {
         base()
     } else if let (&Method::GET, "/query") = (req.method(), req.uri().path()) {
-        query(req).await
+        if *ENABLE_QUERY.lock().unwrap() {
+            query(req).await
+        } else {
+            bad_request("Query feature is not enabled")
+        }
     } else if let (&Method::GET, "/pets") = (req.method(), req.uri().path()) {
-        pets(req).await
+        if *ENABLE_PETS.lock().unwrap() {
+            pets(req).await
+        } else {
+            bad_request("Pets feature is not enabled")
+        }
+    } else if let (&Method::GET, "/lowestbin") = (req.method(), req.uri().path()) {
+        if *ENABLE_LOWESTBIN.lock().unwrap() {
+            lowestbin(req).await
+        } else {
+            bad_request("Lowest bins feature is not enabled")
+        }
     } else {
         not_found()
     }
@@ -392,6 +428,38 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
             .body(Body::from(serde_json::to_vec(&results_vec).unwrap()))
             .unwrap())
     }
+}
+
+async fn lowestbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
+    // Query paremeters
+    let mut key = "".to_string();
+
+    // Reads the query parameters from the request and stores them in the corresponding variable
+    for query_pair in
+        Url::parse(&format!("http://{}{}", URL.lock().unwrap(), &req.uri().to_string()).to_string())
+            .unwrap()
+            .query_pairs()
+    {
+        if query_pair.0 == "key" {
+            key = query_pair.1.to_string();
+        }
+    }
+
+    // The API key in request doesn't match
+    if key != API_KEY.lock().unwrap().as_str() {
+        return bad_request("Not authorized");
+    }
+
+    let file_result = fs::read_to_string("lowestbin.json");
+    if file_result.is_err() {
+        return internal_error("Unable to open or read lowestbin.json");
+    }
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(file_result.unwrap()))
+        .unwrap())
 }
 
 fn base() -> hyper::Result<Response<Body>> {
