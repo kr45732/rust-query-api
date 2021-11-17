@@ -21,6 +21,7 @@ use crate::{
     structs::*,
     utils::{error, info, to_nbt, update_pets_database, update_query_database},
 };
+use chrono::Utc;
 use log::debug;
 use std::{
     collections::{HashMap, HashSet},
@@ -55,7 +56,8 @@ pub async fn fetch_auctions() {
     ));
 
     let mut num_failed = 0;
-    for page_number in 2..json.total_pages {
+    for page_number in 2..5 {
+        //json.total_pages {
         debug!("---------------- Fetching page {}", page_number);
 
         // Get the page from the Hypixel API
@@ -126,6 +128,7 @@ pub async fn fetch_auctions() {
 
     *IS_UPDATING.lock().unwrap() = false;
     *TOTAL_UPDATES.lock().unwrap() += 1;
+    *LAST_UPDATED.lock().unwrap() = Utc::now().timestamp_millis();
 }
 
 /* Gets an auction page from the Hypixel API */

@@ -21,12 +21,17 @@ A versatile API facade for the Hypixel Auction API. The entire auction house is 
 - `POSTGRES_URL`: Full url of a PostgreSQL database
 - `WEBHOOK_URL`: Discord webhook url for logging
 
-## Endpoints
+## Usage
+### Endpoints
 - `/query?key=key&query=query&sort=sort`
 - `/pets?key=key&query=query`
+
+### Examples
+- See examples [here](https://github.com/kr45732/rust-query-api/blob/main/examples/example.md)
 
 ## Todo
 - Improved error handling
 - Lowest bin prices
 - Prevent SQL injection
 - Better documentation 
+- Added regular auctions

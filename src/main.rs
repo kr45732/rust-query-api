@@ -252,7 +252,9 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
     // Query paremeters
     let mut query = "".to_string();
     let mut sort = "".to_string();
+    let mut limit = "".to_string();
     let mut key = "".to_string();
+    let mut item_name = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
@@ -261,11 +263,15 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
             .query_pairs()
     {
         if query_pair.0 == "query" {
-            query = query_pair.1.to_string();
+            query = query_pair.1.to_string()
         } else if query_pair.0 == "sort" {
             sort = query_pair.1.to_string();
+        } else if query_pair.0 == "limit" {
+            limit = query_pair.1.to_string();
         } else if query_pair.0 == "key" {
             key = query_pair.1.to_string();
+        } else if query_pair.0 == "name" {
+            item_name = query_pair.1.to_string();
         }
     }
 
@@ -279,29 +285,93 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
     }
 
     unsafe {
-        // Reference to the database
-        let database_ref = DATABASE.as_ref();
-
         // Database isn't connected
-        if database_ref.is_none() {
+        if DATABASE.as_ref().is_none() {
             return internal_error("Database isn't connected");
         }
+
+        // Reference to the database
+        let database_ref = DATABASE.as_ref().unwrap();
 
         let results_cursor;
         // Find and sort using query JSON
         if sort.is_empty() {
-            results_cursor = database_ref
-                .unwrap()
-                .query(&format!("SELECT * FROM query WHERE {}", query), &[])
-                .await;
+            if item_name.is_empty() {
+                if limit.is_empty() {
+                    results_cursor = database_ref
+                        .query(&format!("SELECT * FROM query WHERE {}", query), &[])
+                        .await;
+                } else {
+                    results_cursor = database_ref
+                        .query(
+                            &format!("SELECT * FROM query WHERE {} LIMIT {}", query, limit),
+                            &[],
+                        )
+                        .await;
+                }
+            } else {
+                if limit.is_empty() {
+                    results_cursor = database_ref
+                        .query(
+                            &format!("SELECT * FROM query WHERE item_name ILIKE $1 AND {}", query),
+                            &[&item_name],
+                        )
+                        .await;
+                } else {
+                    results_cursor = database_ref
+                        .query(
+                            &format!(
+                                "SELECT * FROM query WHERE item_name ILIKE $1 AND {} LIMIT {}",
+                                query, limit
+                            ),
+                            &[&item_name],
+                        )
+                        .await;
+                }
+            }
         } else {
-            results_cursor = database_ref
-                .unwrap()
-                .query(
-                    &format!("SELECT * FROM query WHERE {} ORDER BY {}", query, sort),
-                    &[],
-                )
-                .await;
+            if item_name.is_empty() {
+                if limit.is_empty() {
+                    results_cursor = database_ref
+                        .query(
+                            &format!("SELECT * FROM query WHERE {} ORDER BY {}", query, sort),
+                            &[],
+                        )
+                        .await;
+                } else {
+                    results_cursor = database_ref
+                        .query(
+                            &format!(
+                                "SELECT * FROM query WHERE {} ORDER BY {} LIMIT {}",
+                                query, sort, limit
+                            ),
+                            &[],
+                        )
+                        .await;
+                }
+            } else {
+                if limit.is_empty() {
+                    results_cursor = database_ref
+                        .query(
+                            &format!(
+                                "SELECT * FROM query WHERE item_name ILIKE $1 AND {} ORDER BY {}",
+                                query, sort
+                            ),
+                            &[&item_name],
+                        )
+                        .await;
+                } else {
+                    results_cursor = database_ref
+                    .query(
+                        &format!(
+                            "SELECT * FROM query WHERE item_name ILIKE $1 AND {} ORDER BY {} LIMIT {}",
+                            query, sort, limit
+                        ),
+                        &[&item_name],
+                    )
+                    .await;
+                }
+            }
         }
 
         if let Err(e) = results_cursor {
@@ -332,7 +402,7 @@ fn base() -> hyper::Result<Response<Body>> {
         .body(Body::from(format!(
             "{{
             \"success\":true,
-            \"query\":
+            \"statistics\":
             {{
                 \"is_updating\":{},
                 \"total_updates\":{},
