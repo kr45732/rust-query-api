@@ -147,7 +147,7 @@ pub async fn update_api() {
     }
 
     info(format!(
-        "Total fetch and insert time taken {}s",
+        "Total fetch and insert time: {}s",
         started.elapsed().as_secs()
     ))
     .await;
