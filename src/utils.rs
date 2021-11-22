@@ -82,56 +82,56 @@ where
 
 pub async fn info(desc: String) {
     info!("{}", desc);
-        let _ = WEBHOOK
-            .as_ref()
-            .unwrap()
-            .send(|message| {
-                message.embed(|embed| {
-                    embed
-                        .title("Information")
-                        .url(&format!("http://{}", &URL.lock().unwrap()).to_string())
-                        .color(0x00FFFF)
-                        .description(&desc)
-                        .timestamp(&get_discord_timestamp())
-                })
+    let _ = WEBHOOK
+        .as_ref()
+        .unwrap()
+        .send(|message| {
+            message.embed(|embed| {
+                embed
+                    .title("Information")
+                    .url(&format!("http://{}", &URL.lock().unwrap()).to_string())
+                    .color(0x00FFFF)
+                    .description(&desc)
+                    .timestamp(&get_discord_timestamp())
             })
-            .await;
+        })
+        .await;
 }
 
 pub async fn error(desc: String) {
     error!("{}", desc);
-        let _ = WEBHOOK
-            .as_ref()
-            .unwrap()
-            .send(|message| {
-                message.embed(|embed| {
-                    embed
-                        .title("Error")
-                        .url(&format!("http://{}", &URL.lock().unwrap()).to_string())
-                        .color(0xFF0000)
-                        .description(&desc)
-                        .timestamp(&get_discord_timestamp())
-                })
+    let _ = WEBHOOK
+        .as_ref()
+        .unwrap()
+        .send(|message| {
+            message.embed(|embed| {
+                embed
+                    .title("Error")
+                    .url(&format!("http://{}", &URL.lock().unwrap()).to_string())
+                    .color(0xFF0000)
+                    .description(&desc)
+                    .timestamp(&get_discord_timestamp())
             })
-            .await;
+        })
+        .await;
 }
 
 pub async fn panic(desc: String) {
     error!("{}", desc);
-        let _ = WEBHOOK
-            .as_ref()
-            .unwrap()
-            .send(|message| {
-                message.embed(|embed| {
-                    embed
-                        .title("Force panic")
-                        .url(&format!("http://{}", &URL.lock().unwrap()).to_string())
-                        .color(0xFF0000)
-                        .description(&desc)
-                        .timestamp(&get_discord_timestamp())
-                })
+    let _ = WEBHOOK
+        .as_ref()
+        .unwrap()
+        .send(|message| {
+            message.embed(|embed| {
+                embed
+                    .title("Force panic")
+                    .url(&format!("http://{}", &URL.lock().unwrap()).to_string())
+                    .color(0xFF0000)
+                    .description(&desc)
+                    .timestamp(&get_discord_timestamp())
             })
-            .await;
+        })
+        .await;
     panic!("{}", desc);
 }
 
@@ -147,89 +147,89 @@ pub fn to_nbt(item_bytes: ItemBytes) -> Result<PartialNbt, Box<dyn std::error::E
 }
 
 pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, Error> {
-        let database = DATABASE.as_ref().unwrap();
-        let _ = database.simple_query("TRUNCATE TABLE query").await;
+    let database = DATABASE.as_ref().unwrap();
+    let _ = database.simple_query("TRUNCATE TABLE query").await;
 
-        let copy_statement = database
-            .prepare("COPY query FROM STDIN BINARY")
-            .await
-            .unwrap();
-        let copy_sink = database.copy_in(&copy_statement).await.unwrap();
-        let copy_writer = BinaryCopyInWriter::new(
-            copy_sink,
-            &[
-                Type::TEXT,
-                Type::TEXT,
-                Type::INT8,
-                Type::TEXT,
-                Type::TEXT,
-                Type::TEXT,
-                Type::INT8,
-                Type::TEXT_ARRAY,
-            ],
-        );
-        pin_mut!(copy_writer);
+    let copy_statement = database
+        .prepare("COPY query FROM STDIN BINARY")
+        .await
+        .unwrap();
+    let copy_sink = database.copy_in(&copy_statement).await.unwrap();
+    let copy_writer = BinaryCopyInWriter::new(
+        copy_sink,
+        &[
+            Type::TEXT,
+            Type::TEXT,
+            Type::INT8,
+            Type::TEXT,
+            Type::TEXT,
+            Type::TEXT,
+            Type::INT8,
+            Type::TEXT_ARRAY,
+        ],
+    );
+    pin_mut!(copy_writer);
 
-        // Write to copy sink
-        let mut row: Vec<&'_ (dyn ToSql + Sync)> = Vec::new();
-        for m in &auctions {
-            row.clear();
-            row.push(&m.uuid);
-            row.push(&m.auctioneer);
-            row.push(&m.end_t);
-            row.push(&m.item_name);
-            row.push(&m.tier);
-            row.push(&m.item_id);
-            row.push(&m.starting_bid);
-            row.push(&m.enchants);
-            copy_writer.as_mut().write(&row).await.unwrap();
-        }
+    // Write to copy sink
+    let mut row: Vec<&'_ (dyn ToSql + Sync)> = Vec::new();
+    for m in &auctions {
+        row.clear();
+        row.push(&m.uuid);
+        row.push(&m.auctioneer);
+        row.push(&m.end_t);
+        row.push(&m.item_name);
+        row.push(&m.tier);
+        row.push(&m.item_id);
+        row.push(&m.starting_bid);
+        row.push(&m.enchants);
+        copy_writer.as_mut().write(&row).await.unwrap();
+    }
 
-        copy_writer.finish().await
+    copy_writer.finish().await
 }
 
 pub async fn update_pets_database(pet_prices: &mut DashMap<String, i64>) -> Result<u64, Error> {
-        let database = DATABASE.as_ref().unwrap();
+    let database = DATABASE.as_ref().unwrap();
 
-        // Add all old pet prices to the new prices if the new prices doesn't have that old pet name
-        let old_pet_prices = database.query("SELECT * FROM pets", &[]).await.unwrap();
-        for old_price in old_pet_prices {
-            let old_price_name: String = old_price.get("name");
-            let mut new_has = false;
-            for new_price in pet_prices.iter_mut() {
-                if old_price_name == *new_price.key() {
-                    new_has = true;
-                    break;
-                }
-            }
-            if !new_has {
-                pet_prices.insert(old_price_name, old_price.get("price"));
+    // Add all old pet prices to the new prices if the new prices doesn't have that old pet name
+    let old_pet_prices = database.query("SELECT * FROM pets", &[]).await.unwrap();
+    for old_price in old_pet_prices {
+        let old_price_name: String = old_price.get("name");
+        let mut new_has = false;
+        for new_price in pet_prices.iter_mut() {
+            if old_price_name == *new_price.key() {
+                new_has = true;
+                break;
             }
         }
+        if !new_has {
+            pet_prices.insert(old_price_name, old_price.get("price"));
+        }
+    }
 
-        let _ = database.simple_query("TRUNCATE TABLE pets").await;
+    let _ = database.simple_query("TRUNCATE TABLE pets").await;
 
-        let copy_statement = database
-            .prepare("COPY pets FROM STDIN BINARY")
+    let copy_statement = database
+        .prepare("COPY pets FROM STDIN BINARY")
+        .await
+        .unwrap();
+    let copy_sink = database.copy_in(&copy_statement).await.unwrap();
+    let copy_writer = BinaryCopyInWriter::new(copy_sink, &[Type::TEXT, Type::INT8]);
+    pin_mut!(copy_writer);
+
+    // Write to copy sink
+    for m in pet_prices.iter() {
+        copy_writer
+            .as_mut()
+            .write(&[
+                m.key() as &(dyn ToSql + Sync),
+                m.value() as &(dyn ToSql + Sync),
+            ])
             .await
             .unwrap();
-        let copy_sink = database.copy_in(&copy_statement).await.unwrap();
-        let copy_writer = BinaryCopyInWriter::new(copy_sink, &[Type::TEXT, Type::INT8]);
-        pin_mut!(copy_writer);
+    }
 
-        // Write to copy sink
-        for m in pet_prices.iter() {
-            copy_writer
-                .as_mut()
-                .write(&[
-                    m.key() as &(dyn ToSql + Sync),
-                    m.value() as &(dyn ToSql + Sync),
-                ])
-                .await
-                .unwrap();
-        }
-
-        copy_writer.finish().await
+    copy_writer.finish().await
 }
 
 pub async fn update_bins_local(bin_prices: &DashMap<String, i64>) -> Result<(), simd_json::Error> {
