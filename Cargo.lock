@@ -954,7 +954,6 @@ dependencies = [
  "regex",
  "reqwest",
  "serde",
- "serde_json",
  "simd-json",
  "simplelog",
  "substring",

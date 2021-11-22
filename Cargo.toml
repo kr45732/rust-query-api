@@ -29,7 +29,6 @@ dashmap = { version = "4.0.2", features = ["serde"] }
 hyper = { version = "0.14.15", features = ["server"]}
 hematite-nbt = "0.5.2"
 lazy_static = "1.4.0"
-serde_json = "1.0.71"
 simplelog = "0.11.0"
 substring = "1.4.5" 
 simd-json = "0.4.8"
