@@ -16,8 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use tokio_postgres::Row;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -95,7 +95,7 @@ pub struct PartialExtraAttr {
     pub id: String,
     #[serde(rename = "petInfo")]
     pub pet: Option<String>,
-    pub enchantments: Option<HashMap<String, i32>>,
+    pub enchantments: Option<DashMap<String, i32>>,
     // pub potion: Option<String>,
     // pub potion_level: Option<i16>,
     // pub anvil_uses: Option<i16>,

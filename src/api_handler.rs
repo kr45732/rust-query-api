@@ -18,11 +18,11 @@
 
 use crate::{statics::*, structs::*, utils::*};
 use chrono::Utc;
-use dashmap::DashMap;
+use dashmap::{DashMap, DashSet};
 use futures::{stream::FuturesUnordered, StreamExt};
 use log::debug;
 use serde_json::Value;
-use std::{collections::HashSet, time::Instant};
+use std::time::Instant;
 
 /* Gets all pages of auctions from the Hypixel API and inserts them into the database */
 pub async fn update_api() {
@@ -34,7 +34,7 @@ pub async fn update_api() {
     // Stores all the query prices
     let mut query_prices: Vec<DatabaseItem> = Vec::new();
     // Stores all auction uuids in auctions vector to prevent duplicates
-    let mut inserted_uuids: HashSet<String> = HashSet::new();
+    let mut inserted_uuids: DashSet<String> = DashSet::new();
     // Stores all pet prices
     let mut pet_prices: DashMap<String, i64> = DashMap::new();
     // Stores all bin prices
@@ -174,7 +174,7 @@ pub async fn update_api() {
 /* Parses a page of auctions to a vector of documents  */
 fn parse_auctions(
     auctions: &Vec<serde_json::Value>,
-    inserted_uuids: &mut HashSet<String>,
+    inserted_uuids: &mut DashSet<String>,
     query_prices: &mut Vec<DatabaseItem>,
     pet_prices: &mut DashMap<String, i64>,
     bin_prices: &mut DashMap<String, i64>,
@@ -207,13 +207,17 @@ fn parse_auctions(
                     for entry in nbt.tag.extra_attributes.enchantments.as_ref().unwrap() {
                         if update_lowestbin {
                             update_lower_else_insert(
-                                &format!("{};{}", entry.0.to_uppercase(), entry.1),
+                                &format!("{};{}", entry.key().to_uppercase(), entry.value()),
                                 starting_bid,
                                 bin_prices,
                             );
                         }
                         if update_query {
-                            enchants.push(format!("{};{}", entry.0.to_uppercase(), entry.1));
+                            enchants.push(format!(
+                                "{};{}",
+                                entry.key().to_uppercase(),
+                                entry.value()
+                            ));
                         }
                     }
                 } else if id == "PET" {

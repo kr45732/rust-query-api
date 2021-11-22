@@ -40,13 +40,6 @@ use tokio_postgres::NoTls;
 /* Entry point to the program. Creates loggers, reads config, creates query table, starts auction loop and server */
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    // Check if debug or release build
-    if cfg!(debug_assertions) {
-        println!("Running a debug build");
-    } else {
-        println!("Running a release build");
-    }
-
     // Create log files
     println!("Creating log files...");
     CombinedLogger::init(vec![

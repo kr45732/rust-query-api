@@ -16,8 +16,28 @@
 
 [package]
 name = "query_api"
-version = "0.1.0"
+version = "1.0.2"
 edition = "2018"
+
+[dependencies]
+serde_json = "1.0.71"
+hyper = { version = "0.14.15", features = ["server"]}
+serde = { version = "1.0.130", features = ["derive"] }
+tokio = { version = "1.14.0", features = ["macros", "rt-multi-thread"] }
+reqwest = { version = "0.11.6", features = ["json", "gzip", "brotli"] }
+base64 = "0.13.0"
+hematite-nbt = "0.5.2"
+lazy_static = "1.4.0"
+log =  "0.4.14"
+substring = "1.4.5" 
+regex = "1.5.4"
+futures = "0.3.17"
+tokio-postgres = { version = "0.7.5", features = ["with-serde_json-1"] }
+simplelog = { version = "0.11.0" }
+postgres-types = { version = "0.2.2", features = ["derive"] }
+chrono = "0.4.19"
+dotenv = "0.15.0"
+dashmap = { version = "4.0.2", features = ["serde"] }
 
 [profile.release]
 codegen-units = 1
@@ -26,24 +46,3 @@ incremental = false
 lto = true
 opt-level = 3
 panic = "abort"
-
-[dependencies]
-serde_json = "1.0.70"
-hyper = { version = "0.14.14", features = ["server"] }
-serde = { version = "1.0.130", features = ["derive"] }
-tokio = { version = "1.13.0", features = ["full"] }
-reqwest = { version = "0.11.6", features = ["json", "gzip", "brotli"] }
-base64 = { version = "0.13.0" }
-hematite-nbt = { version = "0.5.2" }
-lazy_static = "1.4.0"
-log = "0.4.14"
-substring = "1.4.5"
-regex = "1.5.4"
-futures = "0.3.17"
-tokio-postgres = { version = "0.7.5", features = ["with-serde_json-1"] }
-simplelog = "0.11.0"
-postgres-types = { version = "0.2.2", features = ["derive"] }
-chrono = "0.4.19"
-dotenv = "0.15.0"
-dashmap = { version = "4.0.2", features = ["serde"]}
-
