@@ -82,7 +82,6 @@ where
 
 pub async fn info(desc: String) {
     info!("{}", desc);
-    unsafe {
         let _ = WEBHOOK
             .as_ref()
             .unwrap()
@@ -97,12 +96,10 @@ pub async fn info(desc: String) {
                 })
             })
             .await;
-    }
 }
 
 pub async fn error(desc: String) {
     error!("{}", desc);
-    unsafe {
         let _ = WEBHOOK
             .as_ref()
             .unwrap()
@@ -117,12 +114,10 @@ pub async fn error(desc: String) {
                 })
             })
             .await;
-    }
 }
 
 pub async fn panic(desc: String) {
     error!("{}", desc);
-    unsafe {
         let _ = WEBHOOK
             .as_ref()
             .unwrap()
@@ -137,7 +132,6 @@ pub async fn panic(desc: String) {
                 })
             })
             .await;
-    }
     panic!("{}", desc);
 }
 

@@ -93,11 +93,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
             _ => panic!("Invalid feature type: {}", feature),
         }
     }
-    unsafe {
         let _ = WEBHOOK.insert(Webhook::from_url(
             &env::var("WEBHOOK_URL").expect("Unable to find WEBHOOK_URL environment variable"),
         ));
-    }
 
     // Connect to database
     let (client, connection) =

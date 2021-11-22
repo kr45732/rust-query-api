@@ -43,4 +43,4 @@ lazy_static! {
 }
 
 pub static mut DATABASE: Option<Client> = None;
-pub static mut WEBHOOK: Option<Webhook> = None;
+pub static WEBHOOK: Option<Webhook> = None;
