@@ -16,9 +16,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
-use reqwest::Client;
 
 type OString = Option<String>;
 type OInt32 = Option<i32>;

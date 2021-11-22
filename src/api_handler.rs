@@ -173,7 +173,7 @@ pub async fn update_api() {
 
 /* Parses a page of auctions to a vector of documents  */
 fn parse_auctions(
-    auctions: &Vec<dyn simd_json::Value<>>,
+    auctions: &Vec<dyn simd_json::Value>,
     inserted_uuids: &mut DashSet<String>,
     query_prices: &mut Vec<DatabaseItem>,
     pet_prices: &mut DashMap<String, i64>,
@@ -192,13 +192,14 @@ fn parse_auctions(
 
             // Prevent duplicate auctions
             if inserted_uuids.insert(uuid.to_string()) {
-                // Parse the auction's nbt
                 let nbt = &to_nbt(
-                    simd_json::serde::from_owned_value(auction.get("item_bytes").unwrap().to_owned()).unwrap(),
+                    simd_json::serde::from_owned_value(
+                        auction.get("item_bytes").unwrap().to_owned(),
+                    )
+                    .unwrap(),
                 )
                 .unwrap()
                 .i[0];
-                // Item id
                 let id = &nbt.tag.extra_attributes.id;
 
                 // Get enchants if the item is an enchanted book
@@ -221,7 +222,6 @@ fn parse_auctions(
                         }
                     }
                 } else if id == "PET" {
-                    // Pets API
                     if update_pets {
                         let pet_info: dyn Value =
                             simd_json::from_str(nbt.tag.extra_attributes.pet.as_ref().unwrap())

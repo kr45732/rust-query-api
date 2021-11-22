@@ -22,25 +22,20 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Method, Request, Response, Server, StatusCode,
 };
+use log::info;
+use postgres_types::ToSql;
+use query_api::{api_handler::*, statics::*, structs::*, utils::*, webhook::Webhook};
+use reqwest::Url;
+use simplelog::*;
 use std::{
     env,
     error::Error,
     fmt::Write,
     fs::{self, File},
 };
-use query_api::{api_handler::*,
-    statics::*,
-    structs::*,
-    utils::*,
-    webhook::Webhook
-};
-use postgres_types::ToSql;
+use substring::Substring;
 use tokio::time::Duration;
 use tokio_postgres::NoTls;
-use substring::Substring;
-use reqwest::Url;
-use simplelog::*;
-use log::info;
 
 /* Entry point to the program. Creates loggers, reads config, creates query table, starts auction loop and server */
 #[tokio::main]

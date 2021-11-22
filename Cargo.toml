@@ -17,7 +17,7 @@
 [package]
 name = "query_api"
 version = "1.0.2"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 tokio = { version = "1.14.0", features = ["macros", "rt-multi-thread"] }
@@ -39,9 +39,6 @@ dotenv = "0.15.0"
 chrono = "0.4.19"
 log =  "0.4.14"
 regex = "1.5.4"
-
-[features]
-simd = []
 
 [profile.release]
 codegen-units = 1
