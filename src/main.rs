@@ -231,7 +231,7 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
     }
 
     if query.len() == 0 {
-        return bad_request("The query paremeter cannot be empty");
+        return bad_request("The query parameter cannot be empty");
     }
 
     unsafe {
@@ -274,7 +274,7 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
 }
 
 async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
-    // Query paremeters
+    // Query parameters
     let mut query = "".to_string();
     let mut sort = "".to_string();
     let mut limit = "1".to_string();
@@ -417,7 +417,7 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
 }
 
 async fn lowestbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
-    // Query paremeters
+    // Query parameters
     let mut key = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
