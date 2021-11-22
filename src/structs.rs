@@ -113,24 +113,24 @@ pub struct PartialExtraAttr {
 
 // #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 // pub struct Item {
-//     #[serde(rename = "item_name")]
-//     pub item_name: String,
-//     #[serde(rename = "item_lore")]
-//     pub item_lore: String,
-//     #[serde(rename = "uuid")]
-//     pub uuid: String,
-//     #[serde(rename = "auctioneer")]
-//     pub auctioneer: String,
-//     #[serde(rename = "end")]
-//     pub end: i64,
-//     #[serde(rename = "tier")]
-//     pub tier: String,
-//     #[serde(rename = "item_bytes")]
-//     pub item_bytes: ItemBytes,
-//     #[serde(rename = "starting_bid")]
-//     pub starting_bid: i64,
-//     #[serde(rename = "bin")]
-//     pub bin: Option<bool>,
+//      #[serde(rename = "item_name")]
+//      pub item_name: String,
+//      #[serde(rename = "item_lore")]
+//      pub item_lore: String,
+//      #[serde(rename = "uuid")]
+//      pub uuid: String,
+//      #[serde(rename = "auctioneer")]
+//      pub auctioneer: String,
+//      #[serde(rename = "end")]
+//      pub end: i64,
+//      #[serde(rename = "tier")]
+//      pub tier: String,
+//      #[serde(rename = "item_bytes")]
+//      pub item_bytes: ItemBytes,
+//      #[serde(rename = "starting_bid")]
+//      pub starting_bid: i64,
+//      #[serde(rename = "bin")]
+//      pub bin: Option<bool>,
 // }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
