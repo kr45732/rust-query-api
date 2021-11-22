@@ -259,12 +259,12 @@ pub async fn update_pets_database(pet_prices: &mut DashMap<String, i64>) -> Resu
     }
 }
 
-pub async fn update_bins_local(bin_prices: &DashMap<String, i64>) -> Result<(), serde_json::Error> {
+pub async fn update_bins_local(bin_prices: &DashMap<String, i64>) -> Result<(), simd_json::Error> {
     let file = OpenOptions::new()
         .create(true)
         .write(true)
         .truncate(true)
         .open("lowestbin.json")
         .unwrap();
-    serde_json::to_writer(file, bin_prices)
+    simd_json::to_writer(file, bin_prices)
 }

@@ -22,26 +22,30 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Method, Request, Response, Server, StatusCode,
 };
-use log::info;
-use postgres_types::ToSql;
-use query_api::{api_handler::*, statics::*, structs::*, utils::*, webhook::Webhook};
-use reqwest::Url;
-use simplelog::*;
 use std::{
     env,
     error::Error,
     fmt::Write,
     fs::{self, File},
 };
-use substring::Substring;
+use query_api::{api_handler::*,
+    statics::*,
+    structs::*,
+    utils::*,
+    webhook::Webhook
+};
+use postgres_types::ToSql;
 use tokio::time::Duration;
 use tokio_postgres::NoTls;
+use substring::Substring;
+use reqwest::Url;
+use simplelog::*;
+use log::info;
 
 /* Entry point to the program. Creates loggers, reads config, creates query table, starts auction loop and server */
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     // Create log files
-    println!("Creating log files...");
     CombinedLogger::init(vec![
         WriteLogger::new(
             LevelFilter::Info,
@@ -55,10 +59,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         ),
     ])
     .expect("Error when creating loggers");
-    println!("Loggers created.");
+    info("Loggers Created".to_string()).await;
 
     // Read config
-    println!("Reading config");
+    info("Reading config".to_string()).await;
     dotenv().ok();
     let _ = BASE_URL
         .lock()
@@ -147,7 +151,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // Start the auction loop
-    println!("Starting auction loop...");
+    info("Starting auction loop...".to_string()).await;
     update_api().await;
 
     set_interval(
@@ -158,7 +162,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     );
 
     // Start the server
-    println!("Starting server...");
+    info("Starting server...".to_string()).await;
     start_server().await;
 
     Ok(())
@@ -173,7 +177,7 @@ async fn start_server() {
 
     let server = Server::bind(&server_address).serve(make_service);
 
-    println!("Listening on http://{}", server_address);
+    info(format!("Listening on http://{}", server_address)).await;
 
     if let Err(e) = server.await {
         error(format!("Error when starting server: {}", e)).await;
@@ -269,7 +273,7 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
         Ok(Response::builder()
             .status(StatusCode::OK)
             .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(serde_json::to_vec(&results_vec).unwrap()))
+            .body(Body::from(simd_json::to_vec(&results_vec).unwrap()))
             .unwrap())
     }
 }
@@ -412,7 +416,7 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
         Ok(Response::builder()
             .status(StatusCode::OK)
             .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(serde_json::to_vec(&results_vec).unwrap()))
+            .body(Body::from(simd_json::to_vec(&results_vec).unwrap()))
             .unwrap())
     }
 }
