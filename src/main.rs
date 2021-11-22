@@ -431,7 +431,6 @@ async fn lowestbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
 
 /* Returns information & statistics about the API */
 fn base() -> hyper::Result<Response<Body>> {
-    //
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
