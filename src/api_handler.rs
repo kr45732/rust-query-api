@@ -127,7 +127,6 @@ pub async fn update_api() {
     ))
     .await;
 
-    // Update the auctions in the database
     debug!("Inserting into database");
 
     // Query API

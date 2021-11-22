@@ -114,7 +114,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     });
 
     // Create the tables
-    unsafe {
         let client = DATABASE.insert(client);
         // Create query table if doesn't exist
         let _ = client
@@ -141,9 +140,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 )",
             )
             .await;
-    }
 
-    // Start the auction loop
     info("Starting auction loop...".to_string()).await;
     update_api().await;
 
@@ -232,11 +229,9 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
         return bad_request("The query parameter cannot be empty");
     }
 
-    unsafe {
-        // Reference to the database
         let database_ref = DATABASE.as_ref();
 
-        // Database isn't connected
+        // Check to see if the database is connected
         if database_ref.is_none() {
             return internal_error("Database isn't connected");
         }
@@ -252,7 +247,6 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
             .await;
 
         if let Err(e) = results_cursor {
-            // This shouldn't happen
             return internal_error(&format!("Error when querying database: {}", e).to_string());
         }
 
@@ -268,11 +262,9 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
             .header(header::CONTENT_TYPE, "application/json")
             .body(Body::from(simd_json::to_vec(&results_vec).unwrap()))
             .unwrap())
-    }
 }
 
 async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
-    // Query parameters
     let mut query = "".to_string();
     let mut sort = "".to_string();
     let mut limit = "1".to_string();
@@ -303,22 +295,18 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
         }
     }
 
-    // The API key in request doesn't match
     let api_key = API_KEY.lock().unwrap().to_owned();
     if !api_key.is_empty() && key != api_key {
         return bad_request("Not authorized");
     }
 
-    unsafe {
-        // Database isn't connected
+        // Checks if the database is connected
         if DATABASE.as_ref().is_none() {
             return internal_error("Database isn't connected");
         }
 
-        // Reference to the database
-        let database_ref = DATABASE.as_ref().unwrap();
 
-        // Cursor
+        let database_ref = DATABASE.as_ref().unwrap();
         let results_cursor;
 
         // Find and sort using query
@@ -395,7 +383,6 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
         }
 
         if let Err(e) = results_cursor {
-            // This shouldn't happen
             return internal_error(&format!("Error when querying database: {}", e).to_string());
         }
 
@@ -411,11 +398,10 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
             .header(header::CONTENT_TYPE, "application/json")
             .body(Body::from(simd_json::to_vec(&results_vec).unwrap()))
             .unwrap())
-    }
+
 }
 
 async fn lowestbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
-    // Query parameters
     let mut key = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
@@ -429,7 +415,6 @@ async fn lowestbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
         }
     }
 
-    // The API key in request doesn't match
     if key != API_KEY.lock().unwrap().as_str() {
         return bad_request("Not authorized");
     }
@@ -446,8 +431,10 @@ async fn lowestbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
         .unwrap())
 }
 
+
+/* Returns information & statistics about the API */
 fn base() -> hyper::Result<Response<Body>> {
-    // Returns information & statistics about the API
+    // 
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
