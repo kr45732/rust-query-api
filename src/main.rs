@@ -23,6 +23,7 @@ use hyper::{
     Body, Method, Request, Response, Server, StatusCode,
 };
 use log::info;
+use postgres_types::ToSql;
 use query_api::{api_handler::*, statics::*, structs::*, utils::*, webhook::Webhook};
 use reqwest::Url;
 use simplelog::*;
@@ -125,12 +126,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Create the tables
     unsafe {
         let client = DATABASE.insert(client);
-        // Drop the query table if exists
-        let _ = client.simple_query("DROP TABLE IF EXISTS query").await;
-        // Create new query table
+        // Create query table if doesn't exist
         let _ = client
             .simple_query(
-                "CREATE TABLE query (
+                "CREATE TABLE IF NOT EXISTS query (
                  uuid TEXT NOT NULL PRIMARY KEY,
                  auctioneer TEXT,
                  end_t BIGINT,
@@ -143,12 +142,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
             )
             .await;
 
-        // Drop the pets table if exists
-        let _ = client.simple_query("DROP TABLE IF EXISTS pets").await;
-        // Create new pets table
+        // Create pets table if doesn't exist
         let _ = client
             .simple_query(
-                "CREATE TABLE pets (
+                "CREATE TABLE IF NOT EXISTS pets (
                  name TEXT NOT NULL PRIMARY KEY,
                  price BIGINT
                 )",
@@ -288,9 +285,13 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
     // Query paremeters
     let mut query = "".to_string();
     let mut sort = "".to_string();
-    let mut limit = "".to_string();
+    let mut limit = "1".to_string();
     let mut key = "".to_string();
     let mut item_name = "".to_string();
+    let mut tier = "".to_string();
+    let mut item_id = "".to_string();
+    let mut enchants = "".to_string();
+    let mut end = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
@@ -298,26 +299,24 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
             .unwrap()
             .query_pairs()
     {
-        if query_pair.0 == "query" {
-            query = query_pair.1.to_string()
-        } else if query_pair.0 == "sort" {
-            sort = query_pair.1.to_string();
-        } else if query_pair.0 == "limit" {
-            limit = query_pair.1.to_string();
-        } else if query_pair.0 == "key" {
-            key = query_pair.1.to_string();
-        } else if query_pair.0 == "name" {
-            item_name = query_pair.1.to_string();
+        match query_pair.0.to_string().as_str() {
+            "query" => query = query_pair.1.to_string(),
+            "sort" => sort = query_pair.1.to_string(),
+            "limit" => limit = query_pair.1.to_string(),
+            "key" => key = query_pair.1.to_string(),
+            "item_name" => item_name = query_pair.1.to_string(),
+            "tier" => tier = query_pair.1.to_string(),
+            "item_id" => item_id = query_pair.1.to_string(),
+            "enchants" => enchants = query_pair.1.to_string(),
+            "end" => end = query_pair.1.to_string(),
+            _ => {}
         }
     }
 
     // The API key in request doesn't match
-    if key != API_KEY.lock().unwrap().as_str() {
+    let api_key = API_KEY.lock().unwrap().to_owned();
+    if !api_key.is_empty() && key != api_key {
         return bad_request("Not authorized");
-    }
-
-    if query.len() == 0 {
-        return bad_request("The query paremeter cannot be empty");
     }
 
     unsafe {
@@ -329,85 +328,80 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
         // Reference to the database
         let database_ref = DATABASE.as_ref().unwrap();
 
+        // Cursor
         let results_cursor;
-        // Find and sort using query JSON
-        if sort.is_empty() {
-            if item_name.is_empty() {
-                if limit.is_empty() {
-                    results_cursor = database_ref
-                        .query(&format!("SELECT * FROM query WHERE {}", query), &[])
-                        .await;
-                } else {
-                    results_cursor = database_ref
-                        .query(
-                            &format!("SELECT * FROM query WHERE {} LIMIT {}", query, limit),
-                            &[],
-                        )
-                        .await;
+
+        // Find and sort using query
+        if query.is_empty() {
+            let mut sql = "SELECT * FROM query WHERE".to_string();
+            let mut param_vec: Vec<&(dyn ToSql + Sync)> = Vec::new();
+            let mut param_count = 1;
+
+            if !tier.is_empty() {
+                if param_count != 1 {
+                    sql.push_str(" AND");
                 }
-            } else {
-                if limit.is_empty() {
-                    results_cursor = database_ref
-                        .query(
-                            &format!("SELECT * FROM query WHERE item_name ILIKE $1 AND {}", query),
-                            &[&item_name],
-                        )
-                        .await;
-                } else {
-                    results_cursor = database_ref
-                        .query(
-                            &format!(
-                                "SELECT * FROM query WHERE item_name ILIKE $1 AND {} LIMIT {}",
-                                query, limit
-                            ),
-                            &[&item_name],
-                        )
-                        .await;
+                sql.push_str(format!(" tier = ${}", param_count).as_str());
+                param_vec.push(&tier);
+                param_count += 1;
+            }
+            if !item_name.is_empty() {
+                if param_count != 1 {
+                    sql.push_str(" AND");
+                }
+                sql.push_str(format!(" item_name ILIKE ${}", param_count).as_str());
+                param_vec.push(&item_name);
+                param_count += 1;
+            }
+            if !item_id.is_empty() {
+                if param_count != 1 {
+                    sql.push_str(" AND");
+                }
+                sql.push_str(format!(" item_id = ${}", param_count).as_str());
+                param_vec.push(&item_id);
+                param_count += 1;
+            }
+            if !enchants.is_empty() {
+                if param_count != 1 {
+                    sql.push_str(" AND");
+                }
+                sql.push_str(format!(" ${} = ANY (enchants)", param_count).as_str());
+                param_vec.push(&enchants);
+                param_count += 1;
+            }
+            let end_int;
+            if !end.is_empty() {
+                if let Ok(end_int_local) = end.parse::<i64>() {
+                    if param_count != 1 {
+                        sql.push_str(" AND");
+                    }
+                    end_int = end_int_local;
+                    sql.push_str(format!(" end_t > ${}", param_count).as_str());
+                    param_vec.push(&end_int);
+                    param_count += 1;
                 }
             }
+            if !sort.is_empty() {
+                if sort == "ASC" {
+                    sql.push_str(" ORDER BY starting_bid ASC");
+                } else if sort == "DESC" {
+                    sql.push_str(" ORDER BY starting_bid DESC");
+                }
+            }
+            let limit_int;
+            if !limit.is_empty() {
+                if let Ok(limit_int_local) = limit.parse::<i64>() {
+                    limit_int = limit_int_local;
+                    sql.push_str(format!(" LIMIT ${}", param_count).as_str());
+                    param_vec.push(&limit_int);
+                }
+            }
+
+            results_cursor = database_ref.query(&sql, &param_vec).await;
         } else {
-            if item_name.is_empty() {
-                if limit.is_empty() {
-                    results_cursor = database_ref
-                        .query(
-                            &format!("SELECT * FROM query WHERE {} ORDER BY {}", query, sort),
-                            &[],
-                        )
-                        .await;
-                } else {
-                    results_cursor = database_ref
-                        .query(
-                            &format!(
-                                "SELECT * FROM query WHERE {} ORDER BY {} LIMIT {}",
-                                query, sort, limit
-                            ),
-                            &[],
-                        )
-                        .await;
-                }
-            } else {
-                if limit.is_empty() {
-                    results_cursor = database_ref
-                        .query(
-                            &format!(
-                                "SELECT * FROM query WHERE item_name ILIKE $1 AND {} ORDER BY {}",
-                                query, sort
-                            ),
-                            &[&item_name],
-                        )
-                        .await;
-                } else {
-                    results_cursor = database_ref
-                    .query(
-                        &format!(
-                            "SELECT * FROM query WHERE item_name ILIKE $1 AND {} ORDER BY {} LIMIT {}",
-                            query, sort, limit
-                        ),
-                        &[&item_name],
-                    )
-                    .await;
-                }
-            }
+            results_cursor = database_ref
+                .query(&format!("SELECT * FROM query WHERE {}", query), &[])
+                .await;
         }
 
         if let Err(e) = results_cursor {

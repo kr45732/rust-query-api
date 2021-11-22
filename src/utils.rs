@@ -18,11 +18,12 @@
 
 use crate::{statics::*, structs::*};
 use chrono::prelude::{DateTime, Utc};
+use dashmap::DashMap;
 use futures::{pin_mut, Future};
 use hyper::{header, Body, Response, StatusCode};
 use log::{error, info};
 use postgres_types::{ToSql, Type};
-use std::{collections::HashMap, fs::OpenOptions, result::Result as StdResult, time::SystemTime};
+use std::{fs::OpenOptions, result::Result as StdResult, time::SystemTime};
 use tokio::time::{self, Duration};
 use tokio_postgres::{binary_copy::BinaryCopyInWriter, Error};
 
@@ -204,7 +205,7 @@ pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, E
     }
 }
 
-pub async fn update_pets_database(pet_prices: &mut HashMap<String, i64>) -> Result<u64, Error> {
+pub async fn update_pets_database(pet_prices: &mut DashMap<String, i64>) -> Result<u64, Error> {
     unsafe {
         // Reference to the database object
         let database = DATABASE.as_ref().unwrap();
@@ -214,8 +215,8 @@ pub async fn update_pets_database(pet_prices: &mut HashMap<String, i64>) -> Resu
         for old_price in old_pet_prices {
             let old_price_name: String = old_price.get("name");
             let mut new_has = false;
-            for new_price in pet_prices.into_iter() {
-                if old_price_name == *new_price.0 {
+            for new_price in pet_prices.iter_mut() {
+                if old_price_name == *new_price.key() {
                     new_has = true;
                     break;
                 }
@@ -242,12 +243,15 @@ pub async fn update_pets_database(pet_prices: &mut HashMap<String, i64>) -> Resu
         pin_mut!(copy_writer);
 
         // Write to copy sink
-        let mut row: Vec<&'_ (dyn ToSql + Sync)> = Vec::new();
-        for m in pet_prices {
-            row.clear();
-            row.push(m.0);
-            row.push(m.1);
-            copy_writer.as_mut().write(&row).await.unwrap();
+        for m in pet_prices.iter() {
+            copy_writer
+                .as_mut()
+                .write(&[
+                    m.key() as &(dyn ToSql + Sync),
+                    m.value() as &(dyn ToSql + Sync),
+                ])
+                .await
+                .unwrap();
         }
 
         // Complete the copy statement
@@ -255,7 +259,7 @@ pub async fn update_pets_database(pet_prices: &mut HashMap<String, i64>) -> Resu
     }
 }
 
-pub async fn update_bins_local(bin_prices: &HashMap<String, i64>) -> Result<(), serde_json::Error> {
+pub async fn update_bins_local(bin_prices: &DashMap<String, i64>) -> Result<(), serde_json::Error> {
     let file = OpenOptions::new()
         .create(true)
         .write(true)

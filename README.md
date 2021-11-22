@@ -37,19 +37,19 @@ A versatile API facade for the Hypixel Auction API written in rust. The entire a
 
 ## Usage
 ### Endpoints
-- `/query?key=key&query=query&sort=sort`
-- `/pets?key=key&query=query`
-- `/lowestbin?key=key`
+- `/query`
+- `/pets`
+- `/lowestbin`
 
-### Examples
-- See examples [here](https://github.com/kr45732/rust-query-api/blob/main/examples/examples.md)
+### Docs & Examples
+- See docs and examples [here](https://github.com/kr45732/rust-query-api/blob/main/examples/examples.md)
 
 ### Deploy To Railway
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https%3A%2F%2Fgithub.com%2Fkr45732%2Frust-query-api&plugins=postgresql&envs=BASE_URL%2CPORT%2CAPI_KEY%2CPOSTGRES_URL%2CWEBHOOK_URL%2CFEATURES&BASE_URLDesc=The+base+URL+of+the+domain+such+as+localhost&PORTDesc=The+port+such+as+8080&API_KEYDesc=Key+needed+to+access+this+API+%28NOT+a+Hypixel+API+key%29&POSTGRES_URLDesc=Full+URL+of+a+PostgreSQL+database&WEBHOOK_URLDesc=Discord+webhook+URL+for+logging&FEATURESDesc=The+features+%28QUERY%2C+PETS%2C+LOWESTBIN%29+you+want+enabled+separated+with+a+%27%2B%27&PORTDefault=8080&POSTGRES_URLDefault=%24%7B%7BDATABASE_URL%7D%7D&FEATURESDefault=QUERY%2BPETS%2BLOWESTBIN&referralCode=WrEybV)
 
 ## Todo
 - Improved error handling
-- Prevent SQL injection
-- Better documentation 
+- Improved SQL injection prevention
+- Better documentation and more examples
 - Regular auctions
 - Sync updates using Cloudflare headers

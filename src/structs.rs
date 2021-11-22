@@ -78,23 +78,23 @@ pub struct PartialNbtElement {
 pub struct PartialTag {
     #[serde(rename = "ExtraAttributes")]
     pub extra_attributes: PartialExtraAttr,
-    pub display: DisplayInfo,
+    // pub display: DisplayInfo,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct Pet {
-    #[serde(rename = "type")]
-    pub pet_type: String,
+// #[derive(Serialize, Deserialize)]
+// pub struct Pet {
+//     #[serde(rename = "type")]
+//     pub pet_type: String,
 
-    #[serde(rename = "tier")]
-    pub tier: String,
-}
+//     #[serde(rename = "tier")]
+//     pub tier: String,
+// }
 
 #[derive(Deserialize)]
 pub struct PartialExtraAttr {
     pub id: String,
-    // #[serde(rename = "petInfo")]
-    // pub pet: Option<String>,
+    #[serde(rename = "petInfo")]
+    pub pet: Option<String>,
     pub enchantments: Option<HashMap<String, i32>>,
     // pub potion: Option<String>,
     // pub potion_level: Option<i16>,
@@ -103,35 +103,35 @@ pub struct PartialExtraAttr {
     // pub runes: Option<HashMap<String, i32>>,
 }
 
-#[derive(Deserialize)]
-pub struct DisplayInfo {
-    #[serde(rename = "Name")]
-    pub name: String,
-    // #[serde(rename = "Lore")]
-    // pub lore: Vec<String>,
-}
+// #[derive(Deserialize)]
+// pub struct DisplayInfo {
+//     #[serde(rename = "Name")]
+//     pub name: String,
+//     #[serde(rename = "Lore")]
+//     pub lore: Vec<String>,
+// }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-pub struct Item {
-    #[serde(rename = "item_name")]
-    pub item_name: String,
-    #[serde(rename = "item_lore")]
-    pub item_lore: String,
-    #[serde(rename = "uuid")]
-    pub uuid: String,
-    #[serde(rename = "auctioneer")]
-    pub auctioneer: String,
-    #[serde(rename = "end")]
-    pub end: i64,
-    #[serde(rename = "tier")]
-    pub tier: String,
-    #[serde(rename = "item_bytes")]
-    pub item_bytes: ItemBytes,
-    #[serde(rename = "starting_bid")]
-    pub starting_bid: i64,
-    #[serde(rename = "bin")]
-    pub bin: Option<bool>,
-}
+// #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+// pub struct Item {
+//     #[serde(rename = "item_name")]
+//     pub item_name: String,
+//     #[serde(rename = "item_lore")]
+//     pub item_lore: String,
+//     #[serde(rename = "uuid")]
+//     pub uuid: String,
+//     #[serde(rename = "auctioneer")]
+//     pub auctioneer: String,
+//     #[serde(rename = "end")]
+//     pub end: i64,
+//     #[serde(rename = "tier")]
+//     pub tier: String,
+//     #[serde(rename = "item_bytes")]
+//     pub item_bytes: ItemBytes,
+//     #[serde(rename = "starting_bid")]
+//     pub starting_bid: i64,
+//     #[serde(rename = "bin")]
+//     pub bin: Option<bool>,
+// }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 #[serde(untagged)]
@@ -166,11 +166,11 @@ pub enum ItemBytesT0 {
     Data(String),
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct AuctionResponse {
-    #[serde(rename = "totalPages")]
-    pub total_pages: i64,
+// #[derive(Serialize, Deserialize)]
+// pub struct AuctionResponse {
+//     #[serde(rename = "totalPages")]
+//     pub total_pages: i64,
 
-    #[serde(rename = "auctions")]
-    pub auctions: Vec<Item>,
-}
+//     #[serde(rename = "auctions")]
+//     pub auctions: Vec<Item>,
+// }

@@ -18,11 +18,11 @@
 
 use crate::{statics::*, structs::*, utils::*};
 use chrono::Utc;
+use dashmap::DashMap;
+use futures::{stream::FuturesUnordered, StreamExt};
 use log::debug;
-use std::{
-    collections::{HashMap, HashSet},
-    time::Instant,
-};
+use serde_json::Value;
+use std::{collections::HashSet, time::Instant};
 
 /* Gets all pages of auctions from the Hypixel API and inserts them into the database */
 pub async fn update_api() {
@@ -36,9 +36,9 @@ pub async fn update_api() {
     // Stores all auction uuids in auctions vector to prevent duplicates
     let mut inserted_uuids: HashSet<String> = HashSet::new();
     // Stores all pet prices
-    let mut pet_prices: HashMap<String, i64> = HashMap::new();
+    let mut pet_prices: DashMap<String, i64> = DashMap::new();
     // Stores all bin prices
-    let mut bin_prices: HashMap<String, i64> = HashMap::new();
+    let mut bin_prices: DashMap<String, i64> = DashMap::new();
 
     // Which APIs to update
     let update_query = *ENABLE_QUERY.lock().unwrap();
@@ -46,14 +46,14 @@ pub async fn update_api() {
     let update_lowestbin = *ENABLE_LOWESTBIN.lock().unwrap();
 
     // First page to get the total number of pages
-    let r = get_auction_page(1).await;
-    if r.is_none() {
-        error("Failed to fetch the first auction page".to_string()).await;
+    let json = get_auction_page(0).await;
+    if json.is_null() {
+        error("Failed to fetch the first (page=0) auction page".to_string()).await;
         return;
     }
-    let json = r.unwrap();
+
     parse_auctions(
-        json.auctions,
+        json.get("auctions").unwrap().as_array().unwrap(),
         &mut inserted_uuids,
         &mut query_prices,
         &mut pet_prices,
@@ -63,48 +63,62 @@ pub async fn update_api() {
         update_lowestbin,
     );
 
+    let mut futures = FuturesUnordered::new();
+    let total_pages: i64 = json.get("totalPages").unwrap().as_i64().unwrap();
     let mut num_failed = 0;
-    for page_number in 2..json.total_pages {
-        debug!("---------------- Fetching page {}", page_number);
 
-        // Get the page from the Hypixel API
+    debug!("Sending {} async requests", total_pages);
+    for page_number in 1..total_pages {
+        let future = get_auction_page(page_number);
+        futures.push(future);
+    }
+    debug!("All async requests have been sent");
+
+    loop {
         let before_page_request = Instant::now();
-        let page_request = get_auction_page(page_number).await;
-        if page_request.is_none() {
-            num_failed += 1;
-            error(format!(
-                "Failed to fetch page {} with a total of {} failed pages",
-                page_number, num_failed
-            ))
-            .await;
-            continue;
+        // Get the page from the Hypixel API
+        match futures.next().await {
+            Some(page_request) => {
+                let page_number = page_request.get("page").unwrap().as_i64().unwrap();
+                debug!("---------------- Fetching page {}", page_number);
+                if page_request.is_null() {
+                    num_failed += 1;
+                    error(format!(
+                        "Failed to fetch page {} with a total of {} failed pages",
+                        page_number, num_failed
+                    ))
+                    .await;
+                    continue;
+                }
+                debug!(
+                    "Request time: {}ms",
+                    before_page_request.elapsed().as_millis()
+                );
+
+                // Parse the auctions and add them to the auctions array
+                let before_page_parse = Instant::now();
+                parse_auctions(
+                    page_request.get("auctions").unwrap().as_array().unwrap(),
+                    &mut inserted_uuids,
+                    &mut query_prices,
+                    &mut pet_prices,
+                    &mut bin_prices,
+                    update_query,
+                    update_pets,
+                    update_lowestbin,
+                );
+                debug!(
+                    "Parsing time: {}ms",
+                    before_page_parse.elapsed().as_millis()
+                );
+
+                debug!(
+                    "Total time: {}ms",
+                    before_page_request.elapsed().as_millis()
+                );
+            }
+            None => break,
         }
-        debug!(
-            "Request time: {} ms",
-            before_page_request.elapsed().as_millis()
-        );
-
-        // Parse the auctions and add them to the auctions array
-        let before_page_parse = Instant::now();
-        parse_auctions(
-            page_request.unwrap().auctions,
-            &mut inserted_uuids,
-            &mut query_prices,
-            &mut pet_prices,
-            &mut bin_prices,
-            update_query,
-            update_pets,
-            update_lowestbin,
-        );
-        debug!(
-            "Parsing time: {}ms",
-            before_page_parse.elapsed().as_millis()
-        );
-
-        debug!(
-            "Total time: {}ms",
-            before_page_request.elapsed().as_millis()
-        );
     }
 
     info(format!(
@@ -159,36 +173,33 @@ pub async fn update_api() {
 
 /* Parses a page of auctions to a vector of documents  */
 fn parse_auctions(
-    auctions: Vec<Item>,
+    auctions: &Vec<serde_json::Value>,
     inserted_uuids: &mut HashSet<String>,
     query_prices: &mut Vec<DatabaseItem>,
-    pet_prices: &mut HashMap<String, i64>,
-    bin_prices: &mut HashMap<String, i64>,
+    pet_prices: &mut DashMap<String, i64>,
+    bin_prices: &mut DashMap<String, i64>,
     update_query: bool,
     update_pets: bool,
     update_lowestbin: bool,
 ) {
     for auction in auctions.into_iter() {
         // Only bins for now
-        if let Some(true) = auction.bin {
-            let Item {
-                uuid,
-                auctioneer,
-                end,
-                item_name,
-                tier,
-                starting_bid,
-                item_lore,
-                item_bytes,
-                bin: _,
-            } = auction;
+        if auction.get("bin").is_some() {
+            let uuid = auction.get("uuid").unwrap().as_str().unwrap();
+            let item_name = auction.get("item_name").unwrap().as_str().unwrap();
+            let tier = auction.get("tier").unwrap().as_str().unwrap();
+            let starting_bid = auction.get("starting_bid").unwrap().as_i64().unwrap();
 
             // Prevent duplicate auctions
-            if inserted_uuids.insert(uuid.clone()) {
+            if inserted_uuids.insert(uuid.to_string()) {
                 // Parse the auction's nbt
-                let nbt = &to_nbt(item_bytes).unwrap().i[0];
+                let nbt = &to_nbt(
+                    serde_json::from_value(auction.get("item_bytes").unwrap().to_owned()).unwrap(),
+                )
+                .unwrap()
+                .i[0];
                 // Item id
-                let id = nbt.tag.extra_attributes.id.clone();
+                let id = &nbt.tag.extra_attributes.id;
 
                 // Get enchants if the item is an enchanted book
                 let mut enchants = Vec::new();
@@ -196,7 +207,7 @@ fn parse_auctions(
                     for entry in nbt.tag.extra_attributes.enchantments.as_ref().unwrap() {
                         if update_lowestbin {
                             update_lower_else_insert(
-                                format!("{};{}", entry.0.to_uppercase(), entry.1),
+                                &format!("{};{}", entry.0.to_uppercase(), entry.1),
                                 starting_bid,
                                 bin_prices,
                             );
@@ -208,55 +219,82 @@ fn parse_auctions(
                 } else if id == "PET" {
                     // Pets API
                     if update_pets {
-                        let pet_name = &format!("{}_{}", item_name, tier)
+                        let pet_info: Value =
+                            serde_json::from_str(nbt.tag.extra_attributes.pet.as_ref().unwrap())
+                                .unwrap();
+
+                        let pet_name = &mut format!("{}_{}", item_name.replace("✦", ""), tier)
                             .replace(" ", "_")
                             .to_uppercase();
+                        if match pet_info.get("heldItem") {
+                            Some(held_item) => held_item.as_str().unwrap() == "PET_ITEM_TIER_BOOST",
+                            None => false,
+                        } {
+                            pet_name.push_str("_TB");
+                        }
 
-                        update_lower_else_insert(pet_name.to_string(), starting_bid, pet_prices);
+                        update_lower_else_insert(pet_name, starting_bid, pet_prices);
                     }
 
                     if update_lowestbin {
                         let mut split = item_name.split("] ");
                         split.next();
-                        let pet_bin_name = split.next().unwrap().replace(" ", "_").to_uppercase();
-                        let tier_int = match tier.as_str() {
-                            "COMMON" => 0,
-                            "UNCOMMON" => 1,
-                            "RARE" => 2,
-                            "EPIC" => 3,
-                            "LEGENDARY" => 4,
-                            "MYTHIC" => 5,
-                            _ => -1,
-                        };
 
                         update_lower_else_insert(
-                            format!("{};{}", pet_bin_name, tier_int),
+                            &format!(
+                                "{};{}",
+                                split.next().unwrap().replace(" ", "_").to_uppercase(),
+                                match tier {
+                                    "COMMON" => 0,
+                                    "UNCOMMON" => 1,
+                                    "RARE" => 2,
+                                    "EPIC" => 3,
+                                    "LEGENDARY" => 4,
+                                    "MYTHIC" => 5,
+                                    _ => -1,
+                                }
+                            ),
                             starting_bid,
                             bin_prices,
                         );
                     }
                 } else {
                     if update_lowestbin {
-                        update_lower_else_insert(id.clone(), starting_bid, bin_prices);
+                        update_lower_else_insert(id, starting_bid, bin_prices);
                     }
                 }
 
                 // Push this auction to the array
                 if update_query {
                     query_prices.push(DatabaseItem {
-                        uuid,
-                        auctioneer,
-                        end_t: end,
+                        uuid: uuid.to_string(),
+                        auctioneer: auction
+                            .get("auctioneer")
+                            .unwrap()
+                            .as_str()
+                            .unwrap()
+                            .to_string(),
+                        end_t: auction.get("end").unwrap().as_i64().unwrap(),
                         item_name: if id != "ENCHANTED_BOOK" {
-                            item_name
+                            item_name.to_string()
                         } else {
                             MC_CODE_REGEX
-                                .replace_all(item_lore.split("\n").next().unwrap_or(""), "")
+                                .replace_all(
+                                    auction
+                                        .get("item_lore")
+                                        .unwrap()
+                                        .as_str()
+                                        .unwrap()
+                                        .split("\n")
+                                        .next()
+                                        .unwrap_or(""),
+                                    "",
+                                )
                                 .to_string()
                         },
-                        tier,
+                        tier: tier.to_string(),
                         starting_bid,
-                        item_id: id,
+                        item_id: id.to_string(),
                         enchants,
                     });
                 }
@@ -265,8 +303,8 @@ fn parse_auctions(
     }
 }
 
-fn update_lower_else_insert(id: String, starting_bid: i64, prices: &mut HashMap<String, i64>) {
-    if let Some(ele) = prices.get_mut(&id) {
+fn update_lower_else_insert(id: &String, starting_bid: i64, prices: &mut DashMap<String, i64>) {
+    if let Some(mut ele) = prices.get_mut(id) {
         if starting_bid < *ele {
             *ele = starting_bid;
             return;
@@ -277,7 +315,7 @@ fn update_lower_else_insert(id: String, starting_bid: i64, prices: &mut HashMap<
 }
 
 /* Gets an auction page from the Hypixel API */
-async fn get_auction_page(page_number: i64) -> Option<AuctionResponse> {
+async fn get_auction_page(page_number: i64) -> Value {
     let res = HTTP_CLIENT
         .get(format!(
             "https://api.hypixel.net/skyblock/auctions?page={}",
@@ -295,5 +333,5 @@ async fn get_auction_page(page_number: i64) -> Option<AuctionResponse> {
         }
     }
 
-    None
+    Value::Null
 }
