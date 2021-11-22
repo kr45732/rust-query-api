@@ -7,8 +7,8 @@
 - `item_id` - filter auctions by id
 - `enchants` - an enchant the auction should have (only works for enchanted books right now)
 - `end` - filter auctions whose end time is after this (epoch timestamp in milliseconds)
-- `sort` - name of column to sort by (ascending)
-- `limit` - number of items returned
+- `sort` - sort by 'ASC' or 'DESC' bin price
+- `limit` - number of items returned (defaults to 1)
 
 ## Pets
 - `key` - key to access the API

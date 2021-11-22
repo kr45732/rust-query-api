@@ -1,8 +1,5 @@
 # Rust Query API
 <a href="https://github.com/kr45732/rust-query-api/releases" target="_blank">
-  <img alt="downloads" src="https://img.shields.io/github/downloads/kr45732/rust-query-api/total?style=flat-square" />
-</a>
-<a href="https://github.com/kr45732/rust-query-api/releases" target="_blank">
   <img alt="downloads" src="https://img.shields.io/github/v/release/kr45732/rust-query-api?style=flat-square" />
 </a>
 <a href="https://github.com/kr45732/rust-query-api/blob/main/LICENSE" target="_blank">
@@ -49,7 +46,6 @@ A versatile API facade for the Hypixel Auction API written in rust. The entire a
 
 ## Todo
 - Improved error handling
-- Improved SQL injection prevention
 - Better documentation and more examples
 - Regular auctions
 - Sync updates using Cloudflare headers
