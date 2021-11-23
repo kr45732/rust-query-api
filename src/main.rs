@@ -54,11 +54,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
         ),
     ])
     .expect("Error when creating loggers");
-    info("Loggers Created".to_string()).await;
+    println!("Loggers Created");
 
     // Read config
-    info("Reading config".to_string()).await;
-    dotenv().ok();
+    println!("Reading config");
+    dotenv().expect("Unable to load .env file");
     let _ = BASE_URL
         .lock()
         .unwrap()
@@ -93,9 +93,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
             _ => panic!("Invalid feature type: {}", feature),
         }
     }
-    let _ = WEBHOOK.insert(Webhook::from_url(
-        &env::var("WEBHOOK_URL").expect("Unable to find WEBHOOK_URL environment variable"),
-    ));
+
+    unsafe {
+        let _ = WEBHOOK.insert(Webhook::from_url(
+            &env::var("WEBHOOK_URL").expect("Unable to find WEBHOOK_URL environment variable"),
+        ));
+    }
 
     // Connect to database
     let (client, connection) =
@@ -113,12 +116,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
     });
 
-    // Create the tables
-    let client = DATABASE.insert(client);
-    // Create query table if doesn't exist
-    let _ = client
-        .simple_query(
-            "CREATE TABLE IF NOT EXISTS query (
+    unsafe {
+        // Create the tables
+        let client = DATABASE.insert(client);
+        // Create query table if doesn't exist
+        let _ = client
+            .simple_query(
+                "CREATE TABLE IF NOT EXISTS query (
                  uuid TEXT NOT NULL PRIMARY KEY,
                  auctioneer TEXT,
                  end_t BIGINT,
@@ -128,18 +132,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
                  starting_bid BIGINT,
                  enchants TEXT[]
                 )",
-        )
-        .await;
+            )
+            .await;
 
-    // Create pets table if doesn't exist
-    let _ = client
-        .simple_query(
-            "CREATE TABLE IF NOT EXISTS pets (
+        // Create pets table if doesn't exist
+        let _ = client
+            .simple_query(
+                "CREATE TABLE IF NOT EXISTS pets (
                  name TEXT NOT NULL PRIMARY KEY,
                  price BIGINT
                 )",
-        )
-        .await;
+            )
+            .await;
+    }
 
     info("Starting auction loop...".to_string()).await;
     update_api().await;
@@ -229,39 +234,41 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
         return bad_request("The query parameter cannot be empty");
     }
 
-    let database_ref = DATABASE.as_ref();
+    unsafe {
+        let database_ref = DATABASE.as_ref();
 
-    // Check to see if the database is connected
-    if database_ref.is_none() {
-        return internal_error("Database isn't connected");
+        // Check to see if the database is connected
+        if database_ref.is_none() {
+            return internal_error("Database isn't connected");
+        }
+
+        let results_cursor;
+        // Find and sort using query JSON
+        results_cursor = database_ref
+            .unwrap()
+            .query(
+                &format!("SELECT * FROM pets WHERE name IN ({})", query),
+                &[],
+            )
+            .await;
+
+        if let Err(e) = results_cursor {
+            return internal_error(&format!("Error when querying database: {}", e).to_string());
+        }
+
+        // Convert the cursor iterator to a vector
+        let mut results_vec = vec![];
+        results_cursor.unwrap().into_iter().for_each(|ele| {
+            results_vec.push(PetsDatabaseItem::from(ele));
+        });
+
+        // Return the vector of auctions serialized into JSON
+        Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(simd_json::to_vec(&results_vec).unwrap()))
+            .unwrap())
     }
-
-    let results_cursor;
-    // Find and sort using query JSON
-    results_cursor = database_ref
-        .unwrap()
-        .query(
-            &format!("SELECT * FROM pets WHERE name IN ({})", query),
-            &[],
-        )
-        .await;
-
-    if let Err(e) = results_cursor {
-        return internal_error(&format!("Error when querying database: {}", e).to_string());
-    }
-
-    // Convert the cursor iterator to a vector
-    let mut results_vec = vec![];
-    results_cursor.unwrap().into_iter().for_each(|ele| {
-        results_vec.push(PetsDatabaseItem::from(ele));
-    });
-
-    // Return the vector of auctions serialized into JSON
-    Ok(Response::builder()
-        .status(StatusCode::OK)
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(simd_json::to_vec(&results_vec).unwrap()))
-        .unwrap())
 }
 
 async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
@@ -300,103 +307,105 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
         return bad_request("Not authorized");
     }
 
-    // Checks if the database is connected
-    if DATABASE.as_ref().is_none() {
-        return internal_error("Database isn't connected");
-    }
+    unsafe {
+        // Checks if the database is connected
+        if DATABASE.as_ref().is_none() {
+            return internal_error("Database isn't connected");
+        }
 
-    let database_ref = DATABASE.as_ref().unwrap();
-    let results_cursor;
+        let database_ref = DATABASE.as_ref().unwrap();
+        let results_cursor;
 
-    // Find and sort using query
-    if query.is_empty() {
-        let mut sql = "SELECT * FROM query WHERE".to_string();
-        let mut param_vec: Vec<&(dyn ToSql + Sync)> = Vec::new();
-        let mut param_count = 1;
+        // Find and sort using query
+        if query.is_empty() {
+            let mut sql = "SELECT * FROM query WHERE".to_string();
+            let mut param_vec: Vec<&(dyn ToSql + Sync)> = Vec::new();
+            let mut param_count = 1;
 
-        if !tier.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" tier = ${}", param_count).as_str());
-            param_vec.push(&tier);
-            param_count += 1;
-        }
-        if !item_name.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" item_name ILIKE ${}", param_count).as_str());
-            param_vec.push(&item_name);
-            param_count += 1;
-        }
-        if !item_id.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" item_id = ${}", param_count).as_str());
-            param_vec.push(&item_id);
-            param_count += 1;
-        }
-        if !enchants.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" ${} = ANY (enchants)", param_count).as_str());
-            param_vec.push(&enchants);
-            param_count += 1;
-        }
-        let end_int;
-        if !end.is_empty() {
-            if let Ok(end_int_local) = end.parse::<i64>() {
+            if !tier.is_empty() {
                 if param_count != 1 {
                     sql.push_str(" AND");
                 }
-                end_int = end_int_local;
-                sql.push_str(format!(" end_t > ${}", param_count).as_str());
-                param_vec.push(&end_int);
+                sql.push_str(format!(" tier = ${}", param_count).as_str());
+                param_vec.push(&tier);
                 param_count += 1;
             }
-        }
-        if !sort.is_empty() {
-            if sort == "ASC" {
-                sql.push_str(" ORDER BY starting_bid ASC");
-            } else if sort == "DESC" {
-                sql.push_str(" ORDER BY starting_bid DESC");
+            if !item_name.is_empty() {
+                if param_count != 1 {
+                    sql.push_str(" AND");
+                }
+                sql.push_str(format!(" item_name ILIKE ${}", param_count).as_str());
+                param_vec.push(&item_name);
+                param_count += 1;
             }
-        }
-        let limit_int;
-        if !limit.is_empty() {
-            if let Ok(limit_int_local) = limit.parse::<i64>() {
-                limit_int = limit_int_local;
-                sql.push_str(format!(" LIMIT ${}", param_count).as_str());
-                param_vec.push(&limit_int);
+            if !item_id.is_empty() {
+                if param_count != 1 {
+                    sql.push_str(" AND");
+                }
+                sql.push_str(format!(" item_id = ${}", param_count).as_str());
+                param_vec.push(&item_id);
+                param_count += 1;
             }
+            if !enchants.is_empty() {
+                if param_count != 1 {
+                    sql.push_str(" AND");
+                }
+                sql.push_str(format!(" ${} = ANY (enchants)", param_count).as_str());
+                param_vec.push(&enchants);
+                param_count += 1;
+            }
+            let end_int;
+            if !end.is_empty() {
+                if let Ok(end_int_local) = end.parse::<i64>() {
+                    if param_count != 1 {
+                        sql.push_str(" AND");
+                    }
+                    end_int = end_int_local;
+                    sql.push_str(format!(" end_t > ${}", param_count).as_str());
+                    param_vec.push(&end_int);
+                    param_count += 1;
+                }
+            }
+            if !sort.is_empty() {
+                if sort == "ASC" {
+                    sql.push_str(" ORDER BY starting_bid ASC");
+                } else if sort == "DESC" {
+                    sql.push_str(" ORDER BY starting_bid DESC");
+                }
+            }
+            let limit_int;
+            if !limit.is_empty() {
+                if let Ok(limit_int_local) = limit.parse::<i64>() {
+                    limit_int = limit_int_local;
+                    sql.push_str(format!(" LIMIT ${}", param_count).as_str());
+                    param_vec.push(&limit_int);
+                }
+            }
+
+            results_cursor = database_ref.query(&sql, &param_vec).await;
+        } else {
+            results_cursor = database_ref
+                .query(&format!("SELECT * FROM query WHERE {}", query), &[])
+                .await;
         }
 
-        results_cursor = database_ref.query(&sql, &param_vec).await;
-    } else {
-        results_cursor = database_ref
-            .query(&format!("SELECT * FROM query WHERE {}", query), &[])
-            .await;
+        if let Err(e) = results_cursor {
+            return internal_error(&format!("Error when querying database: {}", e).to_string());
+        }
+
+        // Convert the cursor iterator to a vector
+        let mut results_vec = vec![];
+        results_cursor.unwrap().into_iter().for_each(|ele| {
+            results_vec.push(DatabaseItem::from(ele));
+        });
+
+        // Return the vector of auctions serialized into JSON
+        Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(simd_json::to_vec(&results_vec).unwrap()))
+            .unwrap())
     }
-
-    if let Err(e) = results_cursor {
-        return internal_error(&format!("Error when querying database: {}", e).to_string());
-    }
-
-    // Convert the cursor iterator to a vector
-    let mut results_vec = vec![];
-    results_cursor.unwrap().into_iter().for_each(|ele| {
-        results_vec.push(DatabaseItem::from(ele));
-    });
-
-    // Return the vector of auctions serialized into JSON
-    Ok(Response::builder()
-        .status(StatusCode::OK)
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(simd_json::to_vec(&results_vec).unwrap()))
-        .unwrap())
 }
 
 async fn lowestbin(req: Request<Body>) -> hyper::Result<Response<Body>> {

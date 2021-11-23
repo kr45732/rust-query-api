@@ -42,5 +42,5 @@ lazy_static! {
     pub static ref ENABLE_LOWESTBIN: Mutex<bool> = Mutex::new(false);
 }
 
-pub static DATABASE: Option<Client> = None;
-pub static WEBHOOK: Option<Webhook> = None;
+pub static mut DATABASE: Option<Client> = None;
+pub static mut WEBHOOK: Option<Webhook> = None;

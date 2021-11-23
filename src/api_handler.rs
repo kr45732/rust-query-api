@@ -21,7 +21,7 @@ use chrono::Utc;
 use dashmap::{DashMap, DashSet};
 use futures::{stream::FuturesUnordered, StreamExt};
 use log::debug;
-use simd_json::Value;
+use simd_json::{Builder, OwnedValue, Value, ValueAccess};
 use std::time::Instant;
 
 /* Gets all pages of auctions from the Hypixel API and inserts them into the database */
@@ -172,7 +172,7 @@ pub async fn update_api() {
 
 /* Parses a page of auctions to a vector of documents  */
 fn parse_auctions(
-    auctions: &Vec<dyn simd_json::Value>,
+    auctions: &Vec<simd_json::value::owned::Value>,
     inserted_uuids: &mut DashSet<String>,
     query_prices: &mut Vec<DatabaseItem>,
     pet_prices: &mut DashMap<String, i64>,
@@ -222,9 +222,8 @@ fn parse_auctions(
                     }
                 } else if id == "PET" {
                     if update_pets {
-                        let pet_info: dyn Value =
-                            simd_json::from_str(nbt.tag.extra_attributes.pet.as_ref().unwrap())
-                                .unwrap();
+                        let mut pet = nbt.tag.extra_attributes.pet.as_ref().unwrap().to_owned();
+                        let pet_info: OwnedValue = simd_json::from_str(pet.as_mut_str()).unwrap();
 
                         let pet_name = &mut format!("{}_{}", item_name.replace("✦", ""), tier)
                             .replace(" ", "_")
@@ -318,7 +317,7 @@ fn update_lower_else_insert(id: &String, starting_bid: i64, prices: &mut DashMap
 }
 
 /* Gets an auction page from the Hypixel API */
-async fn get_auction_page(page_number: i64) -> dyn Value {
+async fn get_auction_page(page_number: i64) -> OwnedValue {
     let res = HTTP_CLIENT
         .get(format!(
             "https://api.hypixel.net/skyblock/auctions?page={}",
@@ -329,12 +328,12 @@ async fn get_auction_page(page_number: i64) -> dyn Value {
     if res.is_ok() {
         let text = res.unwrap().text().await;
         if text.is_ok() {
-            let json = simd_json::from_str(&text.unwrap());
+            let json = simd_json::from_str(text.unwrap().as_mut_str());
             if json.is_ok() {
                 return json.unwrap();
             }
         }
     }
 
-    Value::Null
+    simd_json::value::owned::Value::null()
 }
