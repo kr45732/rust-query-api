@@ -79,17 +79,20 @@ pub async fn update_api() {
         // Get the page from the Hypixel API
         match futures.next().await {
             Some(page_request) => {
-                let page_number = page_request.get("page").unwrap().as_i64().unwrap();
-                debug!("---------------- Fetching page {}", page_number);
                 if page_request.is_null() {
                     num_failed += 1;
                     error(format!(
-                        "Failed to fetch page {} with a total of {} failed pages",
-                        page_number, num_failed
+                        "Failed to fetch a page total of {} failed pages",
+                        num_failed
                     ))
                     .await;
                     continue;
                 }
+
+                debug!(
+                    "---------------- Fetching page {}",
+                    page_request.get("page").unwrap().as_i64().unwrap()
+                );
                 debug!(
                     "Request time: {}ms",
                     before_page_request.elapsed().as_millis()
