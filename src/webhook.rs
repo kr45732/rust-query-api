@@ -369,7 +369,7 @@ impl Webhook {
     pub async fn get_info(&self) -> Result<WebhookModel, Box<dyn Error>> {
         let request = self.client.get(&self.url).send().await?;
         let mut content = request.text().await?;
-        Ok(simd_json::from_str(content.as_mut_str())?)
+        Ok(simd_json::from_str(&mut content)?)
     }
 
     pub async fn send<F>(&self, t: F) -> Result<(), Box<dyn Error>>

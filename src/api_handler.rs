@@ -79,17 +79,20 @@ pub async fn update_api() {
         // Get the page from the Hypixel API
         match futures.next().await {
             Some(page_request) => {
-                let page_number = page_request.get("page").unwrap().as_i64().unwrap();
-                debug!("---------------- Fetching page {}", page_number);
                 if page_request.is_null() {
                     num_failed += 1;
                     error(format!(
-                        "Failed to fetch page {} with a total of {} failed pages",
-                        page_number, num_failed
+                        "Failed to fetch a page with a total of {} failed page(s)",
+                        num_failed
                     ))
                     .await;
                     continue;
                 }
+
+                debug!(
+                    "---------------- Fetching page {}",
+                    page_request.get("page").unwrap().as_i64().unwrap()
+                );
                 debug!(
                     "Request time: {}ms",
                     before_page_request.elapsed().as_millis()
@@ -185,12 +188,14 @@ fn parse_auctions(
         // Only bins for now
         if auction.get("bin").is_some() {
             let uuid = auction.get("uuid").unwrap().as_str().unwrap();
-            let item_name = auction.get("item_name").unwrap().as_str().unwrap();
-            let tier = auction.get("tier").unwrap().as_str().unwrap();
-            let starting_bid = auction.get("starting_bid").unwrap().as_i64().unwrap();
 
             // Prevent duplicate auctions
             if inserted_uuids.insert(uuid.to_string()) {
+                let item_name = auction.get("item_name").unwrap().as_str().unwrap();
+                let mut tier = auction.get("tier").unwrap().as_str().unwrap();
+                let starting_bid = auction.get("starting_bid").unwrap().as_i64().unwrap();
+                let pet_info;
+
                 let nbt = &to_nbt(
                     simd_json::serde::from_owned_value(
                         auction.get("item_bytes").unwrap().to_owned(),
@@ -221,21 +226,28 @@ fn parse_auctions(
                         }
                     }
                 } else if id == "PET" {
-                    if update_pets {
+                    if update_pets || update_query {
                         let mut pet = nbt.tag.extra_attributes.pet.as_ref().unwrap().to_owned();
-                        let pet_info: OwnedValue = simd_json::from_str(pet.as_mut_str()).unwrap();
+                        pet_info = simd_json::from_str::<OwnedValue>(pet.as_mut_str()).unwrap();
+                        let mut tb_str = "";
 
-                        let pet_name = &mut format!("{}_{}", item_name.replace("✦", ""), tier)
-                            .replace(" ", "_")
-                            .to_uppercase();
                         if match pet_info.get("heldItem") {
                             Some(held_item) => held_item.as_str().unwrap() == "PET_ITEM_TIER_BOOST",
                             None => false,
                         } {
-                            pet_name.push_str("_TB");
+                            // Hypixel API is weird and if the pet is tier boosted, the tier field in the auction shows the rarity after boosting
+                            tier = pet_info.get("tier").unwrap().as_str().unwrap();
+                            tb_str = "_TB";
                         }
 
-                        update_lower_else_insert(pet_name, starting_bid, pet_prices);
+                        if update_pets {
+                            let pet_name =
+                                &mut format!("{}_{}{}", item_name.replace("✦", ""), tier, tb_str)
+                                    .replace(" ", "_")
+                                    .to_uppercase();
+
+                            update_lower_else_insert(pet_name, starting_bid, pet_prices);
+                        }
                     }
 
                     if update_lowestbin {

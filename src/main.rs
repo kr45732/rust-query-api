@@ -58,7 +58,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Read config
     println!("Reading config");
-    dotenv().expect("Unable to load .env file");
+    if dotenv().is_err() {
+        println!("Cannot find a .env file, will attempt to use environment variables");
+    }
     let _ = BASE_URL
         .lock()
         .unwrap()
