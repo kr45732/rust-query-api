@@ -25,7 +25,7 @@ use simd_json::{Builder, OwnedValue, Value, ValueAccess};
 use std::time::Instant;
 
 /* Gets all pages of auctions from the Hypixel API and inserts them into the database */
-pub async fn update_api() {
+pub async fn update_auctions() {
     info("Fetching auctions...".to_string()).await;
 
     let started = Instant::now();
@@ -235,7 +235,7 @@ fn parse_auctions(
                             Some(held_item) => held_item.as_str().unwrap() == "PET_ITEM_TIER_BOOST",
                             None => false,
                         } {
-                            // Hypixel API is weird and if the pet is tier boosted, the tier field in the auction shows the rarity after boosting
+                            // Hypixel API is weird and if the pet is tier boosted, the 'tier' field in the auction shows the rarity after boosting
                             tier = pet_info.get("tier").unwrap().as_str().unwrap();
                             tb_str = "_TB";
                         }
@@ -257,7 +257,12 @@ fn parse_auctions(
                         update_lower_else_insert(
                             &format!(
                                 "{};{}",
-                                split.next().unwrap().replace(" ", "_").to_uppercase(),
+                                split
+                                    .next()
+                                    .unwrap()
+                                    .replace(" ", "_")
+                                    .replace("✦", "")
+                                    .to_uppercase(),
                                 match tier {
                                     "COMMON" => 0,
                                     "UNCOMMON" => 1,

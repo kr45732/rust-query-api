@@ -37,7 +37,7 @@ use substring::Substring;
 use tokio::time::Duration;
 use tokio_postgres::NoTls;
 
-/* Entry point to the program. Creates loggers, reads config, creates query table, starts auction loop and server */
+/* Entry point to the program. Creates loggers, reads config, creates tables, starts auction loop and server */
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     // Create log files
@@ -149,11 +149,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     info("Starting auction loop...".to_string()).await;
-    update_api().await;
+    update_auctions().await;
 
     set_interval(
         || async {
-            update_api().await;
+            update_auctions().await;
         },
         Duration::from_millis(60000),
     );
