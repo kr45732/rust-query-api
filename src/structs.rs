@@ -18,6 +18,7 @@
 
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tokio_postgres::Row;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -30,6 +31,8 @@ pub struct DatabaseItem {
     pub item_id: String,
     pub starting_bid: i64,
     pub enchants: Vec<String>,
+    pub bin: bool,
+    pub bids: Vec<Value>,
 }
 
 impl From<Row> for DatabaseItem {
@@ -43,6 +46,8 @@ impl From<Row> for DatabaseItem {
             item_id: row.get("item_id"),
             starting_bid: row.get("starting_bid"),
             enchants: row.get("enchants"),
+            bin: row.get("bin"),
+            bids: serde_json::from_value(row.get("bids")).unwrap(),
         }
     }
 }
@@ -81,26 +86,12 @@ pub struct PartialTag {
     // pub display: DisplayInfo,
 }
 
-// #[derive(Serialize, Deserialize)]
-// pub struct Pet {
-//     #[serde(rename = "type")]
-//     pub pet_type: String,
-
-//     #[serde(rename = "tier")]
-//     pub tier: String,
-// }
-
 #[derive(Deserialize)]
 pub struct PartialExtraAttr {
     pub id: String,
     #[serde(rename = "petInfo")]
     pub pet: Option<String>,
     pub enchantments: Option<DashMap<String, i32>>,
-    // pub potion: Option<String>,
-    // pub potion_level: Option<i16>,
-    // pub anvil_uses: Option<i16>,
-    // pub enhanced: Option<bool>,
-    // pub runes: Option<HashMap<String, i32>>,
 }
 
 // #[derive(Deserialize)]
@@ -109,28 +100,6 @@ pub struct PartialExtraAttr {
 //     pub name: String,
 //     #[serde(rename = "Lore")]
 //     pub lore: Vec<String>,
-// }
-
-// #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-// pub struct Item {
-//      #[serde(rename = "item_name")]
-//      pub item_name: String,
-//      #[serde(rename = "item_lore")]
-//      pub item_lore: String,
-//      #[serde(rename = "uuid")]
-//      pub uuid: String,
-//      #[serde(rename = "auctioneer")]
-//      pub auctioneer: String,
-//      #[serde(rename = "end")]
-//      pub end: i64,
-//      #[serde(rename = "tier")]
-//      pub tier: String,
-//      #[serde(rename = "item_bytes")]
-//      pub item_bytes: ItemBytes,
-//      #[serde(rename = "starting_bid")]
-//      pub starting_bid: i64,
-//      #[serde(rename = "bin")]
-//      pub bin: Option<bool>,
 // }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -165,12 +134,3 @@ pub enum ItemBytesT0 {
     #[serde(rename = "0")]
     Data(String),
 }
-
-// #[derive(Serialize, Deserialize)]
-// pub struct AuctionResponse {
-//     #[serde(rename = "totalPages")]
-//     pub total_pages: i64,
-
-//     #[serde(rename = "auctions")]
-//     pub auctions: Vec<Item>,
-// }

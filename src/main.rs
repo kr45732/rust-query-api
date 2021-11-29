@@ -26,6 +26,7 @@ use log::info;
 use postgres_types::ToSql;
 use query_api::{api_handler::*, statics::*, structs::*, utils::*, webhook::Webhook};
 use reqwest::Url;
+use serde_json::Value;
 use simplelog::*;
 use std::{
     env,
@@ -119,8 +120,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     });
 
     unsafe {
-        // Create the tables
         let client = DATABASE.insert(client);
+
         // Create query table if doesn't exist
         let _ = client
             .simple_query(
@@ -132,7 +133,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
                  tier TEXT,
                  item_id TEXT,
                  starting_bid BIGINT,
-                 enchants TEXT[]
+                 enchants TEXT[],
+                 bin BOOLEAN,
+                 bids JSONB
                 )",
             )
             .await;
@@ -174,6 +177,7 @@ async fn start_server() {
 
     let server = Server::bind(&server_address).serve(make_service);
 
+    println!("Listening on http://{}", server_address);
     info(format!("Listening on http://{}", server_address)).await;
 
     if let Err(e) = server.await {
@@ -276,13 +280,15 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
 async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
     let mut query = "".to_string();
     let mut sort = "".to_string();
-    let mut limit = "1".to_string();
+    let mut limit: i64 = 1;
     let mut key = "".to_string();
     let mut item_name = "".to_string();
     let mut tier = "".to_string();
     let mut item_id = "".to_string();
     let mut enchants = "".to_string();
-    let mut end = "".to_string();
+    let mut end: i64 = -1;
+    let mut bids: Value = Value::Null;
+    let mut bin = Option::None;
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
@@ -293,13 +299,27 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
         match query_pair.0.to_string().as_str() {
             "query" => query = query_pair.1.to_string(),
             "sort" => sort = query_pair.1.to_string(),
-            "limit" => limit = query_pair.1.to_string(),
+            "limit" => match query_pair.1.to_string().parse::<i64>() {
+                Ok(limit_int) => limit = limit_int,
+                Err(e) => return bad_request(&format!("Error parsing limit parameter: {}", e)),
+            },
             "key" => key = query_pair.1.to_string(),
             "item_name" => item_name = query_pair.1.to_string(),
             "tier" => tier = query_pair.1.to_string(),
             "item_id" => item_id = query_pair.1.to_string(),
             "enchants" => enchants = query_pair.1.to_string(),
-            "end" => end = query_pair.1.to_string(),
+            "end" => match query_pair.1.to_string().parse::<i64>() {
+                Ok(end_int) => end = end_int,
+                Err(e) => return bad_request(&format!("Error parsing end parameter: {}", e)),
+            },
+            "bids" => match serde_json::from_str(&query_pair.1) {
+                Ok(bids_json) => bids = bids_json,
+                Err(e) => return bad_request(&format!("Error parsing bids json: {}", e)),
+            },
+            "bin" => match query_pair.1.to_string().parse::<bool>() {
+                Ok(bin_bool) => bin = Some(bin_bool),
+                Err(e) => return bad_request(&format!("Error parsing bin parameter: {}", e)),
+            },
             _ => {}
         }
     }
@@ -355,18 +375,32 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
                 sql.push_str(format!(" ${} = ANY (enchants)", param_count).as_str());
                 param_vec.push(&enchants);
                 param_count += 1;
-            }
-            let end_int;
-            if !end.is_empty() {
-                if let Ok(end_int_local) = end.parse::<i64>() {
-                    if param_count != 1 {
-                        sql.push_str(" AND");
-                    }
-                    end_int = end_int_local;
-                    sql.push_str(format!(" end_t > ${}", param_count).as_str());
-                    param_vec.push(&end_int);
-                    param_count += 1;
+            };
+            if end >= 0 {
+                if param_count != 1 {
+                    sql.push_str(" AND");
                 }
+                sql.push_str(format!(" end_t > ${}", param_count).as_str());
+                param_vec.push(&end);
+                param_count += 1;
+            }
+            if !bids.is_null() {
+                if param_count != 1 {
+                    sql.push_str(" AND");
+                }
+                sql.push_str(format!(" bids @> ${}", param_count).as_str());
+                param_vec.push(&bids);
+                param_count += 1;
+            }
+            let bin_unwrapped;
+            if bin.is_some() {
+                if param_count != 1 {
+                    sql.push_str(" AND");
+                }
+                sql.push_str(format!(" bin = ${}", param_count).as_str());
+                bin_unwrapped = bin.unwrap();
+                param_vec.push(&bin_unwrapped);
+                param_count += 1;
             }
             if !sort.is_empty() {
                 if sort == "ASC" {
@@ -374,14 +408,10 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
                 } else if sort == "DESC" {
                     sql.push_str(" ORDER BY starting_bid DESC");
                 }
-            }
-            let limit_int;
-            if !limit.is_empty() {
-                if let Ok(limit_int_local) = limit.parse::<i64>() {
-                    limit_int = limit_int_local;
-                    sql.push_str(format!(" LIMIT ${}", param_count).as_str());
-                    param_vec.push(&limit_int);
-                }
+            };
+            if limit >= 0 {
+                sql.push_str(format!(" LIMIT ${}", param_count).as_str());
+                param_vec.push(&limit);
             }
 
             results_cursor = database_ref.query(&sql, &param_vec).await;
@@ -392,7 +422,7 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
         }
 
         if let Err(e) = results_cursor {
-            return internal_error(&format!("Error when querying database: {}", e).to_string());
+            return internal_error(&format!("Error when querying database: {}", e));
         }
 
         // Convert the cursor iterator to a vector

@@ -9,7 +9,7 @@
   <img alt="license" src="https://img.shields.io/discord/796790757947867156?color=4166f5&label=discord&style=flat-square" />
 </a> 
 
-A versatile API facade for the Hypixel Auction API written in rust. The entire auction house is fetched with NBT parsing and inserted into a PostgreSQL database in about 7-10 seconds every minute with low memory usage (can vary depending on enabled features, network speed, and latency of the Hypixel API)! You can query and sort by auction UUID, auctioneer, end time, item name, item tier, item id, price, and enchants. Also, it can track the last known price of each unique pet-level-rarity combination. Lastly, it can track the lowest prices of all bins.
+A versatile API facade for the Hypixel Auction API written in rust. The entire auction house is fetched with NBT parsing and inserted into a PostgreSQL database in about 3-7 seconds every minute with low memory usage (can vary depending on enabled features, network speed, and latency of the Hypixel API)! You can query by auction UUID, auctioneer, end time, item name, item tier, item id, price, enchants, bin and bids. You can sort by the item's bin / starting price. Also, it can track the last known price of each unique pet-level-rarity combination. Lastly, it can track the lowest prices of all bins.
 
 ## Set Up
 ### Prerequisites
@@ -45,7 +45,6 @@ A versatile API facade for the Hypixel Auction API written in rust. The entire a
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https%3A%2F%2Fgithub.com%2Fkr45732%2Frust-query-api&plugins=postgresql&envs=BASE_URL%2CPORT%2CAPI_KEY%2CPOSTGRES_URL%2CWEBHOOK_URL%2CFEATURES&BASE_URLDesc=The+base+URL+of+the+domain+such+as+localhost&PORTDesc=The+port+such+as+8080&API_KEYDesc=Key+needed+to+access+this+API+%28NOT+a+Hypixel+API+key%29&POSTGRES_URLDesc=Full+URL+of+a+PostgreSQL+database&WEBHOOK_URLDesc=Discord+webhook+URL+for+logging&FEATURESDesc=The+features+%28QUERY%2C+PETS%2C+LOWESTBIN%29+you+want+enabled+separated+with+a+%27%2B%27&PORTDefault=8080&POSTGRES_URLDefault=%24%7B%7BDATABASE_URL%7D%7D&FEATURESDefault=QUERY%2BPETS%2BLOWESTBIN&referralCode=WrEybV)
 
 ## Todo
-- Improved error handling
-- Better documentation and more examples
-- Regular auctions
+- Better documentation & more examples
 - Sync updates using Cloudflare headers
+- Admin key for raw SQL parameters

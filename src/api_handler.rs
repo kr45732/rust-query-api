@@ -21,6 +21,7 @@ use chrono::Utc;
 use dashmap::{DashMap, DashSet};
 use futures::{stream::FuturesUnordered, StreamExt};
 use log::debug;
+use serde_json::json;
 use simd_json::{Builder, OwnedValue, Value, ValueAccess};
 use std::time::Instant;
 
@@ -69,6 +70,7 @@ pub async fn update_auctions() {
 
     debug!("Sending {} async requests", total_pages);
     for page_number in 1..total_pages {
+        //total_pages {
         let future = get_auction_page(page_number);
         futures.push(future);
     }
@@ -185,138 +187,146 @@ fn parse_auctions(
     update_lowestbin: bool,
 ) {
     for auction in auctions.into_iter() {
-        // Only bins for now
-        if auction.get("bin").is_some() {
-            let uuid = auction.get("uuid").unwrap().as_str().unwrap();
+        let uuid = auction.get("uuid").unwrap().as_str().unwrap();
+        // Prevent duplicate auctions
+        if inserted_uuids.insert(uuid.to_string()) {
+            let item_name = auction.get("item_name").unwrap().as_str().unwrap();
+            let mut tier = auction.get("tier").unwrap().as_str().unwrap();
+            let starting_bid = auction.get("starting_bid").unwrap().as_i64().unwrap();
+            let bin = auction.get("bin").is_some();
+            let pet_info;
 
-            // Prevent duplicate auctions
-            if inserted_uuids.insert(uuid.to_string()) {
-                let item_name = auction.get("item_name").unwrap().as_str().unwrap();
-                let mut tier = auction.get("tier").unwrap().as_str().unwrap();
-                let starting_bid = auction.get("starting_bid").unwrap().as_i64().unwrap();
-                let pet_info;
-
-                let nbt = &to_nbt(
-                    simd_json::serde::from_owned_value(
-                        auction.get("item_bytes").unwrap().to_owned(),
-                    )
+            let nbt = &to_nbt(
+                simd_json::serde::from_owned_value(auction.get("item_bytes").unwrap().to_owned())
                     .unwrap(),
-                )
-                .unwrap()
-                .i[0];
-                let id = &nbt.tag.extra_attributes.id;
+            )
+            .unwrap()
+            .i[0];
+            let id = &nbt.tag.extra_attributes.id;
 
-                // Get enchants if the item is an enchanted book
-                let mut enchants = Vec::new();
-                if id == "ENCHANTED_BOOK" && nbt.tag.extra_attributes.enchantments.is_some() {
-                    for entry in nbt.tag.extra_attributes.enchantments.as_ref().unwrap() {
-                        if update_lowestbin {
-                            update_lower_else_insert(
-                                &format!("{};{}", entry.key().to_uppercase(), entry.value()),
-                                starting_bid,
-                                bin_prices,
-                            );
-                        }
-                        if update_query {
-                            enchants.push(format!(
-                                "{};{}",
-                                entry.key().to_uppercase(),
-                                entry.value()
-                            ));
-                        }
-                    }
-                } else if id == "PET" {
-                    if update_pets || update_query {
-                        let mut pet = nbt.tag.extra_attributes.pet.as_ref().unwrap().to_owned();
-                        pet_info = simd_json::from_str::<OwnedValue>(pet.as_mut_str()).unwrap();
-                        let mut tb_str = "";
-
-                        if match pet_info.get("heldItem") {
-                            Some(held_item) => held_item.as_str().unwrap() == "PET_ITEM_TIER_BOOST",
-                            None => false,
-                        } {
-                            // Hypixel API is weird and if the pet is tier boosted, the 'tier' field in the auction shows the rarity after boosting
-                            tier = pet_info.get("tier").unwrap().as_str().unwrap();
-                            tb_str = "_TB";
-                        }
-
-                        if update_pets {
-                            let pet_name =
-                                &mut format!("{}_{}{}", item_name.replace("✦", ""), tier, tb_str)
-                                    .replace(" ", "_")
-                                    .to_uppercase();
-
-                            update_lower_else_insert(pet_name, starting_bid, pet_prices);
-                        }
-                    }
-
-                    if update_lowestbin {
-                        let mut split = item_name.split("] ");
-                        split.next();
-
+            // Get enchants if the item is an enchanted book
+            let mut enchants = Vec::new();
+            if id == "ENCHANTED_BOOK" && nbt.tag.extra_attributes.enchantments.is_some() {
+                for entry in nbt.tag.extra_attributes.enchantments.as_ref().unwrap() {
+                    if bin && update_lowestbin {
                         update_lower_else_insert(
-                            &format!(
-                                "{};{}",
-                                split
-                                    .next()
-                                    .unwrap()
-                                    .replace(" ", "_")
-                                    .replace("✦", "")
-                                    .to_uppercase(),
-                                match tier {
-                                    "COMMON" => 0,
-                                    "UNCOMMON" => 1,
-                                    "RARE" => 2,
-                                    "EPIC" => 3,
-                                    "LEGENDARY" => 4,
-                                    "MYTHIC" => 5,
-                                    _ => -1,
-                                }
-                            ),
+                            &format!("{};{}", entry.key().to_uppercase(), entry.value()),
                             starting_bid,
                             bin_prices,
                         );
                     }
-                } else {
-                    if update_lowestbin {
-                        update_lower_else_insert(id, starting_bid, bin_prices);
+                    if update_query {
+                        enchants.push(format!("{};{}", entry.key().to_uppercase(), entry.value()));
                     }
                 }
+            } else if id == "PET" {
+                pet_info = simd_json::from_str::<OwnedValue>(
+                    nbt.tag
+                        .extra_attributes
+                        .pet
+                        .as_ref()
+                        .unwrap()
+                        .to_owned()
+                        .as_mut_str(),
+                )
+                .unwrap();
+                let mut tb_str = "";
 
-                // Push this auction to the array
-                if update_query {
-                    query_prices.push(DatabaseItem {
-                        uuid: uuid.to_string(),
-                        auctioneer: auction
-                            .get("auctioneer")
-                            .unwrap()
-                            .as_str()
-                            .unwrap()
-                            .to_string(),
-                        end_t: auction.get("end").unwrap().as_i64().unwrap(),
-                        item_name: if id != "ENCHANTED_BOOK" {
-                            item_name.to_string()
-                        } else {
-                            MC_CODE_REGEX
-                                .replace_all(
-                                    auction
-                                        .get("item_lore")
-                                        .unwrap()
-                                        .as_str()
-                                        .unwrap()
-                                        .split("\n")
-                                        .next()
-                                        .unwrap_or(""),
-                                    "",
-                                )
-                                .to_string()
-                        },
-                        tier: tier.to_string(),
-                        starting_bid,
-                        item_id: id.to_string(),
-                        enchants,
-                    });
+                if match pet_info.get("heldItem") {
+                    Some(held_item) => held_item.as_str().unwrap() == "PET_ITEM_TIER_BOOST",
+                    None => false,
+                } {
+                    // Hypixel API is weird and if the pet is tier boosted, the 'tier' field in the auction shows the rarity after boosting
+                    tier = pet_info.get("tier").unwrap().as_str().unwrap();
+                    tb_str = "_TB";
                 }
+
+                if bin && update_pets {
+                    update_lower_else_insert(
+                        &mut format!("{}_{}{}", item_name.replace("✦", ""), tier, tb_str)
+                            .replace(" ", "_")
+                            .to_uppercase(),
+                        starting_bid,
+                        pet_prices,
+                    );
+                }
+
+                if bin && update_lowestbin {
+                    let mut split = item_name.split("] ");
+                    split.next();
+
+                    update_lower_else_insert(
+                        &format!(
+                            "{};{}",
+                            split
+                                .next()
+                                .unwrap()
+                                .replace(" ", "_")
+                                .replace("✦", "")
+                                .to_uppercase(),
+                            match tier {
+                                "COMMON" => 0,
+                                "UNCOMMON" => 1,
+                                "RARE" => 2,
+                                "EPIC" => 3,
+                                "LEGENDARY" => 4,
+                                "MYTHIC" => 5,
+                                _ => -1,
+                            }
+                        ),
+                        starting_bid,
+                        bin_prices,
+                    );
+                }
+            } else {
+                if bin && update_lowestbin {
+                    update_lower_else_insert(id, starting_bid, bin_prices);
+                }
+            }
+
+            // Push this auction to the array
+            if update_query {
+                let mut bids = Vec::new();
+                for ele in auction.get("bids").unwrap().as_array().unwrap() {
+                    bids.push(json!({
+                        "bidder": ele.get("bidder").unwrap(),
+                        "amount": ele.get("amount").unwrap(),
+                    }));
+                }
+
+                query_prices.push(DatabaseItem {
+                    uuid: uuid.to_string(),
+                    auctioneer: auction
+                        .get("auctioneer")
+                        .unwrap()
+                        .as_str()
+                        .unwrap()
+                        .to_string(),
+                    end_t: auction.get("end").unwrap().as_i64().unwrap(),
+                    item_name: if id != "ENCHANTED_BOOK" {
+                        item_name.to_string()
+                    } else {
+                        MC_CODE_REGEX
+                            .replace_all(
+                                auction
+                                    .get("item_lore")
+                                    .unwrap()
+                                    .as_str()
+                                    .unwrap()
+                                    .split("\n")
+                                    .next()
+                                    .unwrap_or(""),
+                                "",
+                            )
+                            .to_string()
+                    },
+                    tier: tier.to_string(),
+                    starting_bid,
+                    item_id: id.to_string(),
+                    enchants,
+                    bin,
+                    bids: bids,
+                });
             }
         }
     }

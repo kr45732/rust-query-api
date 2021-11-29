@@ -162,6 +162,7 @@ pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, E
             .await
             .unwrap();
         let copy_sink = database.copy_in(&copy_statement).await.unwrap();
+
         let copy_writer = BinaryCopyInWriter::new(
             copy_sink,
             &[
@@ -173,14 +174,16 @@ pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, E
                 Type::TEXT,
                 Type::INT8,
                 Type::TEXT_ARRAY,
+                Type::BOOL,
+                Type::JSONB,
             ],
         );
+
         pin_mut!(copy_writer);
 
         // Write to copy sink
-        let mut row: Vec<&'_ (dyn ToSql + Sync)> = Vec::new();
         for m in &auctions {
-            row.clear();
+            let mut row: Vec<&'_ (dyn ToSql + Sync)> = Vec::new();
             row.push(&m.uuid);
             row.push(&m.auctioneer);
             row.push(&m.end_t);
@@ -189,6 +192,10 @@ pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, E
             row.push(&m.item_id);
             row.push(&m.starting_bid);
             row.push(&m.enchants);
+            row.push(&m.bin);
+            // Have to do this otherwise rust will complain that value doesn't live long enough
+            let bids = serde_json::to_value(&m.bids).unwrap();
+            row.push(&bids);
             copy_writer.as_mut().write(&row).await.unwrap();
         }
 
