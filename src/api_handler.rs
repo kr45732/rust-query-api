@@ -21,11 +21,11 @@ use chrono::Utc;
 use dashmap::{DashMap, DashSet};
 use futures::{stream::FuturesUnordered, StreamExt};
 use log::debug;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::time::Instant;
 
 /* Gets all pages of auctions from the Hypixel API and inserts them into the database */
-pub async fn update_api() {
+pub async fn update_auctions() {
     info("Fetching auctions...".to_string()).await;
 
     let started = Instant::now();
@@ -82,7 +82,7 @@ pub async fn update_api() {
                 if page_request.is_null() {
                     num_failed += 1;
                     error(format!(
-                        "Failed to fetch a page total of {} failed pages",
+                        "Failed to fetch a page with a total of {} failed page(s)",
                         num_failed
                     ))
                     .await;
@@ -130,11 +130,11 @@ pub async fn update_api() {
     ))
     .await;
 
-    // Update the auctions in the database
     debug!("Inserting into database");
 
     // Query API
     if update_query {
+        // update_query_database(query_prices).await.unwrap();
         match update_query_database(query_prices).await {
             Ok(_) => {
                 info("Successfully inserted query into database".to_string()).await;
@@ -176,7 +176,7 @@ pub async fn update_api() {
 
 /* Parses a page of auctions to a vector of documents  */
 fn parse_auctions(
-    auctions: &Vec<serde_json::Value>,
+    auctions: &Vec<Value>,
     inserted_uuids: &mut DashSet<String>,
     query_prices: &mut Vec<DatabaseItem>,
     pet_prices: &mut DashMap<String, i64>,
@@ -186,125 +186,151 @@ fn parse_auctions(
     update_lowestbin: bool,
 ) {
     for auction in auctions.into_iter() {
-        // Only bins for now
-        if auction.get("bin").is_some() {
-            let uuid = auction.get("uuid").unwrap().as_str().unwrap();
+        let uuid = auction.get("uuid").unwrap().as_str().unwrap();
+        // Prevent duplicate auctions
+        if inserted_uuids.insert(uuid.to_string()) {
             let item_name = auction.get("item_name").unwrap().as_str().unwrap();
-            let tier = auction.get("tier").unwrap().as_str().unwrap();
+            let mut tier = auction.get("tier").unwrap().as_str().unwrap();
             let starting_bid = auction.get("starting_bid").unwrap().as_i64().unwrap();
+            let bin = auction.get("bin").is_some();
+            let pet_info;
 
-            // Prevent duplicate auctions
-            if inserted_uuids.insert(uuid.to_string()) {
-                // Parse the auction's nbt
-                let nbt = &to_nbt(
-                    serde_json::from_value(auction.get("item_bytes").unwrap().to_owned()).unwrap(),
-                )
-                .unwrap()
-                .i[0];
-                // Item id
-                let id = &nbt.tag.extra_attributes.id;
+            let nbt = &to_nbt(
+                serde_json::from_value(auction.get("item_bytes").unwrap().to_owned()).unwrap(),
+            )
+            .unwrap()
+            .i[0];
+            let id = &nbt.tag.extra_attributes.id;
 
-                // Get enchants if the item is an enchanted book
-                let mut enchants = Vec::new();
-                if id == "ENCHANTED_BOOK" && nbt.tag.extra_attributes.enchantments.is_some() {
-                    for entry in nbt.tag.extra_attributes.enchantments.as_ref().unwrap() {
-                        if update_lowestbin {
-                            update_lower_else_insert(
-                                &format!("{};{}", entry.key().to_uppercase(), entry.value()),
-                                starting_bid,
-                                bin_prices,
-                            );
-                        }
-                        if update_query {
-                            enchants.push(format!(
-                                "{};{}",
-                                entry.key().to_uppercase(),
-                                entry.value()
-                            ));
-                        }
-                    }
-                } else if id == "PET" {
-                    // Pets API
-                    if update_pets {
-                        let pet_info: Value =
-                            serde_json::from_str(nbt.tag.extra_attributes.pet.as_ref().unwrap())
-                                .unwrap();
-
-                        let pet_name = &mut format!("{}_{}", item_name.replace("✦", ""), tier)
-                            .replace(" ", "_")
-                            .to_uppercase();
-                        if match pet_info.get("heldItem") {
-                            Some(held_item) => held_item.as_str().unwrap() == "PET_ITEM_TIER_BOOST",
-                            None => false,
-                        } {
-                            pet_name.push_str("_TB");
-                        }
-
-                        update_lower_else_insert(pet_name, starting_bid, pet_prices);
-                    }
-
-                    if update_lowestbin {
-                        let mut split = item_name.split("] ");
-                        split.next();
-
+            // Get enchants if the item is an enchanted book
+            let mut enchants = Vec::new();
+            if id == "ENCHANTED_BOOK" && nbt.tag.extra_attributes.enchantments.is_some() {
+                for entry in nbt.tag.extra_attributes.enchantments.as_ref().unwrap() {
+                    if bin && update_lowestbin {
                         update_lower_else_insert(
-                            &format!(
-                                "{};{}",
-                                split.next().unwrap().replace(" ", "_").to_uppercase(),
-                                match tier {
-                                    "COMMON" => 0,
-                                    "UNCOMMON" => 1,
-                                    "RARE" => 2,
-                                    "EPIC" => 3,
-                                    "LEGENDARY" => 4,
-                                    "MYTHIC" => 5,
-                                    _ => -1,
-                                }
-                            ),
+                            &format!("{};{}", entry.key().to_uppercase(), entry.value()),
                             starting_bid,
                             bin_prices,
                         );
                     }
-                } else {
-                    if update_lowestbin {
-                        update_lower_else_insert(id, starting_bid, bin_prices);
+                    if update_query {
+                        enchants.push(format!("{};{}", entry.key().to_uppercase(), entry.value()));
                     }
                 }
+            } else if id == "PET" {
+                pet_info = serde_json::from_str::<Value>(
+                    nbt.tag
+                        .extra_attributes
+                        .pet
+                        .as_ref()
+                        .unwrap()
+                        .to_owned()
+                        .as_mut_str(),
+                )
+                .unwrap();
+                let mut tb_str = "";
 
-                // Push this auction to the array
-                if update_query {
-                    query_prices.push(DatabaseItem {
-                        uuid: uuid.to_string(),
-                        auctioneer: auction
-                            .get("auctioneer")
-                            .unwrap()
-                            .as_str()
-                            .unwrap()
-                            .to_string(),
-                        end_t: auction.get("end").unwrap().as_i64().unwrap(),
-                        item_name: if id != "ENCHANTED_BOOK" {
-                            item_name.to_string()
-                        } else {
-                            MC_CODE_REGEX
-                                .replace_all(
-                                    auction
-                                        .get("item_lore")
-                                        .unwrap()
-                                        .as_str()
-                                        .unwrap()
-                                        .split("\n")
-                                        .next()
-                                        .unwrap_or(""),
-                                    "",
-                                )
-                                .to_string()
-                        },
-                        tier: tier.to_string(),
-                        starting_bid,
-                        item_id: id.to_string(),
-                        enchants,
-                    });
+                if match pet_info.get("heldItem") {
+                    Some(held_item) => held_item.as_str().unwrap() == "PET_ITEM_TIER_BOOST",
+                    None => false,
+                } {
+                    // Hypixel API is weird and if the pet is tier boosted, the 'tier' field in the auction shows the rarity after boosting
+                    tier = pet_info.get("tier").unwrap().as_str().unwrap();
+                    tb_str = "_TB";
                 }
+
+                if bin && update_pets {
+                    update_lower_else_insert(
+                        &mut format!("{}_{}{}", item_name.replace("✦", ""), tier, tb_str)
+                            .replace(" ", "_")
+                            .to_uppercase(),
+                        starting_bid,
+                        pet_prices,
+                    );
+                }
+
+                if bin && update_lowestbin {
+                    let mut split = item_name.split("] ");
+                    split.next();
+
+                    update_lower_else_insert(
+                        &format!(
+                            "{};{}",
+                            split
+                                .next()
+                                .unwrap()
+                                .replace(" ", "_")
+                                .replace("✦", "")
+                                .to_uppercase(),
+                            match tier {
+                                "COMMON" => 0,
+                                "UNCOMMON" => 1,
+                                "RARE" => 2,
+                                "EPIC" => 3,
+                                "LEGENDARY" => 4,
+                                "MYTHIC" => 5,
+                                _ => -1,
+                            }
+                        ),
+                        starting_bid,
+                        bin_prices,
+                    );
+                }
+            } else {
+                if bin && update_lowestbin {
+                    update_lower_else_insert(id, starting_bid, bin_prices);
+                }
+            }
+
+            // Push this auction to the array
+            if update_query {
+                let mut bids = Vec::new();
+                for ele in auction.get("bids").unwrap().as_array().unwrap() {
+                    bids.push(json!({
+                        "bidder": ele.get("bidder").unwrap(),
+                        "amount": ele.get("amount").unwrap(),
+                    }));
+                }
+                // for ele in auction.get("bids").unwrap().as_array().unwrap() {
+                //     bids.push(Bid {
+                //         bidder: ele.get("bidder").unwrap().as_str().unwrap().to_string(),
+                //         amount: ele.get("amount").unwrap().as_i64().unwrap(),
+                //     });
+                // }
+
+                query_prices.push(DatabaseItem {
+                    uuid: uuid.to_string(),
+                    auctioneer: auction
+                        .get("auctioneer")
+                        .unwrap()
+                        .as_str()
+                        .unwrap()
+                        .to_string(),
+                    end_t: auction.get("end").unwrap().as_i64().unwrap(),
+                    item_name: if id != "ENCHANTED_BOOK" {
+                        item_name.to_string()
+                    } else {
+                        MC_CODE_REGEX
+                            .replace_all(
+                                auction
+                                    .get("item_lore")
+                                    .unwrap()
+                                    .as_str()
+                                    .unwrap()
+                                    .split("\n")
+                                    .next()
+                                    .unwrap_or(""),
+                                "",
+                            )
+                            .to_string()
+                    },
+                    tier: tier.to_string(),
+                    starting_bid,
+                    item_id: id.to_string(),
+                    enchants,
+                    bin,
+                    bids: bids,
+                });
             }
         }
     }
@@ -333,12 +359,12 @@ async fn get_auction_page(page_number: i64) -> Value {
     if res.is_ok() {
         let text = res.unwrap().text().await;
         if text.is_ok() {
-            let json = serde_json::from_str(&text.unwrap());
+            let json = serde_json::from_str(text.unwrap().as_mut_str());
             if json.is_ok() {
                 return json.unwrap();
             }
         }
     }
 
-    Value::Null
+    serde_json::Value::Null
 }

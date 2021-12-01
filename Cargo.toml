@@ -1,43 +1,27 @@
-# Rust Query API - A versatile API facade for the Hypixel Auction API
-# Copyright (c) 2021 kr45732
-
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 [package]
 name = "query_api"
-version = "1.0.2"
-edition = "2018"
+version = "1.1.1"
+edition = "2021"
 
 [dependencies]
-serde_json = "1.0.71"
-hyper = { version = "0.14.15", features = ["server"]}
-serde = { version = "1.0.130", features = ["derive"] }
 tokio = { version = "1.14.0", features = ["macros", "rt-multi-thread"] }
+tokio-postgres = { version = "0.7.5", features = ["with-serde_json-1"] }
 reqwest = { version = "0.11.6", features = ["json", "gzip", "brotli"] }
-base64 = "0.13.0"
+postgres-types = { version = "0.2.2", features = ["derive", "array-impls"] }
+serde = { version = "1.0.130", features = ["derive"] }
+dashmap = { version = "4.0.2", features = ["serde"] }
+hyper = { version = "0.14.15", features = ["server"]}
 hematite-nbt = "0.5.2"
 lazy_static = "1.4.0"
-log =  "0.4.14"
+simplelog = "0.11.0"
 substring = "1.4.5" 
-regex = "1.5.4"
 futures = "0.3.17"
-tokio-postgres = { version = "0.7.5", features = ["with-serde_json-1"] }
-simplelog = { version = "0.11.0" }
-postgres-types = { version = "0.2.2", features = ["derive"] }
-chrono = "0.4.19"
+base64 = "0.13.0"
 dotenv = "0.15.0"
-dashmap = { version = "4.0.2", features = ["serde"] }
+chrono = "0.4.19"
+log =  "0.4.14"
+regex = "1.5.4"
+serde_json = "1.0.72"
 
 [profile.release]
 codegen-units = 1

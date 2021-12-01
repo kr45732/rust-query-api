@@ -1,3 +1,21 @@
+/*
+ * Rust Query API - A versatile API facade for the Hypixel Auction API
+ * Copyright (c) 2021 kr45732
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
@@ -350,8 +368,8 @@ impl Webhook {
 
     pub async fn get_info(&self) -> Result<WebhookModel, Box<dyn Error>> {
         let request = self.client.get(&self.url).send().await?;
-        let content = request.text().await?;
-        Ok(serde_json::from_str(&content)?)
+        let mut content = request.text().await?;
+        Ok(serde_json::from_str(&mut content)?)
     }
 
     pub async fn send<F>(&self, t: F) -> Result<(), Box<dyn Error>>

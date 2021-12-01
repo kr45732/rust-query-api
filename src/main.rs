@@ -26,6 +26,7 @@ use log::info;
 use postgres_types::ToSql;
 use query_api::{api_handler::*, statics::*, structs::*, utils::*, webhook::Webhook};
 use reqwest::Url;
+use serde_json::Value;
 use simplelog::*;
 use std::{
     env,
@@ -37,11 +38,10 @@ use substring::Substring;
 use tokio::time::Duration;
 use tokio_postgres::NoTls;
 
-/* Entry point to the program. Creates loggers, reads config, creates query table, starts auction loop and server */
+/* Entry point to the program. Creates loggers, reads config, creates tables, starts auction loop and server */
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     // Create log files
-    println!("Creating log files...");
     CombinedLogger::init(vec![
         WriteLogger::new(
             LevelFilter::Info,
@@ -55,11 +55,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         ),
     ])
     .expect("Error when creating loggers");
-    println!("Loggers created.");
+    println!("Loggers Created");
 
     // Read config
     println!("Reading config");
-    dotenv().ok();
+    if dotenv().is_err() {
+        println!("Cannot find a .env file, will attempt to use environment variables");
+    }
     let _ = BASE_URL
         .lock()
         .unwrap()
@@ -94,6 +96,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             _ => panic!("Invalid feature type: {}", feature),
         }
     }
+
     unsafe {
         let _ = WEBHOOK.insert(Webhook::from_url(
             &env::var("WEBHOOK_URL").expect("Unable to find WEBHOOK_URL environment variable"),
@@ -116,22 +119,37 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
     });
 
-    // Create the tables
+    // implement_postgres_types();
     unsafe {
         let client = DATABASE.insert(client);
+
+        // // Create bid custom type
+        // let _ = client
+        //     .simple_query(
+        //         "CREATE TYPE bid AS (
+        //             bidder TEXT,
+        //             amount BIGINT,
+        //         );",
+        //     )
+        //     .await;
+
         // Create query table if doesn't exist
         let _ = client
             .simple_query(
                 "CREATE TABLE IF NOT EXISTS query (
-                 uuid TEXT NOT NULL PRIMARY KEY,
-                 auctioneer TEXT,
-                 end_t BIGINT,
-                 item_name TEXT,
-                 tier TEXT,
-                 item_id TEXT,
-                 starting_bid BIGINT,
-                 enchants TEXT[]
+                    uuid TEXT NOT NULL PRIMARY KEY,
+                    auctioneer TEXT,
+                    end_t BIGINT,
+                    item_name TEXT,
+                    tier TEXT,
+                    item_id TEXT,
+                    starting_bid BIGINT,
+                    enchants TEXT[],
+                    bin BOOLEAN,
+                    bids JSONB
                 )",
+                //     bids bid[]
+                // )",
             )
             .await;
 
@@ -139,26 +157,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let _ = client
             .simple_query(
                 "CREATE TABLE IF NOT EXISTS pets (
-                 name TEXT NOT NULL PRIMARY KEY,
-                 price BIGINT
+                    name TEXT NOT NULL PRIMARY KEY,
+                    price BIGINT
                 )",
             )
             .await;
     }
 
-    // Start the auction loop
-    println!("Starting auction loop...");
-    update_api().await;
+    info("Starting auction loop...".to_string()).await;
+    update_auctions().await;
 
     set_interval(
         || async {
-            update_api().await;
+            update_auctions().await;
         },
         Duration::from_millis(60000),
     );
 
     // Start the server
-    println!("Starting server...");
+    info("Starting server...".to_string()).await;
     start_server().await;
 
     Ok(())
@@ -174,6 +191,7 @@ async fn start_server() {
     let server = Server::bind(&server_address).serve(make_service);
 
     println!("Listening on http://{}", server_address);
+    info(format!("Listening on http://{}", server_address)).await;
 
     if let Err(e) = server.await {
         error(format!("Error when starting server: {}", e)).await;
@@ -232,14 +250,13 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
     }
 
     if query.len() == 0 {
-        return bad_request("The query paremeter cannot be empty");
+        return bad_request("The query parameter cannot be empty");
     }
 
     unsafe {
-        // Reference to the database
         let database_ref = DATABASE.as_ref();
 
-        // Database isn't connected
+        // Check to see if the database is connected
         if database_ref.is_none() {
             return internal_error("Database isn't connected");
         }
@@ -255,7 +272,6 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
             .await;
 
         if let Err(e) = results_cursor {
-            // This shouldn't happen
             return internal_error(&format!("Error when querying database: {}", e).to_string());
         }
 
@@ -275,16 +291,17 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
 }
 
 async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
-    // Query paremeters
     let mut query = "".to_string();
     let mut sort = "".to_string();
-    let mut limit = "1".to_string();
+    let mut limit: i64 = 1;
     let mut key = "".to_string();
     let mut item_name = "".to_string();
     let mut tier = "".to_string();
     let mut item_id = "".to_string();
     let mut enchants = "".to_string();
-    let mut end = "".to_string();
+    let mut end: i64 = -1;
+    let mut bids: Value = Value::Null;
+    let mut bin = Option::None;
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
@@ -295,33 +312,43 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
         match query_pair.0.to_string().as_str() {
             "query" => query = query_pair.1.to_string(),
             "sort" => sort = query_pair.1.to_string(),
-            "limit" => limit = query_pair.1.to_string(),
+            "limit" => match query_pair.1.to_string().parse::<i64>() {
+                Ok(limit_int) => limit = limit_int,
+                Err(e) => return bad_request(&format!("Error parsing limit parameter: {}", e)),
+            },
             "key" => key = query_pair.1.to_string(),
             "item_name" => item_name = query_pair.1.to_string(),
             "tier" => tier = query_pair.1.to_string(),
             "item_id" => item_id = query_pair.1.to_string(),
             "enchants" => enchants = query_pair.1.to_string(),
-            "end" => end = query_pair.1.to_string(),
+            "end" => match query_pair.1.to_string().parse::<i64>() {
+                Ok(end_int) => end = end_int,
+                Err(e) => return bad_request(&format!("Error parsing end parameter: {}", e)),
+            },
+            "bids" => match serde_json::from_str(&query_pair.1) {
+                Ok(bids_json) => bids = bids_json,
+                Err(e) => return bad_request(&format!("Error parsing bids json: {}", e)),
+            },
+            "bin" => match query_pair.1.to_string().parse::<bool>() {
+                Ok(bin_bool) => bin = Some(bin_bool),
+                Err(e) => return bad_request(&format!("Error parsing bin parameter: {}", e)),
+            },
             _ => {}
         }
     }
 
-    // The API key in request doesn't match
     let api_key = API_KEY.lock().unwrap().to_owned();
     if !api_key.is_empty() && key != api_key {
         return bad_request("Not authorized");
     }
 
     unsafe {
-        // Database isn't connected
+        // Checks if the database is connected
         if DATABASE.as_ref().is_none() {
             return internal_error("Database isn't connected");
         }
 
-        // Reference to the database
         let database_ref = DATABASE.as_ref().unwrap();
-
-        // Cursor
         let results_cursor;
 
         // Find and sort using query
@@ -361,18 +388,32 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
                 sql.push_str(format!(" ${} = ANY (enchants)", param_count).as_str());
                 param_vec.push(&enchants);
                 param_count += 1;
-            }
-            let end_int;
-            if !end.is_empty() {
-                if let Ok(end_int_local) = end.parse::<i64>() {
-                    if param_count != 1 {
-                        sql.push_str(" AND");
-                    }
-                    end_int = end_int_local;
-                    sql.push_str(format!(" end_t > ${}", param_count).as_str());
-                    param_vec.push(&end_int);
-                    param_count += 1;
+            };
+            if end >= 0 {
+                if param_count != 1 {
+                    sql.push_str(" AND");
                 }
+                sql.push_str(format!(" end_t > ${}", param_count).as_str());
+                param_vec.push(&end);
+                param_count += 1;
+            }
+            if !bids.is_null() {
+                if param_count != 1 {
+                    sql.push_str(" AND");
+                }
+                sql.push_str(format!(" bids @> ${}", param_count).as_str());
+                param_vec.push(&bids);
+                param_count += 1;
+            }
+            let bin_unwrapped;
+            if bin.is_some() {
+                if param_count != 1 {
+                    sql.push_str(" AND");
+                }
+                sql.push_str(format!(" bin = ${}", param_count).as_str());
+                bin_unwrapped = bin.unwrap();
+                param_vec.push(&bin_unwrapped);
+                param_count += 1;
             }
             if !sort.is_empty() {
                 if sort == "ASC" {
@@ -380,14 +421,10 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
                 } else if sort == "DESC" {
                     sql.push_str(" ORDER BY starting_bid DESC");
                 }
-            }
-            let limit_int;
-            if !limit.is_empty() {
-                if let Ok(limit_int_local) = limit.parse::<i64>() {
-                    limit_int = limit_int_local;
-                    sql.push_str(format!(" LIMIT ${}", param_count).as_str());
-                    param_vec.push(&limit_int);
-                }
+            };
+            if limit >= 0 {
+                sql.push_str(format!(" LIMIT ${}", param_count).as_str());
+                param_vec.push(&limit);
             }
 
             results_cursor = database_ref.query(&sql, &param_vec).await;
@@ -398,8 +435,7 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
         }
 
         if let Err(e) = results_cursor {
-            // This shouldn't happen
-            return internal_error(&format!("Error when querying database: {}", e).to_string());
+            return internal_error(&format!("Error when querying database: {}", e));
         }
 
         // Convert the cursor iterator to a vector
@@ -418,7 +454,6 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
 }
 
 async fn lowestbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
-    // Query paremeters
     let mut key = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
@@ -432,7 +467,6 @@ async fn lowestbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
         }
     }
 
-    // The API key in request doesn't match
     if key != API_KEY.lock().unwrap().as_str() {
         return bad_request("Not authorized");
     }
@@ -449,8 +483,8 @@ async fn lowestbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
         .unwrap())
 }
 
+/* Returns information & statistics about the API */
 fn base() -> hyper::Result<Response<Body>> {
-    // Returns information & statistics about the API
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")

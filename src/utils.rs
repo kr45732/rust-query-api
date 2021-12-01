@@ -154,22 +154,15 @@ pub fn to_nbt(item_bytes: ItemBytes) -> Result<PartialNbt, Box<dyn std::error::E
 
 pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, Error> {
     unsafe {
-        // Reference to the database object
         let database = DATABASE.as_ref().unwrap();
-
-        // Empty table
         let _ = database.simple_query("TRUNCATE TABLE query").await;
 
-        // Prepare copy statement
         let copy_statement = database
             .prepare("COPY query FROM STDIN BINARY")
             .await
             .unwrap();
-
-        // Create a sink for the copy statement
         let copy_sink = database.copy_in(&copy_statement).await.unwrap();
 
-        // Write used to write to the copy sink
         let copy_writer = BinaryCopyInWriter::new(
             copy_sink,
             &[
@@ -181,14 +174,17 @@ pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, E
                 Type::TEXT,
                 Type::INT8,
                 Type::TEXT_ARRAY,
+                Type::BOOL,
+                Type::JSONB,
+                // Vec::<Bid>::pg_type(),
             ],
         );
+
         pin_mut!(copy_writer);
 
         // Write to copy sink
-        let mut row: Vec<&'_ (dyn ToSql + Sync)> = Vec::new();
         for m in &auctions {
-            row.clear();
+            let mut row: Vec<&'_ (dyn ToSql + Sync)> = Vec::new();
             row.push(&m.uuid);
             row.push(&m.auctioneer);
             row.push(&m.end_t);
@@ -197,17 +193,21 @@ pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, E
             row.push(&m.item_id);
             row.push(&m.starting_bid);
             row.push(&m.enchants);
+            row.push(&m.bin);
+            // Have to do this otherwise rust will complain that value doesn't live long enough
+            let bids = serde_json::to_value(&m.bids).unwrap();
+            row.push(&bids);
+            // row.push(&m.bids);
+
             copy_writer.as_mut().write(&row).await.unwrap();
         }
 
-        // Complete the copy statement
         copy_writer.finish().await
     }
 }
 
 pub async fn update_pets_database(pet_prices: &mut DashMap<String, i64>) -> Result<u64, Error> {
     unsafe {
-        // Reference to the database object
         let database = DATABASE.as_ref().unwrap();
 
         // Add all old pet prices to the new prices if the new prices doesn't have that old pet name
@@ -226,19 +226,13 @@ pub async fn update_pets_database(pet_prices: &mut DashMap<String, i64>) -> Resu
             }
         }
 
-        // Empty table
         let _ = database.simple_query("TRUNCATE TABLE pets").await;
 
-        // Prepare copy statement
         let copy_statement = database
             .prepare("COPY pets FROM STDIN BINARY")
             .await
             .unwrap();
-
-        // Create a sink for the copy statement
         let copy_sink = database.copy_in(&copy_statement).await.unwrap();
-
-        // Write used to write to the copy sink
         let copy_writer = BinaryCopyInWriter::new(copy_sink, &[Type::TEXT, Type::INT8]);
         pin_mut!(copy_writer);
 
@@ -254,7 +248,6 @@ pub async fn update_pets_database(pet_prices: &mut DashMap<String, i64>) -> Resu
                 .unwrap();
         }
 
-        // Complete the copy statement
         copy_writer.finish().await
     }
 }

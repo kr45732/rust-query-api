@@ -17,10 +17,12 @@
  */
 
 use dashmap::DashMap;
+use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tokio_postgres::Row;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, ToSql, FromSql)]
 pub struct DatabaseItem {
     pub uuid: String,
     pub auctioneer: String,
@@ -30,6 +32,9 @@ pub struct DatabaseItem {
     pub item_id: String,
     pub starting_bid: i64,
     pub enchants: Vec<String>,
+    pub bin: bool,
+    pub bids: Vec<Value>,
+    // pub bids: Vec<Bid>,
 }
 
 impl From<Row> for DatabaseItem {
@@ -43,9 +48,70 @@ impl From<Row> for DatabaseItem {
             item_id: row.get("item_id"),
             starting_bid: row.get("starting_bid"),
             enchants: row.get("enchants"),
+            bin: row.get("bin"),
+            bids: serde_json::from_value(row.get("bids")).unwrap(),
+            // bids: row.get("bids"),
         }
     }
 }
+
+// pub trait PgType {
+//     fn pg_type() -> Type;
+// }
+
+// macro_rules! impl_pg_type {
+//     ($ty:ty, $ty_name:literal, [$($var_names:expr),*]) => {
+//         impl PgType for $ty {
+//             fn pg_type() -> Type {
+//                 Type::new(
+//                     $ty_name.to_string(),
+//                     0,
+//                     Kind::Composite(
+//                         [
+//                             $($var_names),*
+//                         ].to_vec()
+//                     ),
+//                     "".to_string()
+//                 )
+//             }
+//         }
+//     };
+// }
+
+// macro_rules! impl_pg_type_arr {
+//     ($ty:ty, $ty_name:literal, $var_names:expr) => {
+//         impl PgType for $ty {
+//             fn pg_type() -> Type {
+//                 Type::new(
+//                     $ty_name.to_string(),
+//                     0,
+//                     Kind::Array($var_names),
+//                     "".to_string(),
+//                 )
+//             }
+//         }
+//     };
+// }
+
+// pub fn implement_postgres_types() {
+//     impl_pg_type!(
+//         Bid,
+//         "bid",
+//         [
+//             Field::new("bidder".to_string(), Type::TEXT),
+//             Field::new("amount".to_string(), Type::INT8)
+//         ]
+//     );
+
+//     impl_pg_type_arr!(Vec<Bid>, "_bid", Bid::pg_type());
+// }
+
+// #[derive(Debug, ToSql, FromSql, Deserialize, Serialize)]
+// #[postgres(name = "bid")]
+// pub struct Bid {
+//     pub bidder: String,
+//     pub amount: i64,
+// }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PetsDatabaseItem {
@@ -81,26 +147,12 @@ pub struct PartialTag {
     // pub display: DisplayInfo,
 }
 
-// #[derive(Serialize, Deserialize)]
-// pub struct Pet {
-//     #[serde(rename = "type")]
-//     pub pet_type: String,
-
-//     #[serde(rename = "tier")]
-//     pub tier: String,
-// }
-
 #[derive(Deserialize)]
 pub struct PartialExtraAttr {
     pub id: String,
     #[serde(rename = "petInfo")]
     pub pet: Option<String>,
     pub enchantments: Option<DashMap<String, i32>>,
-    // pub potion: Option<String>,
-    // pub potion_level: Option<i16>,
-    // pub anvil_uses: Option<i16>,
-    // pub enhanced: Option<bool>,
-    // pub runes: Option<HashMap<String, i32>>,
 }
 
 // #[derive(Deserialize)]
@@ -109,28 +161,6 @@ pub struct PartialExtraAttr {
 //     pub name: String,
 //     #[serde(rename = "Lore")]
 //     pub lore: Vec<String>,
-// }
-
-// #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-// pub struct Item {
-//     #[serde(rename = "item_name")]
-//     pub item_name: String,
-//     #[serde(rename = "item_lore")]
-//     pub item_lore: String,
-//     #[serde(rename = "uuid")]
-//     pub uuid: String,
-//     #[serde(rename = "auctioneer")]
-//     pub auctioneer: String,
-//     #[serde(rename = "end")]
-//     pub end: i64,
-//     #[serde(rename = "tier")]
-//     pub tier: String,
-//     #[serde(rename = "item_bytes")]
-//     pub item_bytes: ItemBytes,
-//     #[serde(rename = "starting_bid")]
-//     pub starting_bid: i64,
-//     #[serde(rename = "bin")]
-//     pub bin: Option<bool>,
 // }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -165,12 +195,3 @@ pub enum ItemBytesT0 {
     #[serde(rename = "0")]
     Data(String),
 }
-
-// #[derive(Serialize, Deserialize)]
-// pub struct AuctionResponse {
-//     #[serde(rename = "totalPages")]
-//     pub total_pages: i64,
-
-//     #[serde(rename = "auctions")]
-//     pub auctions: Vec<Item>,
-// }

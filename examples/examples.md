@@ -5,10 +5,12 @@
 - `item_name` - filter auctions whose names contain this string
 - `tier` - filter auctions by tier
 - `item_id` - filter auctions by id
-- `enchants` - an enchant the auction should have (only works for enchanted books right now)
+- `enchants` - an enchant the auction should have (only for enchanted books right now)
 - `end` - filter auctions whose end time is after this (epoch timestamp in milliseconds)
-- `sort` - sort by 'ASC' or 'DESC' bin price
-- `limit` - number of items returned (defaults to 1)
+- `bin` - filter if the auction should be a bin (true) or regular auction (false) or both (do not provide parameter)
+- `bids` - filter auctions by their bidders or bid amounts. Most common use is to find a player's bids using `[{"bidder":"UUID"}]`
+- `sort` - sort by 'ASC' or 'DESC' bin price / starting price
+- `limit` - max number of auctions returned (defaults to 1)
 
 ## Pets
 - `key` - key to access the API
@@ -19,12 +21,12 @@
 
 # Examples
 ### [example_1.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_1.json)
-- Request: /query?key=KEY&item_id=POWER_WITHER_CHESTPLATE&tier=MYTHIC&item_name=%✪✪✪✪✪%&sort=starting_bid
-- Meaning: find all auctions where the item id is POWER_WITHER_CHESTPLATE (Necron's chestplate), the tier is mythic, and has 5 stars. Sort by ascending bin price
+- Request: /query?key=KEY&bin=true&item_id=POWER_WITHER_CHESTPLATE&tier=MYTHIC&item_name=%✪✪✪✪✪%&sort=ASC&limit=50
+- Meaning: find the cheapest 50 bins where the item id is POWER_WITHER_CHESTPLATE (Necron's chestplate), the tier is mythic, and has 5 stars. Sort by ascending bin price
 
 ### [example_2.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_2.json)
-- Request: /pets?key=KEY&query='[LVL_100]_WITHER_SKELETON_LEGENDARY','[LVL_80]_BAL_EPIC','[LVL_25]_ROCK_COMMON'
-- Meaning: get the lowest/last pet prices for a level 100 legendary wither skeleton, a level 80 epic bal, and a level 25 common rock
+- Request: /pets?key=KEY&query='[LVL_100]_WITHER_SKELETON_LEGENDARY','[LVL_80]_BAL_EPIC','[LVL_96]_ENDER_DRAGON_EPIC_TB'
+- Meaning: get the lowest/last pet prices for a level 100 legendary wither skeleton, a level 80 epic bal, and a level 96 epic ender dragon (tierboosted from epic to legendary)
 
 ### [example_3.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_3.json)
 - Request /lowestbin?key=KEY
