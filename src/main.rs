@@ -119,24 +119,37 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
     });
 
+    // implement_postgres_types();
     unsafe {
         let client = DATABASE.insert(client);
+
+        // // Create bid custom type
+        // let _ = client
+        //     .simple_query(
+        //         "CREATE TYPE bid AS (
+        //             bidder TEXT,
+        //             amount BIGINT,
+        //         );",
+        //     )
+        //     .await;
 
         // Create query table if doesn't exist
         let _ = client
             .simple_query(
                 "CREATE TABLE IF NOT EXISTS query (
-                 uuid TEXT NOT NULL PRIMARY KEY,
-                 auctioneer TEXT,
-                 end_t BIGINT,
-                 item_name TEXT,
-                 tier TEXT,
-                 item_id TEXT,
-                 starting_bid BIGINT,
-                 enchants TEXT[],
-                 bin BOOLEAN,
-                 bids JSONB
+                    uuid TEXT NOT NULL PRIMARY KEY,
+                    auctioneer TEXT,
+                    end_t BIGINT,
+                    item_name TEXT,
+                    tier TEXT,
+                    item_id TEXT,
+                    starting_bid BIGINT,
+                    enchants TEXT[],
+                    bin BOOLEAN,
+                    bids JSONB
                 )",
+                //     bids bid[]
+                // )",
             )
             .await;
 
@@ -144,8 +157,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let _ = client
             .simple_query(
                 "CREATE TABLE IF NOT EXISTS pets (
-                 name TEXT NOT NULL PRIMARY KEY,
-                 price BIGINT
+                    name TEXT NOT NULL PRIMARY KEY,
+                    price BIGINT
                 )",
             )
             .await;
@@ -272,7 +285,7 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
         Ok(Response::builder()
             .status(StatusCode::OK)
             .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(simd_json::to_vec(&results_vec).unwrap()))
+            .body(Body::from(serde_json::to_vec(&results_vec).unwrap()))
             .unwrap())
     }
 }
@@ -435,7 +448,7 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
         Ok(Response::builder()
             .status(StatusCode::OK)
             .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(simd_json::to_vec(&results_vec).unwrap()))
+            .body(Body::from(serde_json::to_vec(&results_vec).unwrap()))
             .unwrap())
     }
 }

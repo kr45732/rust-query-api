@@ -21,8 +21,7 @@ use chrono::Utc;
 use dashmap::{DashMap, DashSet};
 use futures::{stream::FuturesUnordered, StreamExt};
 use log::debug;
-use serde_json::json;
-use simd_json::{Builder, OwnedValue, Value, ValueAccess};
+use serde_json::{json, Value};
 use std::time::Instant;
 
 /* Gets all pages of auctions from the Hypixel API and inserts them into the database */
@@ -70,7 +69,6 @@ pub async fn update_auctions() {
 
     debug!("Sending {} async requests", total_pages);
     for page_number in 1..total_pages {
-        //total_pages {
         let future = get_auction_page(page_number);
         futures.push(future);
     }
@@ -136,6 +134,7 @@ pub async fn update_auctions() {
 
     // Query API
     if update_query {
+        // update_query_database(query_prices).await.unwrap();
         match update_query_database(query_prices).await {
             Ok(_) => {
                 info("Successfully inserted query into database".to_string()).await;
@@ -177,7 +176,7 @@ pub async fn update_auctions() {
 
 /* Parses a page of auctions to a vector of documents  */
 fn parse_auctions(
-    auctions: &Vec<simd_json::value::owned::Value>,
+    auctions: &Vec<Value>,
     inserted_uuids: &mut DashSet<String>,
     query_prices: &mut Vec<DatabaseItem>,
     pet_prices: &mut DashMap<String, i64>,
@@ -197,8 +196,7 @@ fn parse_auctions(
             let pet_info;
 
             let nbt = &to_nbt(
-                simd_json::serde::from_owned_value(auction.get("item_bytes").unwrap().to_owned())
-                    .unwrap(),
+                serde_json::from_value(auction.get("item_bytes").unwrap().to_owned()).unwrap(),
             )
             .unwrap()
             .i[0];
@@ -220,7 +218,7 @@ fn parse_auctions(
                     }
                 }
             } else if id == "PET" {
-                pet_info = simd_json::from_str::<OwnedValue>(
+                pet_info = serde_json::from_str::<Value>(
                     nbt.tag
                         .extra_attributes
                         .pet
@@ -293,6 +291,12 @@ fn parse_auctions(
                         "amount": ele.get("amount").unwrap(),
                     }));
                 }
+                // for ele in auction.get("bids").unwrap().as_array().unwrap() {
+                //     bids.push(Bid {
+                //         bidder: ele.get("bidder").unwrap().as_str().unwrap().to_string(),
+                //         amount: ele.get("amount").unwrap().as_i64().unwrap(),
+                //     });
+                // }
 
                 query_prices.push(DatabaseItem {
                     uuid: uuid.to_string(),
@@ -344,7 +348,7 @@ fn update_lower_else_insert(id: &String, starting_bid: i64, prices: &mut DashMap
 }
 
 /* Gets an auction page from the Hypixel API */
-async fn get_auction_page(page_number: i64) -> OwnedValue {
+async fn get_auction_page(page_number: i64) -> Value {
     let res = HTTP_CLIENT
         .get(format!(
             "https://api.hypixel.net/skyblock/auctions?page={}",
@@ -355,12 +359,12 @@ async fn get_auction_page(page_number: i64) -> OwnedValue {
     if res.is_ok() {
         let text = res.unwrap().text().await;
         if text.is_ok() {
-            let json = simd_json::from_str(text.unwrap().as_mut_str());
+            let json = serde_json::from_str(text.unwrap().as_mut_str());
             if json.is_ok() {
                 return json.unwrap();
             }
         }
     }
 
-    simd_json::value::owned::Value::null()
+    serde_json::Value::Null
 }
