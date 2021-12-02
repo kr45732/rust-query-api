@@ -126,8 +126,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .simple_query(
                 "CREATE TYPE bid AS (
                     bidder TEXT,
-                    amount BIGINT,
-                );",
+                    amount BIGINT
+                )",
             )
             .await;
 
