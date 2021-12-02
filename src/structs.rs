@@ -19,7 +19,6 @@
 use dashmap::DashMap;
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use tokio_postgres::Row;
 
 #[derive(Debug, Deserialize, Serialize, ToSql, FromSql)]
@@ -33,8 +32,7 @@ pub struct DatabaseItem {
     pub starting_bid: i64,
     pub enchants: Vec<String>,
     pub bin: bool,
-    pub bids: Vec<Value>,
-    // pub bids: Vec<Bid>,
+    pub bids: Vec<Bid>,
 }
 
 impl From<Row> for DatabaseItem {
@@ -49,69 +47,17 @@ impl From<Row> for DatabaseItem {
             starting_bid: row.get("starting_bid"),
             enchants: row.get("enchants"),
             bin: row.get("bin"),
-            bids: serde_json::from_value(row.get("bids")).unwrap(),
-            // bids: row.get("bids"),
+            bids: row.get("bids"),
         }
     }
 }
 
-// pub trait PgType {
-//     fn pg_type() -> Type;
-// }
-
-// macro_rules! impl_pg_type {
-//     ($ty:ty, $ty_name:literal, [$($var_names:expr),*]) => {
-//         impl PgType for $ty {
-//             fn pg_type() -> Type {
-//                 Type::new(
-//                     $ty_name.to_string(),
-//                     0,
-//                     Kind::Composite(
-//                         [
-//                             $($var_names),*
-//                         ].to_vec()
-//                     ),
-//                     "".to_string()
-//                 )
-//             }
-//         }
-//     };
-// }
-
-// macro_rules! impl_pg_type_arr {
-//     ($ty:ty, $ty_name:literal, $var_names:expr) => {
-//         impl PgType for $ty {
-//             fn pg_type() -> Type {
-//                 Type::new(
-//                     $ty_name.to_string(),
-//                     0,
-//                     Kind::Array($var_names),
-//                     "".to_string(),
-//                 )
-//             }
-//         }
-//     };
-// }
-
-// pub fn implement_postgres_types() {
-//     impl_pg_type!(
-//         Bid,
-//         "bid",
-//         [
-//             Field::new("bidder".to_string(), Type::TEXT),
-//             Field::new("amount".to_string(), Type::INT8)
-//         ]
-//     );
-
-//     impl_pg_type_arr!(Vec<Bid>, "_bid", Bid::pg_type());
-// }
-
-// #[derive(Debug, ToSql, FromSql, Deserialize, Serialize)]
-// #[postgres(name = "bid")]
-// pub struct Bid {
-//     pub bidder: String,
-//     pub amount: i64,
-// }
+#[derive(Debug, ToSql, FromSql, Deserialize, Serialize)]
+#[postgres(name = "bid")]
+pub struct Bid {
+    pub bidder: String,
+    pub amount: i64,
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PetsDatabaseItem {

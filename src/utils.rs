@@ -175,8 +175,7 @@ pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, E
                 Type::INT8,
                 Type::TEXT_ARRAY,
                 Type::BOOL,
-                Type::JSONB,
-                // Vec::<Bid>::pg_type(),
+                BID_ARRAY.to_owned().unwrap(),
             ],
         );
 
@@ -194,10 +193,7 @@ pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, E
             row.push(&m.starting_bid);
             row.push(&m.enchants);
             row.push(&m.bin);
-            // Have to do this otherwise rust will complain that value doesn't live long enough
-            let bids = serde_json::to_value(&m.bids).unwrap();
-            row.push(&bids);
-            // row.push(&m.bids);
+            row.push(&m.bids);
 
             copy_writer.as_mut().write(&row).await.unwrap();
         }

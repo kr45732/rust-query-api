@@ -8,7 +8,7 @@
 - `enchants` - an enchant the auction should have (only for enchanted books right now)
 - `end` - filter auctions whose end time is after this (epoch timestamp in milliseconds)
 - `bin` - filter if the auction should be a bin (true) or regular auction (false) or both (do not provide parameter)
-- `bids` - filter auctions by their bidders or bid amounts. Most common use is to find a player's bids using `[{"bidder":"UUID"}]`
+- `bids` - filter auctions by the UUID of their bidders
 - `sort` - sort by 'ASC' or 'DESC' bin price / starting price
 - `limit` - max number of auctions returned (defaults to 1)
 

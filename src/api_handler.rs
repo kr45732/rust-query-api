@@ -21,7 +21,7 @@ use chrono::Utc;
 use dashmap::{DashMap, DashSet};
 use futures::{stream::FuturesUnordered, StreamExt};
 use log::debug;
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::time::Instant;
 
 /* Gets all pages of auctions from the Hypixel API and inserts them into the database */
@@ -134,7 +134,6 @@ pub async fn update_auctions() {
 
     // Query API
     if update_query {
-        // update_query_database(query_prices).await.unwrap();
         match update_query_database(query_prices).await {
             Ok(_) => {
                 info("Successfully inserted query into database".to_string()).await;
@@ -286,17 +285,11 @@ fn parse_auctions(
             if update_query {
                 let mut bids = Vec::new();
                 for ele in auction.get("bids").unwrap().as_array().unwrap() {
-                    bids.push(json!({
-                        "bidder": ele.get("bidder").unwrap(),
-                        "amount": ele.get("amount").unwrap(),
-                    }));
+                    bids.push(Bid {
+                        bidder: ele.get("bidder").unwrap().as_str().unwrap().to_string(),
+                        amount: ele.get("amount").unwrap().as_i64().unwrap(),
+                    });
                 }
-                // for ele in auction.get("bids").unwrap().as_array().unwrap() {
-                //     bids.push(Bid {
-                //         bidder: ele.get("bidder").unwrap().as_str().unwrap().to_string(),
-                //         amount: ele.get("amount").unwrap().as_i64().unwrap(),
-                //     });
-                // }
 
                 query_prices.push(DatabaseItem {
                     uuid: uuid.to_string(),

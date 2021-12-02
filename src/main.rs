@@ -26,7 +26,6 @@ use log::info;
 use postgres_types::ToSql;
 use query_api::{api_handler::*, statics::*, structs::*, utils::*, webhook::Webhook};
 use reqwest::Url;
-use serde_json::Value;
 use simplelog::*;
 use std::{
     env,
@@ -119,19 +118,22 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
     });
 
-    // implement_postgres_types();
     unsafe {
         let client = DATABASE.insert(client);
 
-        // // Create bid custom type
-        // let _ = client
-        //     .simple_query(
-        //         "CREATE TYPE bid AS (
-        //             bidder TEXT,
-        //             amount BIGINT,
-        //         );",
-        //     )
-        //     .await;
+        // Create bid custom type
+        let _ = client
+            .simple_query(
+                "CREATE TYPE bid AS (
+                    bidder TEXT,
+                    amount BIGINT,
+                );",
+            )
+            .await;
+
+        // Get the bid array type and store for future use
+        let _ =
+            BID_ARRAY.insert(client.prepare("SELECT $1::_bid").await.unwrap().params()[0].clone());
 
         // Create query table if doesn't exist
         let _ = client
@@ -146,10 +148,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     starting_bid BIGINT,
                     enchants TEXT[],
                     bin BOOLEAN,
-                    bids JSONB
+                    bids bid[]
                 )",
-                //     bids bid[]
-                // )",
             )
             .await;
 
@@ -300,7 +300,7 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
     let mut item_id = "".to_string();
     let mut enchants = "".to_string();
     let mut end: i64 = -1;
-    let mut bids: Value = Value::Null;
+    let mut bids = "".to_string();
     let mut bin = Option::None;
 
     // Reads the query parameters from the request and stores them in the corresponding variable
@@ -325,10 +325,7 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
                 Ok(end_int) => end = end_int,
                 Err(e) => return bad_request(&format!("Error parsing end parameter: {}", e)),
             },
-            "bids" => match serde_json::from_str(&query_pair.1) {
-                Ok(bids_json) => bids = bids_json,
-                Err(e) => return bad_request(&format!("Error parsing bids json: {}", e)),
-            },
+            "bids" => bids = query_pair.1.to_string(),
             "bin" => match query_pair.1.to_string().parse::<bool>() {
                 Ok(bin_bool) => bin = Some(bin_bool),
                 Err(e) => return bad_request(&format!("Error parsing bin parameter: {}", e)),
@@ -353,9 +350,17 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
 
         // Find and sort using query
         if query.is_empty() {
-            let mut sql = "SELECT * FROM query WHERE".to_string();
+            let mut sql;
             let mut param_vec: Vec<&(dyn ToSql + Sync)> = Vec::new();
             let mut param_count = 1;
+
+            if !bids.is_empty() {
+                sql = "SELECT * FROM query, unnest(bids) AS bid WHERE bid.bidder = $1".to_string();
+                param_vec.push(&bids);
+                param_count += 1;
+            } else {
+                sql = "SELECT * FROM query WHERE".to_string();
+            }
 
             if !tier.is_empty() {
                 if param_count != 1 {
@@ -395,14 +400,6 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
                 }
                 sql.push_str(format!(" end_t > ${}", param_count).as_str());
                 param_vec.push(&end);
-                param_count += 1;
-            }
-            if !bids.is_null() {
-                if param_count != 1 {
-                    sql.push_str(" AND");
-                }
-                sql.push_str(format!(" bids @> ${}", param_count).as_str());
-                param_vec.push(&bids);
                 param_count += 1;
             }
             let bin_unwrapped;

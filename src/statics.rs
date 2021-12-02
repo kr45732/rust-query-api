@@ -18,6 +18,7 @@
 
 use crate::webhook::Webhook;
 use lazy_static::lazy_static;
+use postgres_types::Type;
 use regex::Regex;
 use std::sync::Mutex;
 use tokio_postgres::Client;
@@ -44,3 +45,4 @@ lazy_static! {
 
 pub static mut DATABASE: Option<Client> = None;
 pub static mut WEBHOOK: Option<Webhook> = None;
+pub static mut BID_ARRAY: Option<Type> = None;
