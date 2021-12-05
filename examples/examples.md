@@ -19,6 +19,9 @@
 ## Lowest bin
 - `key` - key to access the API
 
+## Under bin
+- `key` - key to access the API
+
 # Examples
 ### [example_1.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_1.json)
 - Request: /query?key=KEY&bin=true&item_id=POWER_WITHER_CHESTPLATE&tier=MYTHIC&item_name=%✪✪✪✪✪%&sort=ASC&limit=50
