@@ -527,13 +527,22 @@ fn base() -> hyper::Result<Response<Body>> {
         .body(Body::from(format!(
             "{{
             \"success\":true,
-            \"statistics\":
+            \"enabled_features\":{{
+                \"QUERY\":{},
+                \"PETS\":{},
+                \"LOWESTBIN\":{},
+                \"UNDERBIN\":{}
+            }},\"statistics\":
             {{
                 \"is_updating\":{},
                 \"total_updates\":{},
                 \"last_updated\":{}
             }}
         }}",
+            *ENABLE_QUERY.lock().unwrap(),
+            *ENABLE_PETS.lock().unwrap(),
+            *ENABLE_LOWESTBIN.lock().unwrap(),
+            *ENABLE_UNDERBIN.lock().unwrap(),
             *IS_UPDATING.lock().unwrap(),
             *TOTAL_UPDATES.lock().unwrap(),
             *LAST_UPDATED.lock().unwrap()
