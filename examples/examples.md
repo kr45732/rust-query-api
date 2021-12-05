@@ -31,3 +31,7 @@
 ### [example_3.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_3.json)
 - Request /lowestbin?key=KEY
 - Meaning: get all lowest bins
+
+### [example_3.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_4.json)
+- Request /underbin?key=KEY
+- Meaning: get all new bins that were cheaper than the lowest bin of the previous API update. Experimental and still being improved.

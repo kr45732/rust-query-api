@@ -34,7 +34,6 @@ use std::{
     fs::{self, File},
 };
 use substring::Substring;
-use tokio::time::Duration;
 use tokio_postgres::NoTls;
 
 /* Entry point to the program. Creates loggers, reads config, creates tables, starts auction loop and server */
@@ -92,6 +91,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
             "QUERY" => *ENABLE_QUERY.lock().unwrap() = true,
             "PETS" => *ENABLE_PETS.lock().unwrap() = true,
             "LOWESTBIN" => *ENABLE_LOWESTBIN.lock().unwrap() = true,
+            "UNDERBIN" => {
+                if *ENABLE_LOWESTBIN.lock().unwrap() {
+                    *ENABLE_UNDERBIN.lock().unwrap() = true
+                } else {
+                    panic!("LOWESTBIN must be enabled BEFORE enabling UNDERBIN");
+                }
+            }
             _ => panic!("Invalid feature type: {}", feature),
         }
     }
@@ -165,14 +171,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     info("Starting auction loop...".to_string()).await;
-    update_auctions().await;
 
-    set_interval(
-        || async {
-            update_auctions().await;
-        },
-        Duration::from_millis(60000),
-    );
+    set_interval(|| async {
+        update_auctions().await;
+    })
+    .await;
 
     // Start the server
     info("Starting server...".to_string()).await;
@@ -221,6 +224,12 @@ async fn handle_response(req: Request<Body>) -> hyper::Result<Response<Body>> {
             lowestbin(req).await
         } else {
             bad_request("Lowest bins feature is not enabled")
+        }
+    } else if let (&Method::GET, "/underbin") = (req.method(), req.uri().path()) {
+        if *ENABLE_UNDERBIN.lock().unwrap() {
+            underbin(req).await
+        } else {
+            bad_request("Under bins feature is not enabled")
         }
     } else {
         not_found()
@@ -471,6 +480,36 @@ async fn lowestbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
     let file_result = fs::read_to_string("lowestbin.json");
     if file_result.is_err() {
         return internal_error("Unable to open or read lowestbin.json");
+    }
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(file_result.unwrap()))
+        .unwrap())
+}
+
+async fn underbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
+    let mut key = "".to_string();
+
+    // Reads the query parameters from the request and stores them in the corresponding variable
+    for query_pair in
+        Url::parse(&format!("http://{}{}", URL.lock().unwrap(), &req.uri().to_string()).to_string())
+            .unwrap()
+            .query_pairs()
+    {
+        if query_pair.0 == "key" {
+            key = query_pair.1.to_string();
+        }
+    }
+
+    if key != API_KEY.lock().unwrap().as_str() {
+        return bad_request("Not authorized");
+    }
+
+    let file_result = fs::read_to_string("underbin.json");
+    if file_result.is_err() {
+        return internal_error("Unable to open or read underbin.json");
     }
 
     Ok(Response::builder()

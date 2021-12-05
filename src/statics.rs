@@ -41,6 +41,7 @@ lazy_static! {
     pub static ref ENABLE_QUERY: Mutex<bool> = Mutex::new(false);
     pub static ref ENABLE_PETS: Mutex<bool> = Mutex::new(false);
     pub static ref ENABLE_LOWESTBIN: Mutex<bool> = Mutex::new(false);
+    pub static ref ENABLE_UNDERBIN: Mutex<bool> = Mutex::new(false);
 }
 
 pub static mut DATABASE: Option<Client> = None;

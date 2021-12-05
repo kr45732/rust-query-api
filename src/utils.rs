@@ -23,6 +23,7 @@ use futures::{pin_mut, Future};
 use hyper::{header, Body, Response, StatusCode};
 use log::{error, info};
 use postgres_types::{ToSql, Type};
+use serde_json::Value;
 use std::{fs::OpenOptions, result::Result as StdResult, time::SystemTime};
 use tokio::time::{self, Duration};
 use tokio_postgres::{binary_copy::BinaryCopyInWriter, Error};
@@ -61,23 +62,50 @@ pub fn internal_error(reason: &str) -> hyper::Result<Response<Body>> {
 }
 
 /* Repeat a task */
-pub fn set_interval<F, Fut>(mut f: F, dur: Duration)
+pub async fn set_interval<F, Fut>(mut f: F)
 where
     F: Send + 'static + FnMut() -> Fut,
     Fut: Future<Output = ()> + Send + 'static,
 {
     // Create stream of intervals.
-    let mut interval = time::interval(dur);
+    let mut interval = time::interval(get_duration_until_api_update().await);
     tokio::spawn(async move {
-        // Skip the first tick at 0ms.
-        interval.tick().await;
         loop {
+            // Skip tick at 0ms
+            interval.tick().await;
             // Wait until next tick.
             interval.tick().await;
             // Spawn a task for this tick.
             f().await;
+            // Updated to new interval
+            interval = time::interval(get_duration_until_api_update().await);
         }
     });
+}
+
+pub async fn get_duration_until_api_update() -> Duration {
+    let res = HTTP_CLIENT
+        .get("https://api.hypixel.net/skyblock/auctions?page=0")
+        .send()
+        .await;
+    match res {
+        Ok(res_unwrap) => match res_unwrap.headers().get("age") {
+            Some(age_header) => {
+                let age = age_header.to_str().unwrap().parse::<u64>().unwrap();
+
+                let max_age_header = res_unwrap.headers().get("cache-control").unwrap();
+                let mut max_age_split = max_age_header.to_str().unwrap().split("s-maxage=");
+                max_age_split.next();
+                let max_age = max_age_split.next().unwrap_or("60").parse::<u64>().unwrap();
+
+                return Duration::from_secs(max_age - age + 2);
+            }
+            None => return Duration::ZERO,
+        },
+        Err(_) => {
+            return Duration::from_secs(0);
+        }
+    }
 }
 
 pub async fn info(desc: String) {
@@ -254,6 +282,16 @@ pub async fn update_bins_local(bin_prices: &DashMap<String, i64>) -> Result<(), 
         .write(true)
         .truncate(true)
         .open("lowestbin.json")
+        .unwrap();
+    serde_json::to_writer(file, bin_prices)
+}
+
+pub async fn update_under_bins_local(bin_prices: &Vec<Value>) -> Result<(), serde_json::Error> {
+    let file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open("underbin.json")
         .unwrap();
     serde_json::to_writer(file, bin_prices)
 }

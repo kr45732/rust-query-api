@@ -30,13 +30,14 @@ A versatile API facade for the Hypixel Auction API written in rust. The entire a
 - `API_KEY`: Key needed to access this API (NOT a Hypixel API key)
 - `POSTGRES_URL`: Full URL of a PostgreSQL database
 - `WEBHOOK_URL`: Discord webhook URL for logging
-- `FEATURES`: The features (QUERY, PETS, LOWESTBIN) you want to be enabled separated with a '+' 
+- `FEATURES`: The features (QUERY, PETS, LOWESTBIN, UNDERBIN) you want to be enabled separated with a '+' 
 
 ## Usage
 ### Endpoints
 - `/query`
 - `/pets`
 - `/lowestbin`
+- `/underbin`
 
 ### Docs & Examples
 - See docs and examples [here](https://github.com/kr45732/rust-query-api/blob/main/examples/examples.md)

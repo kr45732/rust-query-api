@@ -21,8 +21,8 @@ use chrono::Utc;
 use dashmap::{DashMap, DashSet};
 use futures::{stream::FuturesUnordered, StreamExt};
 use log::debug;
-use serde_json::Value;
-use std::time::Instant;
+use serde_json::{json, Value};
+use std::{fs, time::Instant};
 
 /* Gets all pages of auctions from the Hypixel API and inserts them into the database */
 pub async fn update_auctions() {
@@ -39,11 +39,18 @@ pub async fn update_auctions() {
     let mut pet_prices: DashMap<String, i64> = DashMap::new();
     // Stores all bin prices
     let mut bin_prices: DashMap<String, i64> = DashMap::new();
+    // Stores all under bin prices
+    let mut under_bin_prices: Vec<Value> = Vec::new();
+    // Previous bin prices
+    let past_bin_prices: DashMap<String, i64> =
+        serde_json::from_str(&fs::read_to_string("lowestbin.json").unwrap_or("{}".to_string()))
+            .unwrap();
 
     // Which APIs to update
     let update_query = *ENABLE_QUERY.lock().unwrap();
     let update_pets = *ENABLE_PETS.lock().unwrap();
     let update_lowestbin = *ENABLE_LOWESTBIN.lock().unwrap();
+    let update_underbin = *ENABLE_UNDERBIN.lock().unwrap();
 
     // First page to get the total number of pages
     let json = get_auction_page(0).await;
@@ -58,9 +65,12 @@ pub async fn update_auctions() {
         &mut query_prices,
         &mut pet_prices,
         &mut bin_prices,
+        &mut under_bin_prices,
+        &past_bin_prices,
         update_query,
         update_pets,
         update_lowestbin,
+        update_underbin,
     );
 
     let mut futures = FuturesUnordered::new();
@@ -106,9 +116,12 @@ pub async fn update_auctions() {
                     &mut query_prices,
                     &mut pet_prices,
                     &mut bin_prices,
+                    &mut under_bin_prices,
+                    &past_bin_prices,
                     update_query,
                     update_pets,
                     update_lowestbin,
+                    update_underbin,
                 );
                 debug!(
                     "Parsing time: {}ms",
@@ -132,11 +145,17 @@ pub async fn update_auctions() {
 
     debug!("Inserting into database");
 
+    let insert_started = Instant::now();
     // Query API
     if update_query {
+        let query_started = Instant::now();
         match update_query_database(query_prices).await {
             Ok(_) => {
-                info("Successfully inserted query into database".to_string()).await;
+                info(format!(
+                    "Successfully inserted query into database in {}ms",
+                    query_started.elapsed().as_millis()
+                ))
+                .await;
             }
             Err(e) => error(format!("Error inserting query into database: {}", e)).await,
         }
@@ -144,26 +163,49 @@ pub async fn update_auctions() {
 
     // Pets API
     if update_pets {
+        let pets_started = Instant::now();
         match update_pets_database(&mut pet_prices).await {
             Ok(_) => {
-                info("Successfully inserted pets into database".to_string()).await;
+                info(format!(
+                    "Successfully inserted pets into database in {}ms",
+                    pets_started.elapsed().as_millis()
+                ))
+                .await;
             }
-            Err(e) => error(format!("Error inserting pets into database: {}", e)).await,
+            Err(e) => error(format!("Error inserting pets into database: {}ms", e)).await,
         }
     }
 
     // Bins API
     if update_lowestbin {
+        let bins_started = Instant::now();
         match update_bins_local(&mut bin_prices).await {
             Ok(_) => {
-                info("Successfully updated bins file".to_string()).await;
+                info(format!(
+                    "Successfully updated bins file in {}ms",
+                    bins_started.elapsed().as_millis()
+                ))
+                .await;
             }
             Err(e) => error(format!("Error updating bins file: {}", e)).await,
+        }
+
+        let under_bins_started = Instant::now();
+        match update_under_bins_local(&mut under_bin_prices).await {
+            Ok(_) => {
+                info(format!(
+                    "Successfully updated under bins file in {}ms",
+                    under_bins_started.elapsed().as_millis()
+                ))
+                .await;
+            }
+            Err(e) => error(format!("Error updating under bins file: {}", e)).await,
         }
     }
 
     info(format!(
-        "Total fetch and insert time: {}s",
+        "Insert time: {}s | Total time: {}s",
+        insert_started.elapsed().as_secs(),
         started.elapsed().as_secs()
     ))
     .await;
@@ -180,15 +222,30 @@ fn parse_auctions(
     query_prices: &mut Vec<DatabaseItem>,
     pet_prices: &mut DashMap<String, i64>,
     bin_prices: &mut DashMap<String, i64>,
+    under_bin_prices: &mut Vec<Value>,
+    past_bin_prices: &DashMap<String, i64>,
     update_query: bool,
     update_pets: bool,
     update_lowestbin: bool,
+    update_underbin: bool,
 ) {
     for auction in auctions.into_iter() {
         let uuid = auction.get("uuid").unwrap().as_str().unwrap();
         // Prevent duplicate auctions
         if inserted_uuids.insert(uuid.to_string()) {
-            let item_name = auction.get("item_name").unwrap().as_str().unwrap();
+            let item_name = auction
+                .get("item_name")
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string();
+            let auctioneer = auction
+                .get("auctioneer")
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string();
+            let end = auction.get("end").unwrap().as_i64().unwrap();
             let mut tier = auction.get("tier").unwrap().as_str().unwrap();
             let starting_bid = auction.get("starting_bid").unwrap().as_i64().unwrap();
             let bin = auction.get("bin").is_some();
@@ -200,6 +257,7 @@ fn parse_auctions(
             .unwrap()
             .i[0];
             let id = &nbt.tag.extra_attributes.id;
+            let mut internal_id = id.to_owned();
 
             // Get enchants if the item is an enchanted book
             let mut enchants = Vec::new();
@@ -240,7 +298,7 @@ fn parse_auctions(
 
                 if bin && update_pets {
                     update_lower_else_insert(
-                        &mut format!("{}_{}{}", item_name.replace("✦", ""), tier, tb_str)
+                        &mut format!("{}_{}{}", item_name.replace("_✦", ""), tier, tb_str)
                             .replace(" ", "_")
                             .to_uppercase(),
                         starting_bid,
@@ -252,32 +310,44 @@ fn parse_auctions(
                     let mut split = item_name.split("] ");
                     split.next();
 
-                    update_lower_else_insert(
-                        &format!(
-                            "{};{}",
-                            split
-                                .next()
-                                .unwrap()
-                                .replace(" ", "_")
-                                .replace("✦", "")
-                                .to_uppercase(),
-                            match tier {
-                                "COMMON" => 0,
-                                "UNCOMMON" => 1,
-                                "RARE" => 2,
-                                "EPIC" => 3,
-                                "LEGENDARY" => 4,
-                                "MYTHIC" => 5,
-                                _ => -1,
-                            }
-                        ),
-                        starting_bid,
-                        bin_prices,
+                    internal_id = format!(
+                        "{};{}",
+                        split
+                            .next()
+                            .unwrap()
+                            .replace(" ", "_")
+                            .replace("_✦", "")
+                            .to_uppercase(),
+                        match tier {
+                            "COMMON" => 0,
+                            "UNCOMMON" => 1,
+                            "RARE" => 2,
+                            "EPIC" => 3,
+                            "LEGENDARY" => 4,
+                            "MYTHIC" => 5,
+                            _ => -1,
+                        }
                     );
                 }
-            } else {
-                if bin && update_lowestbin {
-                    update_lower_else_insert(id, starting_bid, bin_prices);
+            }
+
+            if bin && update_lowestbin {
+                update_lower_else_insert(&internal_id, starting_bid, bin_prices);
+
+                if update_underbin && id != "PET" && id != "ENCHANTED_BOOK" {
+                    if let Some(past_bin_price) = past_bin_prices.get(&internal_id) {
+                        if *past_bin_price.value() - starting_bid > 1000000 {
+                            under_bin_prices.push(json!({
+                                "uuid": uuid.to_string(),
+                                "name": item_name,
+                                "auctioneer": auctioneer,
+                                "starting_bid" : starting_bid,
+                                "past_bin_price": *past_bin_price.value(),
+                                "end" : end,
+                                "profit": *past_bin_price.value() - starting_bid
+                            }));
+                        }
+                    }
                 }
             }
 
@@ -293,15 +363,10 @@ fn parse_auctions(
 
                 query_prices.push(DatabaseItem {
                     uuid: uuid.to_string(),
-                    auctioneer: auction
-                        .get("auctioneer")
-                        .unwrap()
-                        .as_str()
-                        .unwrap()
-                        .to_string(),
-                    end_t: auction.get("end").unwrap().as_i64().unwrap(),
+                    auctioneer,
+                    end_t: end,
                     item_name: if id != "ENCHANTED_BOOK" {
-                        item_name.to_string()
+                        item_name
                     } else {
                         MC_CODE_REGEX
                             .replace_all(
@@ -322,7 +387,7 @@ fn parse_auctions(
                     item_id: id.to_string(),
                     enchants,
                     bin,
-                    bids: bids,
+                    bids,
                 });
             }
         }
@@ -333,8 +398,8 @@ fn update_lower_else_insert(id: &String, starting_bid: i64, prices: &mut DashMap
     if let Some(mut ele) = prices.get_mut(id) {
         if starting_bid < *ele {
             *ele = starting_bid;
-            return;
         }
+        return;
     }
 
     prices.insert(id.clone(), starting_bid);
