@@ -340,6 +340,7 @@ fn parse_auctions(
                             under_bin_prices.push(json!({
                                 "uuid": uuid.to_string(),
                                 "name": item_name,
+                                "id" : internal_id,
                                 "auctioneer": auctioneer,
                                 "starting_bid" : starting_bid,
                                 "past_bin_price": *past_bin_price.value(),
