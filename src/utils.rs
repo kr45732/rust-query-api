@@ -100,7 +100,7 @@ pub async fn get_duration_until_api_update() -> Duration {
 
                 return Duration::from_secs(max_age - age + 2);
             }
-            None => return Duration::ZERO,
+            None => return Duration::from_nanos(1),
         },
         Err(_) => {
             return Duration::from_secs(0);
