@@ -24,7 +24,7 @@ use hyper::{header, Body, Response, StatusCode};
 use log::{error, info};
 use postgres_types::{ToSql, Type};
 use serde_json::Value;
-use std::{fs::OpenOptions, result::Result as StdResult, time::SystemTime};
+use std::{fs::OpenOptions, result::Result as StdResult, thread, time::SystemTime};
 use tokio::time::{self, Duration};
 use tokio_postgres::{binary_copy::BinaryCopyInWriter, Error};
 
@@ -84,26 +84,35 @@ where
 }
 
 pub async fn get_duration_until_api_update() -> Duration {
-    let res = HTTP_CLIENT
-        .get("https://api.hypixel.net/skyblock/auctions?page=0")
-        .send()
-        .await;
-    match res {
-        Ok(res_unwrap) => match res_unwrap.headers().get("age") {
-            Some(age_header) => {
-                let age = age_header.to_str().unwrap().parse::<u64>().unwrap();
+    let mut num_attempts = 0;
+    loop {
+        num_attempts += 1;
+        let res = HTTP_CLIENT
+            .get("https://api.hypixel.net/skyblock/auctions?page=0")
+            .send()
+            .await;
+        match res {
+            Ok(res_unwrap) => match res_unwrap.headers().get("age") {
+                Some(age_header) => {
+                    let age = age_header.to_str().unwrap().parse::<u64>().unwrap();
 
-                let max_age_header = res_unwrap.headers().get("cache-control").unwrap();
-                let mut max_age_split = max_age_header.to_str().unwrap().split("s-maxage=");
-                max_age_split.next();
-                let max_age = max_age_split.next().unwrap_or("60").parse::<u64>().unwrap();
+                    let max_age_header = res_unwrap.headers().get("cache-control").unwrap();
+                    let mut max_age_split = max_age_header.to_str().unwrap().split("s-maxage=");
+                    max_age_split.next();
+                    let max_age = max_age_split.next().unwrap_or("60").parse::<u64>().unwrap();
 
-                return Duration::from_secs(max_age - age + 2);
+                    // Cloudfare doesn't return an exact time in ms, so the +2 accounts for that
+                    return Duration::from_secs(max_age - age + 2);
+                }
+                None => return Duration::from_nanos(1),
+            },
+            Err(_) => {
+                // Retry in 15 seconds
+                thread::sleep(Duration::from_secs(15));
             }
-            None => return Duration::from_nanos(1),
-        },
-        Err(_) => {
-            return Duration::from_secs(0);
+        }
+        if num_attempts == 15 {
+            panic("Failed 15 consecutive attempts to contact the Hypixel API".to_string()).await;
         }
     }
 }
