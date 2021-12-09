@@ -9,13 +9,13 @@
   <img alt="license" src="https://img.shields.io/discord/796790757947867156?color=4166f5&label=discord&style=flat-square" />
 </a> 
 
-A versatile API facade for the Hypixel Auction API written in rust. The entire auction house is fetched with NBT parsing and inserted into a PostgreSQL database in about 3-7 seconds every minute with low memory usage (can vary depending on enabled features, network speed, and latency of the Hypixel API)! You can query by auction UUID, auctioneer, end time, item name, item tier, item id, price, enchants, bin and bids. You can sort by the item's bin / starting price. Also, it can track the last known price of each unique pet-level-rarity combination. Lastly, it can track the lowest prices of all bins.
+A versatile API facade for the Hypixel Auction API written in rust. The entire auction house is fetched with NBT parsing and inserted into a PostgreSQL database in about 3-7 seconds every minute with low memory usage (can vary depending on enabled features, network speed, and latency of the Hypixel API)! You can query by auction UUID, auctioneer, end time, item name, item tier, item id, price, enchants, bin and bids. You can sort by the item's bin / starting price. Also, it can track the last known price of each unique pet-level-rarity combination. Moreoever, it can track the lowest prices of all bins. Lastly, it has an experimental feature to track new bins that are at least one million lower than previous bins. 
 
 ## Set Up
 ### Prerequisites
 - [Rust](https://www.rust-lang.org/tools/install)
 - [Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html)
-- [PostgresSQL database](https://www.postgresql.org/)
+- [PostgreSQL database](https://www.postgresql.org/)
 - [Discord](https://discord.com/)
 
 ### Steps
@@ -28,6 +28,7 @@ A versatile API facade for the Hypixel Auction API written in rust. The entire a
 - `BASE_URL`: The base URL of the domain such as localhost
 - `PORT`: The port such as 8080
 - `API_KEY`: Key needed to access this API (NOT a Hypixel API key)
+- `ADMIN_API_KEY`: Admin key required to use raw SQL parameters. Will default to the API_KEY if not provided
 - `POSTGRES_URL`: Full URL of a PostgreSQL database
 - `WEBHOOK_URL`: Discord webhook URL for logging
 - `FEATURES`: The features (QUERY, PETS, LOWESTBIN, UNDERBIN) you want to be enabled separated with a '+' 
@@ -47,5 +48,4 @@ A versatile API facade for the Hypixel Auction API written in rust. The entire a
 
 ## Todo
 - Better documentation & more examples
-- Sync updates using Cloudflare headers
-- Admin key for raw SQL parameters
+- Average auction prices and sales

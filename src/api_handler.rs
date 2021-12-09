@@ -245,7 +245,7 @@ fn parse_auctions(
                 .as_str()
                 .unwrap()
                 .to_string();
-            let end = auction.get("end").unwrap().as_i64().unwrap();
+            let item_lore = auction.get("item_lore").unwrap().as_str().unwrap();
             let mut tier = auction.get("tier").unwrap().as_str().unwrap();
             let starting_bid = auction.get("starting_bid").unwrap().as_i64().unwrap();
             let bin = auction.get("bin").is_some();
@@ -334,9 +334,14 @@ fn parse_auctions(
             if bin && update_lowestbin {
                 update_lower_else_insert(&internal_id, starting_bid, bin_prices);
 
-                if update_underbin && id != "PET" && id != "ENCHANTED_BOOK" {
+                if update_underbin
+                    && id != "PET"
+                    && id != "ENCHANTED_BOOK"
+                    && !item_lore.contains("Furniture")
+                {
                     if let Some(past_bin_price) = past_bin_prices.get(&internal_id) {
-                        if *past_bin_price.value() - starting_bid > 1000000 {
+                        let profit = calculate_with_taxes(*past_bin_price.value()) - starting_bid;
+                        if profit > 1000000 {
                             under_bin_prices.push(json!({
                                 "uuid": uuid.to_string(),
                                 "name": item_name,
@@ -344,8 +349,7 @@ fn parse_auctions(
                                 "auctioneer": auctioneer,
                                 "starting_bid" : starting_bid,
                                 "past_bin_price": *past_bin_price.value(),
-                                "end" : end,
-                                "profit": *past_bin_price.value() - starting_bid
+                                "profit": profit
                             }));
                         }
                     }
@@ -365,23 +369,13 @@ fn parse_auctions(
                 query_prices.push(DatabaseItem {
                     uuid: uuid.to_string(),
                     auctioneer,
-                    end_t: end,
-                    item_name: if id != "ENCHANTED_BOOK" {
-                        item_name
-                    } else {
+                    end_t: auction.get("end").unwrap().as_i64().unwrap(),
+                    item_name: if id == "ENCHANTED_BOOK" {
                         MC_CODE_REGEX
-                            .replace_all(
-                                auction
-                                    .get("item_lore")
-                                    .unwrap()
-                                    .as_str()
-                                    .unwrap()
-                                    .split("\n")
-                                    .next()
-                                    .unwrap_or(""),
-                                "",
-                            )
+                            .replace_all(item_lore.split("\n").next().unwrap_or(""), "")
                             .to_string()
+                    } else {
+                        item_name
                     },
                     tier: tier.to_string(),
                     starting_bid,

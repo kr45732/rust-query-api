@@ -83,6 +83,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .lock()
         .unwrap()
         .write_str(&env::var("API_KEY").expect("Unable to find API_KEY environment variable"));
+    let _ = ADMIN_API_KEY
+        .lock()
+        .unwrap()
+        .write_str(&env::var("ADMIN_API_KEY").unwrap_or(API_KEY.lock().unwrap().to_string()));
     for feature in env::var("FEATURES")
         .expect("Unable to find FEATURES environment variable")
         .split("+")
@@ -254,7 +258,7 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
     }
 
     // The API key in request doesn't match
-    if key != API_KEY.lock().unwrap().as_str() {
+    if !valid_api_key(key, true) {
         return bad_request("Not authorized");
     }
 
@@ -343,8 +347,7 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
         }
     }
 
-    let api_key = API_KEY.lock().unwrap().to_owned();
-    if !api_key.is_empty() && key != api_key {
+    if !valid_api_key(key.to_owned(), false) {
         return bad_request("Not authorized");
     }
 
@@ -428,13 +431,17 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
                     sql.push_str(" ORDER BY starting_bid DESC");
                 }
             };
-            if limit >= 0 {
+            if limit > 0 {
                 sql.push_str(format!(" LIMIT ${}", param_count).as_str());
                 param_vec.push(&limit);
             }
 
             results_cursor = database_ref.query(&sql, &param_vec).await;
         } else {
+            if !valid_api_key(key, true) {
+                return bad_request("Not authorized");
+            }
+
             results_cursor = database_ref
                 .query(&format!("SELECT * FROM query WHERE {}", query), &[])
                 .await;
@@ -473,7 +480,7 @@ async fn lowestbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
         }
     }
 
-    if key != API_KEY.lock().unwrap().as_str() {
+    if !valid_api_key(key, false) {
         return bad_request("Not authorized");
     }
 
@@ -503,7 +510,7 @@ async fn underbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
         }
     }
 
-    if key != API_KEY.lock().unwrap().as_str() {
+    if !valid_api_key(key, false) {
         return bad_request("Not authorized");
     }
 

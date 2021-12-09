@@ -189,6 +189,13 @@ pub fn to_nbt(item_bytes: ItemBytes) -> Result<PartialNbt, Box<dyn std::error::E
     Ok(nbt)
 }
 
+pub fn calculate_with_taxes(price: i64) -> i64 {
+    let price_float = price as f64;
+    let taxes = price_float * 0.01 + (price_float * 0.01).min(1000000.0);
+
+    return (price_float - taxes) as i64;
+}
+
 pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, Error> {
     unsafe {
         let database = DATABASE.as_ref().unwrap();
@@ -303,4 +310,17 @@ pub async fn update_under_bins_local(bin_prices: &Vec<Value>) -> Result<(), serd
         .open("underbin.json")
         .unwrap();
     serde_json::to_writer(file, bin_prices)
+}
+
+pub fn valid_api_key(key: String, admin_only: bool) -> bool {
+    let admin_api_key = ADMIN_API_KEY.lock().unwrap().to_owned();
+    if admin_only {
+        return admin_api_key.is_empty() || admin_api_key == key;
+    }
+
+    let api_key = API_KEY.lock().unwrap().to_owned();
+    return api_key.is_empty()
+        || api_key == key
+        || admin_api_key.is_empty()
+        || admin_api_key == key;
 }

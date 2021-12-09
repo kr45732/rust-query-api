@@ -34,6 +34,7 @@ lazy_static! {
     pub static ref PORT: Mutex<String> = Mutex::new("".to_string());
     pub static ref URL: Mutex<String> = Mutex::new("".to_string());
     pub static ref API_KEY: Mutex<String> = Mutex::new("".to_string());
+    pub static ref ADMIN_API_KEY: Mutex<String> = Mutex::new("".to_string());
     pub static ref POSTGRES_DB_URL: Mutex<String> = Mutex::new("".to_string());
     pub static ref IS_UPDATING: Mutex<bool> = Mutex::new(false);
     pub static ref TOTAL_UPDATES: Mutex<i16> = Mutex::new(0);

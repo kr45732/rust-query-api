@@ -1,7 +1,7 @@
 # Docs
 ## Query
 - `key` - key to access the API
-- `query` - raw SQL to be executed (will soon be depreciated or locked behind an admin key to prevent SQL injection)
+- `query` - raw SQL to be executed. Requires the admin key
 - `item_name` - filter auctions whose names contain this string
 - `tier` - filter auctions by tier
 - `item_id` - filter auctions by id
@@ -14,7 +14,7 @@
 
 ## Pets
 - `key` - key to access the API
-- `query` - list of pet names seperated with a comma. Each pet name is formated as: '[LVL_#]_NAME_TIER'. For tier boosted pets, append '_TB'
+- `query` - list of pet names seperated with a comma. Each pet name is formated as: '[LVL_#]_NAME_TIER'. For tier boosted pets, append '_TB'. Requires the admin key
 
 ## Lowest bin
 - `key` - key to access the API
