@@ -20,7 +20,6 @@ use crate::{statics::*, structs::*};
 use chrono::prelude::{DateTime, Utc};
 use dashmap::DashMap;
 use futures::{pin_mut, Future};
-use hyper::{header, Body, Response, StatusCode};
 use log::{error, info};
 use postgres_types::{ToSql, Type};
 use serde_json::Value;
@@ -28,41 +27,8 @@ use std::{fs::OpenOptions, result::Result as StdResult, thread, time::SystemTime
 use tokio::time::{self, Duration};
 use tokio_postgres::{binary_copy::BinaryCopyInWriter, Error};
 
-/* 400 */
-pub fn bad_request(reason: &str) -> hyper::Result<Response<Body>> {
-    Ok(Response::builder()
-        .status(StatusCode::BAD_REQUEST)
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(format!(
-            "{{\"success\":false,\"reason\":\"{}\"}}",
-            reason
-        )))
-        .unwrap())
-}
-
-/* 404 */
-pub fn not_found() -> hyper::Result<Response<Body>> {
-    Ok(Response::builder()
-        .status(StatusCode::NOT_FOUND)
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from("{\"success\":false,\"reason\":\"Not found\"}"))
-        .unwrap())
-}
-
-/* 500 */
-pub fn internal_error(reason: &str) -> hyper::Result<Response<Body>> {
-    Ok(Response::builder()
-        .status(StatusCode::INTERNAL_SERVER_ERROR)
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(format!(
-            "{{\"success\":false,\"reason\":\"{}\"}}",
-            reason
-        )))
-        .unwrap())
-}
-
 /* Repeat a task */
-pub async fn set_interval<F, Fut>(mut f: F)
+pub async fn start_auction_loop<F, Fut>(mut f: F)
 where
     F: Send + 'static + FnMut() -> Fut,
     Fut: Future<Output = ()> + Send + 'static,
@@ -83,7 +49,8 @@ where
     });
 }
 
-pub async fn get_duration_until_api_update() -> Duration {
+/* Gets the time until the next API update according to Cloudflare headers */
+async fn get_duration_until_api_update() -> Duration {
     let mut num_attempts = 0;
     loop {
         num_attempts += 1;
@@ -117,6 +84,7 @@ pub async fn get_duration_until_api_update() -> Duration {
     }
 }
 
+/* Log and send an info message to the Discord webhook */
 pub async fn info(desc: String) {
     info!("{}", desc);
     unsafe {
@@ -137,6 +105,7 @@ pub async fn info(desc: String) {
     }
 }
 
+/* Log and send an error message to the Discord webhook */
 pub async fn error(desc: String) {
     error!("{}", desc);
     unsafe {
@@ -157,6 +126,7 @@ pub async fn error(desc: String) {
     }
 }
 
+/* Send a panic message to the Discord webhook and panic */
 pub async fn panic(desc: String) {
     error!("{}", desc);
     unsafe {
@@ -178,6 +148,7 @@ pub async fn panic(desc: String) {
     panic!("{}", desc);
 }
 
+/* Forms the current timestamp for a Discord Embed */
 fn get_discord_timestamp() -> String {
     let dt: DateTime<Utc> = SystemTime::now().into();
     format!("{}", dt.format("%+"))
@@ -194,6 +165,30 @@ pub fn calculate_with_taxes(price: i64) -> i64 {
     let taxes = price_float * 0.01 + (price_float * 0.01).min(1000000.0);
 
     return (price_float - taxes) as i64;
+}
+
+pub fn valid_api_key(key: String, admin_only: bool) -> bool {
+    let admin_api_key = ADMIN_API_KEY.lock().unwrap().to_owned();
+    if admin_only {
+        return admin_api_key.is_empty() || admin_api_key == key;
+    }
+
+    let api_key = API_KEY.lock().unwrap().to_owned();
+    return api_key.is_empty()
+        || api_key == key
+        || admin_api_key.is_empty()
+        || admin_api_key == key;
+}
+
+pub fn update_lower_else_insert(id: &String, starting_bid: i64, prices: &mut DashMap<String, i64>) {
+    if let Some(mut ele) = prices.get_mut(id) {
+        if starting_bid < *ele {
+            *ele = starting_bid;
+        }
+        return;
+    }
+
+    prices.insert(id.clone(), starting_bid);
 }
 
 pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, Error> {
@@ -292,6 +287,31 @@ pub async fn update_pets_database(pet_prices: &mut DashMap<String, i64>) -> Resu
     }
 }
 
+pub async fn update_avg_ah_database(avg_ah_prices: Vec<AvgAh>, time_t: i64) -> Result<u64, Error> {
+    unsafe {
+        let database = DATABASE.as_ref().unwrap();
+
+        // Delete auctions older than 5 days
+        let _ = database
+            .simple_query(
+                &format!(
+                    "DELETE FROM average WHERE time_t < {}",
+                    (Utc::now() - chrono::Duration::days(5)).timestamp_millis()
+                )
+                .to_string(),
+            )
+            .await;
+
+        // Insert new average auctions
+        database
+            .execute(
+                "INSERT INTO average VALUES ($1, $2)",
+                &[&time_t, &avg_ah_prices],
+            )
+            .await
+    }
+}
+
 pub async fn update_bins_local(bin_prices: &DashMap<String, i64>) -> Result<(), serde_json::Error> {
     let file = OpenOptions::new()
         .create(true)
@@ -310,17 +330,4 @@ pub async fn update_under_bins_local(bin_prices: &Vec<Value>) -> Result<(), serd
         .open("underbin.json")
         .unwrap();
     serde_json::to_writer(file, bin_prices)
-}
-
-pub fn valid_api_key(key: String, admin_only: bool) -> bool {
-    let admin_api_key = ADMIN_API_KEY.lock().unwrap().to_owned();
-    if admin_only {
-        return admin_api_key.is_empty() || admin_api_key == key;
-    }
-
-    let api_key = API_KEY.lock().unwrap().to_owned();
-    return api_key.is_empty()
-        || api_key == key
-        || admin_api_key.is_empty()
-        || admin_api_key == key;
 }

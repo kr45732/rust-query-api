@@ -22,6 +22,10 @@
 ## Under bin
 - `key` - key to access the API
 
+## Average auctions
+- `key` - key to access the API
+- `query` - unix timestamp, in milliseconds, for how far back the average auction prices should be calculated. The most is 5 days back
+
 # Examples
 ### [example_1.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_1.json)
 - Request: /query?key=KEY&bin=true&item_id=POWER_WITHER_CHESTPLATE&tier=MYTHIC&item_name=%✪✪✪✪✪%&sort=ASC&limit=50
@@ -38,3 +42,7 @@
 ### [example_4.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_4.json)
 - Request /underbin?key=KEY
 - Meaning: get all new bins that were cheaper than the lowest bin of the previous API update. Experimental and still being improved.
+
+### [example_5.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_5.json)
+- Request /average_auction?key=KEY&query=1639241919048
+- Meaning: get average auction prices from the unix timestamp 1639241919048 to the present

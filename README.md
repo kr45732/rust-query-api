@@ -31,7 +31,7 @@ A versatile API facade for the Hypixel Auction API written in rust. The entire a
 - `ADMIN_API_KEY`: Admin key required to use raw SQL parameters. Will default to the API_KEY if not provided
 - `POSTGRES_URL`: Full URL of a PostgreSQL database
 - `WEBHOOK_URL`: Discord webhook URL for logging
-- `FEATURES`: The features (QUERY, PETS, LOWESTBIN, UNDERBIN) you want to be enabled separated with a '+' 
+- `FEATURES`: The features (QUERY, PETS, LOWESTBIN, UNDERBIN, AVERAGE_AUCTION) you want to be enabled separated with a '+' 
 
 ## Usage
 ### Endpoints
@@ -39,6 +39,7 @@ A versatile API facade for the Hypixel Auction API written in rust. The entire a
 - `/pets`
 - `/lowestbin`
 - `/underbin`
+- `/average_auction`
 
 ### Docs & Examples
 - See docs and examples [here](https://github.com/kr45732/rust-query-api/blob/main/examples/examples.md)
@@ -48,4 +49,5 @@ A versatile API facade for the Hypixel Auction API written in rust. The entire a
 
 ## Todo
 - Better documentation & more examples
-- Average auction prices and sales
+- Average auction sales
+- Fix pets & enchanted books for under bin

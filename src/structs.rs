@@ -21,6 +21,7 @@ use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 
+/* Query API */
 #[derive(Debug, Deserialize, Serialize, ToSql, FromSql)]
 pub struct DatabaseItem {
     pub uuid: String,
@@ -59,6 +60,46 @@ pub struct Bid {
     pub amount: i64,
 }
 
+/* Average Auction API */
+#[derive(Debug, Deserialize, Serialize, ToSql, FromSql)]
+pub struct AverageDatabaseItem {
+    pub time_t: i64,
+    pub prices: Vec<AvgAh>,
+}
+
+impl From<Row> for AverageDatabaseItem {
+    fn from(row: Row) -> Self {
+        Self {
+            time_t: row.get("time_t"),
+            prices: row.get("prices"),
+        }
+    }
+}
+
+#[derive(Debug, ToSql, FromSql, Deserialize, Serialize)]
+#[postgres(name = "avg_ah")]
+pub struct AvgAh {
+    pub item_id: String,
+    pub amount: i64,
+}
+
+pub struct AvgAhSum {
+    pub sum: i64,
+    pub count: i64,
+}
+
+impl AvgAhSum {
+    pub fn add(&mut self, new_amount: i64) {
+        self.sum += new_amount;
+        self.count += 1;
+    }
+
+    pub fn get_average(self) -> i64 {
+        self.sum / self.count
+    }
+}
+
+/* Pets API */
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PetsDatabaseItem {
     pub name: String,
@@ -74,6 +115,7 @@ impl From<Row> for PetsDatabaseItem {
     }
 }
 
+/* NBT */
 #[derive(Deserialize)]
 pub struct PartialNbt {
     pub i: Vec<PartialNbtElement>,
@@ -90,7 +132,7 @@ pub struct PartialNbtElement {
 pub struct PartialTag {
     #[serde(rename = "ExtraAttributes")]
     pub extra_attributes: PartialExtraAttr,
-    // pub display: DisplayInfo,
+    pub display: DisplayInfo,
 }
 
 #[derive(Deserialize)]
@@ -101,13 +143,13 @@ pub struct PartialExtraAttr {
     pub enchantments: Option<DashMap<String, i32>>,
 }
 
-// #[derive(Deserialize)]
-// pub struct DisplayInfo {
-//     #[serde(rename = "Name")]
-//     pub name: String,
-//     #[serde(rename = "Lore")]
-//     pub lore: Vec<String>,
-// }
+#[derive(Deserialize)]
+pub struct DisplayInfo {
+    #[serde(rename = "Name")]
+    pub name: String,
+    // #[serde(rename = "Lore")]
+    // pub lore: Vec<String>,
+}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 #[serde(untagged)]

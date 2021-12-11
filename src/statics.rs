@@ -43,8 +43,10 @@ lazy_static! {
     pub static ref ENABLE_PETS: Mutex<bool> = Mutex::new(false);
     pub static ref ENABLE_LOWESTBIN: Mutex<bool> = Mutex::new(false);
     pub static ref ENABLE_UNDERBIN: Mutex<bool> = Mutex::new(false);
+    pub static ref ENABLE_AVERAGE_AUCTION: Mutex<bool> = Mutex::new(false);
 }
 
 pub static mut DATABASE: Option<Client> = None;
 pub static mut WEBHOOK: Option<Webhook> = None;
 pub static mut BID_ARRAY: Option<Type> = None;
+pub static mut AVG_AH: Option<Type> = None;
