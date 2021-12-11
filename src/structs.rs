@@ -80,22 +80,51 @@ impl From<Row> for AverageDatabaseItem {
 #[postgres(name = "avg_ah")]
 pub struct AvgAh {
     pub item_id: String,
-    pub amount: i64,
+    pub amount: f64,
+    pub sales: f32,
 }
 
 pub struct AvgAhSum {
     pub sum: i64,
-    pub count: i64,
+    pub count: i32,
 }
 
 impl AvgAhSum {
-    pub fn add(&mut self, new_amount: i64) {
+    pub fn add(mut self, new_amount: i64) -> Self {
         self.sum += new_amount;
         self.count += 1;
+        self
+    }
+}
+
+pub struct AvgAhStore {
+    pub sum: Vec<f64>,
+    pub sales: Vec<f32>,
+}
+
+impl AvgAhStore {
+    pub fn add(mut self, avg_ah: &AvgAh) -> Self {
+        self.sum.push(avg_ah.amount);
+        self.sales.push(avg_ah.sales);
+        self
     }
 
-    pub fn get_average(self) -> i64 {
-        self.sum / self.count
+    pub fn from(avg_ah: &AvgAh) -> Self {
+        Self {
+            sum: vec![avg_ah.amount],
+            sales: vec![avg_ah.sales],
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.sum.len()
+    }
+
+    pub fn get(&self, index: usize) -> (f64, f32) {
+        (
+            *self.sum.get(index).unwrap(),
+            *self.sales.get(index).unwrap(),
+        )
     }
 }
 

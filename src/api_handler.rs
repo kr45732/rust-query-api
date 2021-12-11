@@ -508,10 +508,7 @@ async fn parse_avg_auctions(avg_ah_prices: &mut Vec<AvgAh>) {
             let amount = auction.get("price").unwrap().as_i64().unwrap();
             // If the map already has this id, then add this auction to the existing auctions, otherwise create a new entry
             if avg_ah_map.contains_key(&id) {
-                avg_ah_map.alter(&id, |_, mut value| {
-                    value.add(amount);
-                    return value;
-                });
+                avg_ah_map.alter(&id, |_, value| value.add(amount));
             } else {
                 avg_ah_map.insert(
                     id,
@@ -527,7 +524,8 @@ async fn parse_avg_auctions(avg_ah_prices: &mut Vec<AvgAh>) {
         for ele in avg_ah_map {
             avg_ah_prices.push(AvgAh {
                 item_id: ele.0,
-                amount: ele.1.get_average(),
+                amount: (ele.1.sum as f64) / (ele.1.count as f64),
+                sales: ele.1.count as f32,
             })
         }
     }

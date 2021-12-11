@@ -153,8 +153,9 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
 
 /* /average_auction */
 async fn averag_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
-    let mut query = -1;
     let mut key = "".to_string();
+    let mut query = -1;
+    let mut step: usize = 1;
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
@@ -162,13 +163,17 @@ async fn averag_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
             .unwrap()
             .query_pairs()
     {
-        if query_pair.0 == "query" {
-            match query_pair.1.to_string().parse::<i64>() {
+        match query_pair.0.to_string().as_str() {
+            "query" => match query_pair.1.to_string().parse::<i64>() {
                 Ok(query_int) => query = query_int,
                 Err(e) => return bad_request(&format!("Error parsing query parameter: {}", e)),
-            }
-        } else if query_pair.0 == "key" {
-            key = query_pair.1.to_string();
+            },
+            "step" => match query_pair.1.to_string().parse::<usize>() {
+                Ok(step_int) => step = step_int,
+                Err(e) => return bad_request(&format!("Error parsing by parameter: {}", e)),
+            },
+            "key" => key = query_pair.1.to_string(),
+            _ => {}
         }
     }
 
@@ -193,39 +198,54 @@ async fn averag_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
         // Find and sort using query JSON
         results_cursor = database_ref
             .unwrap()
-            .query("SELECT * FROM average WHERE time_t > $1", &[&query])
+            .query(
+                "SELECT * FROM average WHERE time_t > $1 ORDER BY time_t",
+                &[&query],
+            )
             .await;
 
         if let Err(e) = results_cursor {
             return internal_error(&format!("Error when querying database: {}", e).to_string());
         }
 
-        let avg_ah_map: DashMap<String, AvgAhSum> = DashMap::new();
+        // Map each item id to vec of its amounts
+        let avg_ah_map: DashMap<String, AvgAhStore> = DashMap::new();
         results_cursor.unwrap().into_iter().for_each(|ele_row| {
-            let ele_db = AverageDatabaseItem::from(ele_row);
-            for ele in ele_db.prices {
+            for ele in AverageDatabaseItem::from(ele_row).prices {
+                // If the id already exists in the map, append the new value to the vec, otherwise create a new entry
                 if avg_ah_map.contains_key(&ele.item_id) {
-                    avg_ah_map.alter(&ele.item_id, |_, mut value| {
-                        value.add(ele.amount);
-                        return value;
-                    });
+                    avg_ah_map.alter(&ele.item_id, |_, value| value.add(&ele));
                 } else {
-                    avg_ah_map.insert(
-                        ele.item_id,
-                        AvgAhSum {
-                            sum: ele.amount,
-                            count: 1,
-                        },
-                    );
+                    avg_ah_map.insert(ele.item_id.to_owned(), AvgAhStore::from(&ele));
                 }
             }
         });
 
-        let mut avg_ah_prices: Vec<AvgAh> = Vec::new();
+        // Stores the values after averaging by 'step'
+        let mut avg_ah_vec: Vec<AvgAh> = Vec::new();
         for ele in avg_ah_map {
-            avg_ah_prices.push(AvgAh {
+            let mut sum: f64 = 0.0;
+            let mut count: i64 = 0;
+            let mut sales: f32 = 0.0;
+
+            // Idk how to explain this with comments
+            for i in (0..ele.1.len()).step_by(step) {
+                for j in i..(i + step) {
+                    if j > ele.1.len() {
+                        break;
+                    }
+
+                    let val = ele.1.get(j);
+                    sum += val.0;
+                    sales += val.1;
+                }
+                count += 1;
+            }
+
+            avg_ah_vec.push(AvgAh {
                 item_id: ele.0,
-                amount: ele.1.get_average(),
+                amount: sum / (count as f64),
+                sales: sales / (count as f32),
             })
         }
 
@@ -233,7 +253,7 @@ async fn averag_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
         Ok(Response::builder()
             .status(StatusCode::OK)
             .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(serde_json::to_vec(&avg_ah_prices).unwrap()))
+            .body(Body::from(serde_json::to_vec(&avg_ah_vec).unwrap()))
             .unwrap())
     }
 }
