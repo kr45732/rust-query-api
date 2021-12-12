@@ -97,12 +97,12 @@ impl AvgAhSum {
     }
 }
 
-pub struct AvgAhStore {
+pub struct AvgAhVec {
     pub sum: Vec<f64>,
     pub sales: Vec<f32>,
 }
 
-impl AvgAhStore {
+impl AvgAhVec {
     pub fn add(mut self, avg_ah: &AvgAh) -> Self {
         self.sum.push(avg_ah.amount);
         self.sales.push(avg_ah.sales);

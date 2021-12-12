@@ -9,7 +9,7 @@
   <img alt="license" src="https://img.shields.io/discord/796790757947867156?color=4166f5&label=discord&style=flat-square" />
 </a> 
 
-A versatile API facade for the Hypixel Auction API written in rust. The entire auction house is fetched with NBT parsing and inserted into a PostgreSQL database in about 3-7 seconds every minute with low memory usage (can vary depending on enabled features, network speed, and latency of the Hypixel API)! You can query by auction UUID, auctioneer, end time, item name, item tier, item id, price, enchants, bin and bids. You can sort by the item's bin / starting price. Also, it can track the last known price of each unique pet-level-rarity combination. Moreoever, it can track the lowest prices of all bins. Lastly, it has an experimental feature to track new bins that are at least one million lower than previous bins. 
+A versatile API facade for the Hypixel Auction API written in Rust. The entire auction house is fetched with NBT parsing and inserted into a PostgreSQL database in about 3-7 seconds every minute with low memory usage (can vary depending on enabled features, network speed, and latency of the Hypixel API)! You can query by auction UUID, auctioneer, end time, item name, item tier, item id, price, enchants, bin and bids. You can sort by the item's bin / starting price. You can track the last known price of each unique pet-level-rarity combination. You can track the lowest prices of all bins. It also can track new bins that are at least one million lower than previous bins. Lastly, it can track the average auction prices and sales up to five days with custom 'averaging methods'.
 
 ## Set Up
 ### Prerequisites
@@ -49,5 +49,4 @@ A versatile API facade for the Hypixel Auction API written in rust. The entire a
 
 ## Todo
 - Better documentation & more examples
-- Average auction sales
-- Fix pets & enchanted books for under bin
+- Improve underbin

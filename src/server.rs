@@ -78,7 +78,7 @@ async fn handle_response(req: Request<Body>) -> hyper::Result<Response<Body>> {
         }
     } else if let (&Method::GET, "/average_auction") = (req.method(), req.uri().path()) {
         if *ENABLE_AVERAGE_AUCTION.lock().unwrap() {
-            averag_auction(req).await
+            average_auction(req).await
         } else {
             bad_request("Average auction feature is not enabled")
         }
@@ -152,9 +152,9 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
 }
 
 /* /average_auction */
-async fn averag_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
+async fn average_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
     let mut key = "".to_string();
-    let mut query = -1;
+    let mut time = -1;
     let mut step: usize = 1;
 
     // Reads the query parameters from the request and stores them in the corresponding variable
@@ -164,13 +164,13 @@ async fn averag_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
             .query_pairs()
     {
         match query_pair.0.to_string().as_str() {
-            "query" => match query_pair.1.to_string().parse::<i64>() {
-                Ok(query_int) => query = query_int,
-                Err(e) => return bad_request(&format!("Error parsing query parameter: {}", e)),
+            "time" => match query_pair.1.to_string().parse::<i64>() {
+                Ok(time_int) => time = time_int,
+                Err(e) => return bad_request(&format!("Error parsing time parameter: {}", e)),
             },
             "step" => match query_pair.1.to_string().parse::<usize>() {
                 Ok(step_int) => step = step_int,
-                Err(e) => return bad_request(&format!("Error parsing by parameter: {}", e)),
+                Err(e) => return bad_request(&format!("Error parsing step parameter: {}", e)),
             },
             "key" => key = query_pair.1.to_string(),
             _ => {}
@@ -182,8 +182,8 @@ async fn averag_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
         return bad_request("Not authorized");
     }
 
-    if query <= 0 {
-        return bad_request("The query parameter must be provided and positive");
+    if time <= 0 {
+        return bad_request("The time parameter must be provided and positive");
     }
 
     unsafe {
@@ -200,7 +200,7 @@ async fn averag_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
             .unwrap()
             .query(
                 "SELECT * FROM average WHERE time_t > $1 ORDER BY time_t",
-                &[&query],
+                &[&time],
             )
             .await;
 
@@ -208,15 +208,15 @@ async fn averag_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
             return internal_error(&format!("Error when querying database: {}", e).to_string());
         }
 
-        // Map each item id to vec of its amounts
-        let avg_ah_map: DashMap<String, AvgAhStore> = DashMap::new();
+        // Map each item id to its amounts and sales
+        let avg_ah_map: DashMap<String, AvgAhVec> = DashMap::new();
         results_cursor.unwrap().into_iter().for_each(|ele_row| {
             for ele in AverageDatabaseItem::from(ele_row).prices {
-                // If the id already exists in the map, append the new value to the vec, otherwise create a new entry
+                // If the id already exists in the map, append the new values, otherwise create a new entry
                 if avg_ah_map.contains_key(&ele.item_id) {
                     avg_ah_map.alter(&ele.item_id, |_, value| value.add(&ele));
                 } else {
-                    avg_ah_map.insert(ele.item_id.to_owned(), AvgAhStore::from(&ele));
+                    avg_ah_map.insert(ele.item_id.to_owned(), AvgAhVec::from(&ele));
                 }
             }
         });
