@@ -445,7 +445,7 @@ async fn parse_avg_auctions(avg_ah_prices: &mut Vec<AvgAh>) {
         // Store the sum and count for each unique item id across all ended auctions
         let avg_ah_map: DashMap<String, AvgAhSum> = DashMap::new();
         for auction in page_request.get("auctions").unwrap().as_array().unwrap() {
-            if auction.get("bin").is_some() {
+            if auction.get("bin").unwrap().as_bool().unwrap() {
                 continue;
             }
 

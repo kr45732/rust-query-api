@@ -231,7 +231,7 @@ async fn average_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
             // Idk how to explain this with comments
             for i in (0..ele.1.len()).step_by(step) {
                 for j in i..(i + step) {
-                    if j > ele.1.len() {
+                    if j >= ele.1.len() {
                         break;
                     }
 
