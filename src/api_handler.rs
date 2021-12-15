@@ -334,7 +334,12 @@ fn parse_auctions(
                 let mut tb_str = "";
 
                 if match pet_info.get("heldItem") {
-                    Some(held_item) => held_item.as_str().unwrap() == "PET_ITEM_TIER_BOOST",
+                    Some(held_item) => match held_item.as_str().unwrap() {
+                        "PET_ITEM_TIER_BOOST" | "PET_ITEM_VAMPIRE_FANG" | "PET_ITEM_TOY_JERRY" => {
+                            true
+                        }
+                        _ => false,
+                    },
                     None => false,
                 } {
                     // Hypixel API is weird and if the pet is tier boosted, the 'tier' field in the auction shows the rarity after boosting
