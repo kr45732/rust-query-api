@@ -111,10 +111,21 @@ pub async fn update_auctions() {
                         continue;
                     }
 
-                    debug!(
-                        "---------------- Fetching page {}",
-                        page_request.get("page").unwrap().as_i64().unwrap()
-                    );
+                    match page_request.get("page") {
+                        Some(page) => {
+                            debug!("---------------- Fetching page {}", page.as_i64().unwrap());
+                        }
+                        None => {
+                            num_failed += 1;
+                            error(format!(
+                                "Failed to fetch a page with a total of {} failed page(s)",
+                                num_failed
+                            ))
+                            .await;
+                            continue;
+                        }
+                    }
+
                     debug!(
                         "Request time: {}ms",
                         before_page_request.elapsed().as_millis()
