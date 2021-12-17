@@ -116,15 +116,8 @@ impl AvgAhVec {
         }
     }
 
-    pub fn len(&self) -> usize {
-        self.sum.len()
-    }
-
-    pub fn get(&self, index: usize) -> (f64, f32) {
-        (
-            *self.sum.get(index).unwrap(),
-            *self.sales.get(index).unwrap(),
-        )
+    pub fn get_average(&self) -> f64 {
+        self.sum.iter().sum::<f64>() / (self.sum.len() as f64)
     }
 }
 

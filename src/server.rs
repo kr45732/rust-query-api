@@ -224,27 +224,24 @@ async fn average_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
         // Stores the values after averaging by 'step'
         let mut avg_ah_vec: Vec<AvgAh> = Vec::new();
         for ele in avg_ah_map {
-            let mut sum: f64 = 0.0;
             let mut count: i64 = 0;
             let mut sales: f32 = 0.0;
 
-            // Idk how to explain this with comments
-            for i in (0..ele.1.len()).step_by(step) {
+            // Average the number of sales by the step parameter
+            for i in (0..ele.1.sales.len()).step_by(step) {
                 for j in i..(i + step) {
-                    if j >= ele.1.len() {
+                    if j >= ele.1.sales.len() {
                         break;
                     }
 
-                    let val = ele.1.get(j);
-                    sum += val.0;
-                    sales += val.1;
+                    sales += ele.1.sales.get(j).unwrap();
                 }
                 count += 1;
             }
 
             avg_ah_vec.push(AvgAh {
                 item_id: ele.0,
-                amount: sum / (count as f64),
+                amount: ele.1.get_average(),
                 sales: sales / (count as f32),
             })
         }
