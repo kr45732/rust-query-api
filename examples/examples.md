@@ -25,7 +25,7 @@
 ## Average auctions
 - `key` - key to access the API
 - `time` - unix timestamp, in milliseconds, for how far back the average auction prices should be calculated. The most is 5 days back
-- `step` - how the auction prices and sales should be averaged. For example, 1 would average it by minute, 60 would average it by hour, 1440 would average it by day, and so on.
+- `step` - how the auction sales should be averaged. For example, 1 would average it by minute, 60 would average it by hour, 1440 would average it by day, and so on.
 
 # Examples
 ### [example_1.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_1.json)
@@ -46,4 +46,4 @@
 
 ### [example_5.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_5.json)
 - Request /average_auction?key=KEY&time=1639241919048&step=60
-- Meaning: get average auction prices by hour from the unix timestamp 1639241919048 to the present
+- Meaning: get average auction prices from the unix timestamp 1639241919048 to the present. Average sales by hour.
