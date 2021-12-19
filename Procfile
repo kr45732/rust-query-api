@@ -1,1 +1,1 @@
-web: PORT=$PORT ./target/release/query-api
+web: PORT=$PORT ./target/release/query_api
