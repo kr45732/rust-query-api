@@ -19,7 +19,12 @@
 use dotenv::dotenv;
 use query_api::{api_handler::*, server::start_server, statics::*, utils::*, webhook::Webhook};
 use simplelog::*;
-use std::{env, error::Error, fmt::Write, fs::File};
+use std::{
+    env,
+    error::Error,
+    fmt::Write,
+    fs::{self, File},
+};
 use tokio_postgres::NoTls;
 
 /* Entry point to the program. Creates loggers, reads config, creates tables, starts auction loop and server */
@@ -185,6 +190,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             )
             .await;
     }
+    let _ = fs::remove_file("lowestbin.json");
 
     info("Starting auction loop...".to_string()).await;
     start_auction_loop(|| async {
