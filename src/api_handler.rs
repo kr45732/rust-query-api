@@ -372,24 +372,21 @@ fn parse_auctions(
                     let mut split = item_name.split("] ");
                     split.next();
 
-                    internal_id = format!(
-                        "{};{}",
-                        split
-                            .next()
-                            .unwrap()
-                            .replace(" ", "_")
-                            .replace("_✦", "")
-                            .to_uppercase(),
-                        match tier {
-                            "COMMON" => 0,
-                            "UNCOMMON" => 1,
-                            "RARE" => 2,
-                            "EPIC" => 3,
-                            "LEGENDARY" => 4,
-                            "MYTHIC" => 5,
-                            _ => -1,
-                        }
-                    );
+                    if let Some(pet_name) = split.next() {
+                        internal_id = format!(
+                            "{};{}",
+                            pet_name.replace(" ", "_").replace("_✦", "").to_uppercase(),
+                            match tier {
+                                "COMMON" => 0,
+                                "UNCOMMON" => 1,
+                                "RARE" => 2,
+                                "EPIC" => 3,
+                                "LEGENDARY" => 4,
+                                "MYTHIC" => 5,
+                                _ => -1,
+                            }
+                        );
+                    }
                 }
             }
 
