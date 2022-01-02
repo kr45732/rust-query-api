@@ -71,7 +71,7 @@ async fn get_duration_until_api_update() -> Duration {
                     // Cloudfare doesn't return an exact time in ms, so the +2 accounts for that
                     return Duration::from_secs(max_age - age + 2);
                 }
-                None => return Duration::from_nanos(1),
+                None => return Duration::from_millis(1),
             },
             Err(_) => {
                 // Retry in 15 seconds
