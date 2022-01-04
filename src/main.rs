@@ -190,7 +190,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
             )
             .await;
     }
+    // Remove any files from previous runs
     let _ = fs::remove_file("lowestbin.json");
+    let _ = fs::remove_file("underbin.json");
+    let _ = fs::remove_file("query_items.json");
 
     info("Starting auction loop...".to_string()).await;
     start_auction_loop(|| async {

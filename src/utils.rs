@@ -18,7 +18,7 @@
 
 use crate::{statics::*, structs::*};
 use chrono::prelude::{DateTime, Utc};
-use dashmap::DashMap;
+use dashmap::{DashMap, DashSet};
 use futures::{pin_mut, Future};
 use log::{error, info};
 use postgres_types::{ToSql, Type};
@@ -330,4 +330,14 @@ pub async fn update_under_bins_local(bin_prices: &Vec<Value>) -> Result<(), serd
         .open("underbin.json")
         .unwrap();
     serde_json::to_writer(file, bin_prices)
+}
+
+pub async fn update_query_items_local(query_items: DashSet<String>) {
+    let file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open("query_items.json")
+        .unwrap();
+    let _ = serde_json::to_writer(file, &query_items);
 }

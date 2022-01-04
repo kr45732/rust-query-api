@@ -58,6 +58,12 @@ async fn handle_response(req: Request<Body>) -> hyper::Result<Response<Body>> {
         } else {
             bad_request("Query feature is not enabled")
         }
+    } else if let (&Method::GET, "/query_items") = (req.method(), req.uri().path()) {
+        if *ENABLE_QUERY.lock().unwrap() {
+            query_items(req).await
+        } else {
+            bad_request("Query feature is not enabled")
+        }
     } else if let (&Method::GET, "/pets") = (req.method(), req.uri().path()) {
         if *ENABLE_PETS.lock().unwrap() {
             pets(req).await
@@ -417,6 +423,37 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
             .body(Body::from(serde_json::to_vec(&results_vec).unwrap()))
             .unwrap())
     }
+}
+
+/* /query_items */
+async fn query_items(req: Request<Body>) -> hyper::Result<Response<Body>> {
+    let mut key = "".to_string();
+
+    // Reads the query parameters from the request and stores them in the corresponding variable
+    for query_pair in
+        Url::parse(&format!("http://{}{}", URL.lock().unwrap(), &req.uri().to_string()).to_string())
+            .unwrap()
+            .query_pairs()
+    {
+        if query_pair.0 == "key" {
+            key = query_pair.1.to_string();
+        }
+    }
+
+    if !valid_api_key(key, false) {
+        return bad_request("Not authorized");
+    }
+
+    let file_result = fs::read_to_string("query_items.json");
+    if file_result.is_err() {
+        return internal_error("Unable to open or read query_items.json");
+    }
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(file_result.unwrap()))
+        .unwrap())
 }
 
 /* /lowestbin */

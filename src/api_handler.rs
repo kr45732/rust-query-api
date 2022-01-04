@@ -210,6 +210,7 @@ pub async fn update_auctions() {
     // Query API
     if update_query {
         let query_started = Instant::now();
+        update_query_items_local(query_prices.iter().map(|o| o.item_name.clone()).collect()).await;
         match update_query_database(query_prices).await {
             Ok(rows) => {
                 info(format!(
