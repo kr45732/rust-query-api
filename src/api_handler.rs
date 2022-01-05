@@ -60,7 +60,7 @@ pub async fn update_auctions() {
     if update_query || update_pets || update_lowestbin || update_underbin {
         // First page to get the total number of pages
         let json = get_auction_page(0).await;
-        if json.is_null() {
+        if json.is_null() || json.get("auctions").is_none() {
             error(
                 "Failed to fetch the first (page=0) auction page. Canceling this run.".to_string(),
             )
