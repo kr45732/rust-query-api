@@ -5,3 +5,4 @@ dev
 .env
 lowestbin.json
 underbin.json
+query_items.json
