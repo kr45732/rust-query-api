@@ -68,6 +68,7 @@ async fn get_duration_until_api_update() -> Duration {
                     max_age_split.next();
                     let max_age = max_age_split.next().unwrap_or("60").parse::<u64>().unwrap();
 
+                    print!("Age: {}, Max Age: {}", age, max_age);
                     // Cloudfare doesn't return an exact time in ms, so the +2 accounts for that
                     return Duration::from_secs(max_age - age + 2);
                 }
