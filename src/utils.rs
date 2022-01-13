@@ -170,7 +170,7 @@ pub fn to_nbt(item_bytes: ItemBytes) -> Result<PartialNbt, Box<dyn std::error::E
 
 pub fn calculate_with_taxes(price: i64) -> i64 {
     let price_float = price as f64;
-    let tax_rate = if price >= 1000000 { 0.098 } else { 0.99 };
+    let tax_rate = if price >= 1000000 { 0.98 } else { 0.99 };
 
     return (price_float * tax_rate) as i64;
 }
