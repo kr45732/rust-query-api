@@ -254,7 +254,7 @@ pub async fn update_pets_database(pet_prices: &mut DashMap<String, i64>) -> Resu
         let database = DATABASE.as_ref().unwrap();
 
         // Add all old pet prices to the new prices if the new prices doesn't have that old pet name
-        let old_pet_prices = database.query("SELECT * FROM pets", &[]).await.unwrap();
+        let old_pet_prices = database.query("SELECT * FROM pets", &[]).await?;
         for old_price in old_pet_prices {
             let old_price_name: String = old_price.get("name");
             let mut new_has = false;
