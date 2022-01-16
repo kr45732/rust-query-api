@@ -134,8 +134,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .await;
 
         // Get the bid array type and store for future use
-        let _ =
-            BID_ARRAY.insert(client.prepare("SELECT $1::_bid").await.unwrap().params()[0].clone());
+        let _ = BID_ARRAY.insert(match client.prepare("SELECT _::_bid").await {
+            Ok(statement) => statement.params()[0].clone(),
+            Err(_) => client.prepare("SELECT $1::_bid").await.unwrap().params()[0].clone(),
+        });
 
         // Create avg_ah custom type
         let _ = client
@@ -149,8 +151,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .await;
 
         // Get the avg_ah array type and store for future use
-        let _ =
-            AVG_AH.insert(client.prepare("SELECT $1::_avg_ah").await.unwrap().params()[0].clone());
+        let _ = AVG_AH.insert(match client.prepare("SELECT _::_avg_ah").await {
+            Ok(statement) => statement.params()[0].clone(),
+            Err(_) => client.prepare("SELECT $1::_avg_ah").await.unwrap().params()[0].clone(),
+        });
 
         // Create query table if doesn't exist
         let _ = client
