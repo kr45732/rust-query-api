@@ -71,7 +71,10 @@ async fn get_duration_until_api_update() -> Duration {
                     // Cloudfare doesn't return an exact time in ms, so the +2 accounts for that
                     let time = max_age - age + 2;
 
-                    println!("Max Age: {}, Age: {}, Time: {}", max_age, age, time); // Debugging purposes
+                    info(format!(
+                        "Max Age: {}, Age: {}, Time: {}",
+                        max_age, age, time
+                    )); // Debugging purposes
 
                     if time == 0 {
                         return Duration::from_millis(1);
@@ -87,73 +90,79 @@ async fn get_duration_until_api_update() -> Duration {
             }
         }
         if num_attempts == 15 {
-            panic("Failed 15 consecutive attempts to contact the Hypixel API".to_string()).await;
+            panic("Failed 15 consecutive attempts to contact the Hypixel API".to_string());
         }
     }
 }
 
 /* Log and send an info message to the Discord webhook */
-pub async fn info(desc: String) {
+pub fn info(desc: String) {
     info!("{}", desc);
-    unsafe {
-        let _ = WEBHOOK
-            .as_ref()
-            .unwrap()
-            .send(|message| {
-                message.embed(|embed| {
-                    embed
-                        .title("Information")
-                        .url(&format!("http://{}", &URL.lock().unwrap()).to_string())
-                        .color(0x00FFFF)
-                        .description(&desc)
-                        .timestamp(&get_discord_timestamp())
+    tokio::spawn(async move {
+        unsafe {
+            let _ = WEBHOOK
+                .as_ref()
+                .unwrap()
+                .send(|message| {
+                    message.embed(|embed| {
+                        embed
+                            .title("Information")
+                            .url(&format!("http://{}", &URL.lock().unwrap()).to_string())
+                            .color(0x00FFFF)
+                            .description(&desc)
+                            .timestamp(&get_discord_timestamp())
+                    })
                 })
-            })
-            .await;
-    }
+                .await;
+        }
+    });
 }
 
 /* Log and send an error message to the Discord webhook */
-pub async fn error(desc: String) {
+pub fn error(desc: String) {
     error!("{}", desc);
-    unsafe {
-        let _ = WEBHOOK
-            .as_ref()
-            .unwrap()
-            .send(|message| {
-                message.embed(|embed| {
-                    embed
-                        .title("Error")
-                        .url(&format!("http://{}", &URL.lock().unwrap()).to_string())
-                        .color(0xFF0000)
-                        .description(&desc)
-                        .timestamp(&get_discord_timestamp())
+    tokio::spawn(async move {
+        unsafe {
+            let _ = WEBHOOK
+                .as_ref()
+                .unwrap()
+                .send(|message| {
+                    message.embed(|embed| {
+                        embed
+                            .title("Error")
+                            .url(&format!("http://{}", &URL.lock().unwrap()).to_string())
+                            .color(0xFF0000)
+                            .description(&desc)
+                            .timestamp(&get_discord_timestamp())
+                    })
                 })
-            })
-            .await;
-    }
+                .await;
+        }
+    });
 }
 
 /* Send a panic message to the Discord webhook and panic */
-pub async fn panic(desc: String) {
-    error!("{}", desc);
-    unsafe {
-        let _ = WEBHOOK
-            .as_ref()
-            .unwrap()
-            .send(|message| {
-                message.embed(|embed| {
-                    embed
-                        .title("Force panic")
-                        .url(&format!("http://{}", &URL.lock().unwrap()).to_string())
-                        .color(0xFF0000)
-                        .description(&desc)
-                        .timestamp(&get_discord_timestamp())
+pub fn panic(desc: String) {
+    tokio::spawn(async move {
+        unsafe {
+            let _ = WEBHOOK
+                .as_ref()
+                .unwrap()
+                .send(|message| {
+                    message.embed(|embed| {
+                        embed
+                            .title("Force panic")
+                            .url(&format!("http://{}", &URL.lock().unwrap()).to_string())
+                            .color(0xFF0000)
+                            .description(&desc)
+                            .timestamp(&get_discord_timestamp())
+                    })
                 })
-            })
-            .await;
-    }
-    panic!("{}", desc);
+                .await;
+        }
+
+        panic!("{}", desc);
+    });
 }
 
 /* Forms the current timestamp for a Discord Embed */

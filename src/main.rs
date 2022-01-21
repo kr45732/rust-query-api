@@ -112,10 +112,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     tokio::spawn(async move {
         match connection.await {
             Ok(_) => {
-                info("Successfully connected to database".to_string()).await;
+                info("Successfully connected to database".to_string());
             }
             Err(e) => {
-                panic(format!("Error connecting to database: {}", e)).await;
+                panic(format!("Error connecting to database: {}", e));
             }
         };
     });
@@ -133,6 +133,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             )
             .await;
 
+        // Delete all old prepared statements
         for row in client
             .query("SELECT name FROM pg_prepared_statements", &[])
             .await
@@ -208,13 +209,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let _ = fs::remove_file("underbin.json");
     let _ = fs::remove_file("query_items.json");
 
-    info("Starting auction loop...".to_string()).await;
+    info("Starting auction loop...".to_string());
     start_auction_loop(|| async {
         update_auctions().await;
     })
     .await;
 
-    info("Starting server...".to_string()).await;
+    info("Starting server...".to_string());
     start_server().await;
 
     Ok(())

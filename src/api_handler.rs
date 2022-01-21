@@ -26,7 +26,7 @@ use std::{fs, time::Instant};
 
 /* Update the enabled APIs */
 pub async fn update_auctions() {
-    info("Fetching auctions...".to_string()).await;
+    info("Fetching auctions...".to_string());
 
     let started = Instant::now();
     let started_epoch = Utc::now().timestamp_millis();
@@ -63,8 +63,7 @@ pub async fn update_auctions() {
         if json.is_null() || json.get("auctions").is_none() {
             error(
                 "Failed to fetch the first (page=0) auction page. Canceling this run.".to_string(),
-            )
-            .await;
+            );
             return;
         }
 
@@ -106,8 +105,7 @@ pub async fn update_auctions() {
                         error(format!(
                             "Failed to fetch a page with a total of {} failed page(s)",
                             num_failed
-                        ))
-                        .await;
+                        ));
                         continue;
                     }
 
@@ -120,8 +118,7 @@ pub async fn update_auctions() {
                             error(format!(
                                 "Failed to fetch a page with a total of {} failed page(s)",
                                 num_failed
-                            ))
-                            .await;
+                            ));
                             continue;
                         }
                     }
@@ -170,8 +167,7 @@ pub async fn update_auctions() {
     info(format!(
         "Total fetch time: {}s",
         started.elapsed().as_secs()
-    ))
-    .await;
+    ));
 
     debug!("Inserting into database");
     let insert_started = Instant::now();
@@ -185,10 +181,9 @@ pub async fn update_auctions() {
                 info(format!(
                     "Successfully updated bins file in {}ms",
                     bins_started.elapsed().as_millis()
-                ))
-                .await;
+                ));
             }
-            Err(e) => error(format!("Error updating bins file: {}", e)).await,
+            Err(e) => error(format!("Error updating bins file: {}", e)),
         }
 
         // Under bin API
@@ -199,10 +194,9 @@ pub async fn update_auctions() {
                     info(format!(
                         "Successfully updated under bins file in {}ms",
                         under_bins_started.elapsed().as_millis()
-                    ))
-                    .await;
+                    ));
                 }
-                Err(e) => error(format!("Error updating under bins file: {}", e)).await,
+                Err(e) => error(format!("Error updating under bins file: {}", e)),
             }
         }
     }
@@ -217,10 +211,9 @@ pub async fn update_auctions() {
                     "Successfully inserted {} query auctions into database in {}ms",
                     rows,
                     query_started.elapsed().as_millis()
-                ))
-                .await;
+                ));
             }
-            Err(e) => error(format!("Error inserting query into database: {}", e)).await,
+            Err(e) => error(format!("Error inserting query into database: {}", e)),
         }
     }
 
@@ -233,10 +226,9 @@ pub async fn update_auctions() {
                     "Successfully inserted {} pets into database in {}ms",
                     rows,
                     pets_started.elapsed().as_millis()
-                ))
-                .await;
+                ));
             }
-            Err(e) => error(format!("Error inserting pets into database: {}ms", e)).await,
+            Err(e) => error(format!("Error inserting pets into database: {}", e)),
         }
     }
 
@@ -248,16 +240,12 @@ pub async fn update_auctions() {
                 info(format!(
                     "Successfully inserted average auctions into database in {}ms",
                     avg_ah_started.elapsed().as_millis()
-                ))
-                .await;
+                ));
             }
-            Err(e) => {
-                error(format!(
-                    "Error inserting average auctions into database: {}",
-                    e
-                ))
-                .await
-            }
+            Err(e) => error(format!(
+                "Error inserting average auctions into database: {}",
+                e
+            )),
         }
     }
 
@@ -265,8 +253,7 @@ pub async fn update_auctions() {
         "Insert time: {}s | Total time: {}s",
         insert_started.elapsed().as_secs(),
         started.elapsed().as_secs()
-    ))
-    .await;
+    ));
 
     *IS_UPDATING.lock().unwrap() = false;
     *TOTAL_UPDATES.lock().unwrap() += 1;
@@ -454,7 +441,7 @@ fn parse_auctions(
 async fn parse_avg_auctions(avg_ah_prices: &mut Vec<AvgAh>) {
     let page_request = get_ended_auctions().await;
     if page_request.is_null() {
-        error("Failed to fetch ended auctions".to_string()).await;
+        error("Failed to fetch ended auctions".to_string());
     } else {
         // Store the sum and count for each unique item id across all ended auctions
         let avg_ah_map: DashMap<String, AvgAhSum> = DashMap::new();

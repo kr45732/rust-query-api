@@ -39,10 +39,10 @@ pub async fn start_server() {
     let server = Server::bind(&server_address).serve(make_service);
 
     println!("Listening on http://{}", server_address);
-    info(format!("Listening on http://{}", server_address)).await;
+    info(format!("Listening on http://{}", server_address));
 
     if let Err(e) = server.await {
-        error(format!("Error when starting server: {}", e)).await;
+        error(format!("Error when starting server: {}", e));
     }
 }
 
