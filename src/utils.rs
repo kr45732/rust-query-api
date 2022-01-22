@@ -63,24 +63,31 @@ async fn get_duration_until_api_update() -> Duration {
                 Some(age_header) => {
                     let age = age_header.to_str().unwrap().parse::<u64>().unwrap();
 
-                    let max_age_header = res_unwrap.headers().get("cache-control").unwrap();
-                    let mut max_age_split = max_age_header.to_str().unwrap().split("s-maxage=");
+                    let mut max_age_split = res_unwrap
+                        .headers()
+                        .get("cache-control")
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                        .split("s-maxage=");
                     max_age_split.next();
                     let max_age = max_age_split.next().unwrap_or("60").parse::<u64>().unwrap();
 
                     // Cloudfare doesn't return an exact time in ms, so the +2 accounts for that
                     let time = max_age - age + 2;
 
-                    info(format!(
-                        "Max Age: {}, Age: {}, Time: {}",
-                        max_age, age, time
-                    )); // Debugging purposes
+                    // Retry in 15 seconds if headers are giving weird values
+                    if time > 120 {
+                        thread::sleep(Duration::from_secs(15));
+                        continue;
+                    }
 
+                    // Cannot return 0 duration
                     if time == 0 {
                         return Duration::from_millis(1);
                     }
 
-                    return Duration::from_secs(max_age - age + 2);
+                    return Duration::from_secs(time);
                 }
                 None => return Duration::from_millis(1),
             },
@@ -213,11 +220,8 @@ pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, E
         let database = DATABASE.as_ref().unwrap();
         let _ = database.simple_query("TRUNCATE TABLE query").await;
 
-        let copy_statement = database
-            .prepare("COPY query FROM STDIN BINARY")
-            .await
-            .unwrap();
-        let copy_sink = database.copy_in(&copy_statement).await.unwrap();
+        let copy_statement = database.prepare("COPY query FROM STDIN BINARY").await?;
+        let copy_sink = database.copy_in(&copy_statement).await?;
 
         let copy_writer = BinaryCopyInWriter::new(
             copy_sink,
@@ -251,7 +255,7 @@ pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, E
             row.push(&m.bin);
             row.push(&m.bids);
 
-            copy_writer.as_mut().write(&row).await.unwrap();
+            copy_writer.as_mut().write(&row).await?;
         }
 
         copy_writer.finish().await
@@ -280,11 +284,8 @@ pub async fn update_pets_database(pet_prices: &mut DashMap<String, i64>) -> Resu
 
         let _ = database.simple_query("TRUNCATE TABLE pets").await;
 
-        let copy_statement = database
-            .prepare("COPY pets FROM STDIN BINARY")
-            .await
-            .unwrap();
-        let copy_sink = database.copy_in(&copy_statement).await.unwrap();
+        let copy_statement = database.prepare("COPY pets FROM STDIN BINARY").await?;
+        let copy_sink = database.copy_in(&copy_statement).await?;
         let copy_writer = BinaryCopyInWriter::new(copy_sink, &[Type::TEXT, Type::INT8]);
         pin_mut!(copy_writer);
 
@@ -296,8 +297,7 @@ pub async fn update_pets_database(pet_prices: &mut DashMap<String, i64>) -> Resu
                     m.key() as &(dyn ToSql + Sync),
                     m.value() as &(dyn ToSql + Sync),
                 ])
-                .await
-                .unwrap();
+                .await?;
         }
 
         copy_writer.finish().await

@@ -25,7 +25,7 @@ use std::{
     fmt::Write,
     fs::{self, File},
 };
-use tokio_postgres::NoTls;
+use tokio_postgres::{Client, NoTls, Statement};
 
 /* Entry point to the program. Creates loggers, reads config, creates tables, starts auction loop and server */
 #[tokio::main]
@@ -219,4 +219,43 @@ async fn main() -> Result<(), Box<dyn Error>> {
     start_server().await;
 
     Ok(())
+}
+
+// Stuff
+#[allow(dead_code)]
+async fn prepare(client: &mut Client) -> Statement {
+    let mut attempts = 0;
+    loop {
+        attempts += 1;
+        match client.prepare("SELECT $1::_bid").await {
+            Ok(ok) => return ok,
+            Err(e) => {
+                let db_err = e.as_db_error().unwrap();
+
+                if db_err.code().code() == "E42P05" {
+                    let _ = client
+                        .execute(
+                            client
+                                .query("SELECT name FROM pg_prepared_statements", &[])
+                                .await
+                                .unwrap()
+                                .into_iter()
+                                .map(|r| {
+                                    let name: String = r.get("name");
+                                    format!("DEALLOCATE ${};", name)
+                                })
+                                .collect::<Vec<String>>()
+                                .join(" ")
+                                .as_str(),
+                            &[],
+                        )
+                        .await;
+                }
+            }
+        };
+
+        if attempts == 15 {
+            panic("Failed 15 consecutive attempts to process a prepared statement".to_string());
+        }
+    }
 }
