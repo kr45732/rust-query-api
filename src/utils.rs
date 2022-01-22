@@ -25,7 +25,7 @@ use postgres_types::{ToSql, Type};
 use serde_json::Value;
 use std::{fs::OpenOptions, result::Result as StdResult, thread, time::SystemTime};
 use tokio::time::{self, Duration};
-use tokio_postgres::{binary_copy::BinaryCopyInWriter, Error};
+use tokio_postgres::{binary_copy::BinaryCopyInWriter, Client, Error, Statement};
 
 /* Repeat a task */
 pub async fn start_auction_loop<F, Fut>(mut f: F)
@@ -220,7 +220,7 @@ pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, E
         let database = DATABASE.as_ref().unwrap();
         let _ = database.simple_query("TRUNCATE TABLE query").await;
 
-        let copy_statement = database.prepare("COPY query FROM STDIN BINARY").await?;
+        let copy_statement = prepare(database, "COPY query FROM STDIN BINARY").await;
         let copy_sink = database.copy_in(&copy_statement).await?;
 
         let copy_writer = BinaryCopyInWriter::new(
@@ -284,7 +284,7 @@ pub async fn update_pets_database(pet_prices: &mut DashMap<String, i64>) -> Resu
 
         let _ = database.simple_query("TRUNCATE TABLE pets").await;
 
-        let copy_statement = database.prepare("COPY pets FROM STDIN BINARY").await?;
+        let copy_statement = prepare(database, "COPY pets FROM STDIN BINARY").await;
         let copy_sink = database.copy_in(&copy_statement).await?;
         let copy_writer = BinaryCopyInWriter::new(copy_sink, &[Type::TEXT, Type::INT8]);
         pin_mut!(copy_writer);
@@ -357,4 +357,22 @@ pub async fn update_query_items_local(query_items: DashSet<String>) {
         .open("query_items.json")
         .unwrap();
     let _ = serde_json::to_writer(file, &query_items);
+}
+
+pub async fn prepare(client: &Client, statement: &str) -> Statement {
+    let mut attempts = 0;
+    loop {
+        attempts += 1;
+        match client.prepare(statement).await {
+            Ok(ok) => return ok,
+            Err(e) => {
+                error(format!("{}", e));
+                thread::sleep(Duration::from_millis(20));
+            }
+        };
+
+        if attempts == 15 {
+            panic("Failed 15 consecutive attempts to process a prepared statement".to_string());
+        }
+    }
 }

@@ -25,7 +25,7 @@ use std::{
     fmt::Write,
     fs::{self, File},
 };
-use tokio_postgres::{Client, NoTls, Statement};
+use tokio_postgres::NoTls;
 
 /* Entry point to the program. Creates loggers, reads config, creates tables, starts auction loop and server */
 #[tokio::main]
@@ -123,6 +123,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
     unsafe {
         let client = DATABASE.insert(client);
 
+        // Delete all old prepared statements
+        let _ = client
+            .execute(
+                client
+                    .query("SELECT name FROM pg_prepared_statements", &[])
+                    .await
+                    .unwrap()
+                    .into_iter()
+                    .map(|r| {
+                        let name: String = r.get("name");
+                        format!("DEALLOCATE ${};", name)
+                    })
+                    .collect::<Vec<String>>()
+                    .join(" ")
+                    .as_str(),
+                &[],
+            )
+            .await;
+
         // Create bid custom type
         let _ = client
             .simple_query(
@@ -133,22 +152,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             )
             .await;
 
-        // Delete all old prepared statements
-        for row in client
-            .query("SELECT name FROM pg_prepared_statements", &[])
-            .await
-            .unwrap()
-            .into_iter()
-        {
-            let name: String = row.get("name");
-            let _ = client
-                .execute(format!("DEALLOCATE ${}", name).as_str(), &[])
-                .await;
-        }
-
         // Get the bid array type and store for future use
-        let _ =
-            BID_ARRAY.insert(client.prepare("SELECT $1::_bid").await.unwrap().params()[0].clone());
+        let _ = BID_ARRAY.insert(prepare(client, "SELECT $1::_bid").await.params()[0].clone());
 
         // Create avg_ah custom type
         let _ = client
@@ -162,8 +167,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .await;
 
         // Get the avg_ah array type and store for future use
-        let _ =
-            AVG_AH.insert(client.prepare("SELECT $1::_avg_ah").await.unwrap().params()[0].clone());
+        let _ = AVG_AH.insert(prepare(client, "SELECT $1::_avg_ah").await.params()[0].clone());
 
         // Create query table if doesn't exist
         let _ = client
@@ -219,43 +223,4 @@ async fn main() -> Result<(), Box<dyn Error>> {
     start_server().await;
 
     Ok(())
-}
-
-// Stuff
-#[allow(dead_code)]
-async fn prepare(client: &mut Client) -> Statement {
-    let mut attempts = 0;
-    loop {
-        attempts += 1;
-        match client.prepare("SELECT $1::_bid").await {
-            Ok(ok) => return ok,
-            Err(e) => {
-                let db_err = e.as_db_error().unwrap();
-
-                if db_err.code().code() == "E42P05" {
-                    let _ = client
-                        .execute(
-                            client
-                                .query("SELECT name FROM pg_prepared_statements", &[])
-                                .await
-                                .unwrap()
-                                .into_iter()
-                                .map(|r| {
-                                    let name: String = r.get("name");
-                                    format!("DEALLOCATE ${};", name)
-                                })
-                                .collect::<Vec<String>>()
-                                .join(" ")
-                                .as_str(),
-                            &[],
-                        )
-                        .await;
-                }
-            }
-        };
-
-        if attempts == 15 {
-            panic("Failed 15 consecutive attempts to process a prepared statement".to_string());
-        }
-    }
 }
