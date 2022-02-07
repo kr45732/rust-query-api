@@ -293,7 +293,7 @@ fn parse_auctions(
             let item_lore = auction.get("item_lore").unwrap().as_str().unwrap();
             let mut tier = auction.get("tier").unwrap().as_str().unwrap();
             let starting_bid = auction.get("starting_bid").unwrap().as_i64().unwrap();
-            let bin = auction.get("bin").is_some();
+            let bin = auction.get("bin").is_some() && auction.get("bin").unwrap().as_bool().unwrap();
             let pet_info;
 
             let nbt = &to_nbt(
