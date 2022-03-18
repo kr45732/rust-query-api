@@ -214,7 +214,7 @@ async fn average_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
             return internal_error(&format!("Error when querying database: {}", e).to_string());
         }
 
-        // Map each item id to its amounts and sales
+        // Map each item id to its prices and sales
         let avg_ah_map: DashMap<String, AvgAhVec> = DashMap::new();
         results_cursor.unwrap().into_iter().for_each(|ele_row| {
             for ele in AverageDatabaseItem::from(ele_row).prices {
@@ -228,7 +228,7 @@ async fn average_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
         });
 
         // Stores the values after averaging by 'step'
-        let mut avg_ah_vec: Vec<AvgAh> = Vec::new();
+        let avg_ah_map_final: DashMap<String, AvgAh> = DashMap::new();
         for ele in avg_ah_map {
             let mut count: i64 = 0;
             let mut sales: f32 = 0.0;
@@ -245,18 +245,23 @@ async fn average_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
                 count += 1;
             }
 
-            avg_ah_vec.push(AvgAh {
-                item_id: ele.0,
-                amount: ele.1.get_average(),
-                sales: sales / (count as f32),
-            })
+            avg_ah_map_final.insert(
+                ele.0.to_owned(),
+                AvgAh {
+                    item_id: ele.0,
+                    price: ele.1.get_average(),
+                    sales: sales / (count as f32),
+                },
+            );
         }
 
         // Return the vector of auctions serialized into JSON
         Ok(Response::builder()
             .status(StatusCode::OK)
             .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(serde_json::to_vec(&avg_ah_vec).unwrap()))
+            .body(Body::from(
+                serde_json::to_string(&avg_ah_map_final).unwrap(),
+            ))
             .unwrap())
     }
 }

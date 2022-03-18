@@ -293,7 +293,8 @@ fn parse_auctions(
             let item_lore = auction.get("item_lore").unwrap().as_str().unwrap();
             let mut tier = auction.get("tier").unwrap().as_str().unwrap();
             let starting_bid = auction.get("starting_bid").unwrap().as_i64().unwrap();
-            let bin = auction.get("bin").is_some() && auction.get("bin").unwrap().as_bool().unwrap();
+            let bin =
+                auction.get("bin").is_some() && auction.get("bin").unwrap().as_bool().unwrap();
             let pet_info;
 
             let nbt = &to_nbt(
@@ -506,15 +507,15 @@ async fn parse_avg_auctions(avg_ah_prices: &mut Vec<AvgAh>) {
                 );
             }
 
-            let amount = auction.get("price").unwrap().as_i64().unwrap();
+            let price = auction.get("price").unwrap().as_i64().unwrap();
             // If the map already has this id, then add this auction to the existing auctions, otherwise create a new entry
             if avg_ah_map.contains_key(&id) {
-                avg_ah_map.alter(&id, |_, value| value.add(amount));
+                avg_ah_map.alter(&id, |_, value| value.add(price));
             } else {
                 avg_ah_map.insert(
                     id,
                     AvgAhSum {
-                        sum: amount,
+                        sum: price,
                         count: 1,
                     },
                 );
@@ -525,7 +526,7 @@ async fn parse_avg_auctions(avg_ah_prices: &mut Vec<AvgAh>) {
         for ele in avg_ah_map {
             avg_ah_prices.push(AvgAh {
                 item_id: ele.0,
-                amount: (ele.1.sum as f64) / (ele.1.count as f64),
+                price: (ele.1.sum as f64) / (ele.1.count as f64),
                 sales: ele.1.count as f32,
             })
         }

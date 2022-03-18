@@ -80,7 +80,7 @@ impl From<Row> for AverageDatabaseItem {
 #[postgres(name = "avg_ah")]
 pub struct AvgAh {
     pub item_id: String,
-    pub amount: f64,
+    pub price: f64,
     pub sales: f32,
 }
 
@@ -104,14 +104,14 @@ pub struct AvgAhVec {
 
 impl AvgAhVec {
     pub fn add(mut self, avg_ah: &AvgAh) -> Self {
-        self.sum.push(avg_ah.amount);
+        self.sum.push(avg_ah.price);
         self.sales.push(avg_ah.sales);
         self
     }
 
     pub fn from(avg_ah: &AvgAh) -> Self {
         Self {
-            sum: vec![avg_ah.amount],
+            sum: vec![avg_ah.price],
             sales: vec![avg_ah.sales],
         }
     }

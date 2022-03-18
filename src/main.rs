@@ -160,7 +160,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .simple_query(
                 "CREATE TYPE avg_ah AS (
                     item_id TEXT,
-                    amount DOUBLE PRECISION,
+                    price DOUBLE PRECISION,
                     sales REAL
                 )",
             )
