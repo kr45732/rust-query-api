@@ -32,6 +32,7 @@ use tokio_postgres::NoTls;
 async fn main() -> Result<(), Box<dyn Error>> {
     // Create log files
     CombinedLogger::init(vec![
+        SimpleLogger::new(LevelFilter::Info, Config::default()),
         WriteLogger::new(
             LevelFilter::Info,
             Config::default(),

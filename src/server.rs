@@ -88,9 +88,73 @@ async fn handle_response(req: Request<Body>) -> hyper::Result<Response<Body>> {
         } else {
             bad_request("Average auction feature is not enabled")
         }
+    } else if let (&Method::GET, "/debug") = (req.method(), req.uri().path()) {
+        debug_log(req).await
+    } else if let (&Method::GET, "/info") = (req.method(), req.uri().path()) {
+        info_log(req).await
     } else {
         not_found()
     }
+}
+
+/* /debug */
+async fn debug_log(req: Request<Body>) -> hyper::Result<Response<Body>> {
+    let mut key = "".to_string();
+
+    // Reads the query parameters from the request and stores them in the corresponding variable
+    for query_pair in
+        Url::parse(&format!("http://{}{}", URL.lock().unwrap(), &req.uri().to_string()).to_string())
+            .unwrap()
+            .query_pairs()
+    {
+        if query_pair.0 == "key" {
+            key = query_pair.1.to_string();
+        }
+    }
+
+    if !valid_api_key(key, true) {
+        return bad_request("Not authorized");
+    }
+
+    let file_result = fs::read_to_string("debug.log");
+    if file_result.is_err() {
+        return internal_error("Unable to open or read debug.log");
+    }
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .body(Body::from(file_result.unwrap()))
+        .unwrap())
+}
+
+/* /debug */
+async fn info_log(req: Request<Body>) -> hyper::Result<Response<Body>> {
+    let mut key = "".to_string();
+
+    // Reads the query parameters from the request and stores them in the corresponding variable
+    for query_pair in
+        Url::parse(&format!("http://{}{}", URL.lock().unwrap(), &req.uri().to_string()).to_string())
+            .unwrap()
+            .query_pairs()
+    {
+        if query_pair.0 == "key" {
+            key = query_pair.1.to_string();
+        }
+    }
+
+    if !valid_api_key(key, true) {
+        return bad_request("Not authorized");
+    }
+
+    let file_result = fs::read_to_string("info.log");
+    if file_result.is_err() {
+        return internal_error("Unable to open or read info.log");
+    }
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .body(Body::from(file_result.unwrap()))
+        .unwrap())
 }
 
 /* /pets */

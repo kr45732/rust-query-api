@@ -366,7 +366,7 @@ pub async fn prepare(client: &Client, statement: &str) -> Statement {
         match client.prepare(statement).await {
             Ok(ok) => return ok,
             Err(e) => {
-                error(format!("{}", e));
+                error!("{}", e);
                 thread::sleep(Duration::from_millis(20));
             }
         };
