@@ -124,23 +124,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let client = DATABASE.insert(client);
 
         // Delete all old prepared statements
-        let _ = client
-            .execute(
-                client
-                    .query("SELECT name FROM pg_prepared_statements", &[])
-                    .await
-                    .unwrap()
-                    .into_iter()
-                    .map(|r| {
-                        let name: String = r.get("name");
-                        format!("DEALLOCATE ${};", name)
-                    })
-                    .collect::<Vec<String>>()
-                    .join(" ")
-                    .as_str(),
-                &[],
-            )
-            .await;
+        let _ = client.simple_query("DEALLOCATE ALL");
 
         // Create bid custom type
         let _ = client
