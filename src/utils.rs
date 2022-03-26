@@ -59,16 +59,14 @@ async fn get_duration_until_api_update() -> Duration {
             .send()
             .await;
         match res {
-            Ok(res_unwrap) => match res_unwrap.headers().get("age") {
+            Ok(res_unwrap) => match res_unwrap.header("age") {
                 Some(age_header) => {
-                    let age = age_header.to_str().unwrap().parse::<u64>().unwrap();
-
+                    let age = age_header.as_str().parse::<u64>().unwrap();
+    
                     let mut max_age_split = res_unwrap
-                        .headers()
-                        .get("cache-control")
+                        .header("cache-control")
                         .unwrap()
-                        .to_str()
-                        .unwrap()
+                        .as_str()
                         .split("s-maxage=");
                     max_age_split.next();
                     let max_age = max_age_split.next().unwrap_or("60").parse::<u64>().unwrap();

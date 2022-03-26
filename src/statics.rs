@@ -20,14 +20,13 @@ use crate::webhook::Webhook;
 use lazy_static::lazy_static;
 use postgres_types::Type;
 use regex::Regex;
-use std::sync::Mutex;
+use std::{sync::Mutex, time::Duration};
 use tokio_postgres::Client;
 
 lazy_static! {
-    pub static ref HTTP_CLIENT: reqwest::Client = reqwest::Client::builder()
-        .gzip(true)
-        .brotli(true)
-        .build()
+    pub static ref HTTP_CLIENT: surf::Client = surf::Config::new()
+        .set_timeout(Some(Duration::from_secs(15)))
+        .try_into()
         .unwrap();
     pub static ref MC_CODE_REGEX: Regex = Regex::new("(?i)\u{00A7}[0-9A-FK-OR]").unwrap();
     pub static ref BASE_URL: Mutex<String> = Mutex::new("".to_string());

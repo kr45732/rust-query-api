@@ -20,7 +20,7 @@ use crate::{statics::*, structs::*, utils::*};
 use chrono::Utc;
 use dashmap::{DashMap, DashSet};
 use futures::{stream::FuturesUnordered, StreamExt};
-use log::debug;
+use log::{debug, info};
 use serde_json::{json, Value};
 use std::{fs, time::Instant};
 
@@ -164,10 +164,7 @@ pub async fn update_auctions() {
         parse_avg_auctions(&mut avg_ah_prices).await;
     }
 
-    info(format!(
-        "Total fetch time: {}s",
-        started.elapsed().as_secs()
-    ));
+    info!("Total fetch time: {}s", started.elapsed().as_secs());
 
     debug!("Inserting into database");
     let insert_started = Instant::now();
@@ -543,7 +540,7 @@ async fn get_auction_page(page_number: i64) -> Value {
         .send()
         .await;
     if res.is_ok() {
-        let text = res.unwrap().text().await;
+        let text = res.unwrap().body_string().await;
         if text.is_ok() {
             let json = serde_json::from_str(text.unwrap().as_mut_str());
             if json.is_ok() {
@@ -562,7 +559,7 @@ async fn get_ended_auctions() -> Value {
         .send()
         .await;
     if res.is_ok() {
-        let text = res.unwrap().text().await;
+        let text = res.unwrap().body_string().await;
         if text.is_ok() {
             let json = serde_json::from_str(text.unwrap().as_mut_str());
             if json.is_ok() {

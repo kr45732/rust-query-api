@@ -25,9 +25,9 @@ use hyper::{
 };
 use log::info;
 use postgres_types::ToSql;
-use reqwest::Url;
 use std::fs;
 use substring::Substring;
+use surf::Url;
 
 /* Starts the server listening on URL */
 pub async fn start_server() {
@@ -38,7 +38,6 @@ pub async fn start_server() {
 
     let server = Server::bind(&server_address).serve(make_service);
 
-    println!("Listening on http://{}", server_address);
     info(format!("Listening on http://{}", server_address));
 
     if let Err(e) = server.await {

@@ -16,9 +16,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
+use surf::Client;
 
 type OString = Option<String>;
 type OInt32 = Option<i32>;
@@ -367,8 +367,8 @@ impl Webhook {
     }
 
     pub async fn get_info(&self) -> Result<WebhookModel, Box<dyn Error>> {
-        let request = self.client.get(&self.url).send().await?;
-        let mut content = request.text().await?;
+        let mut request = self.client.get(&self.url).send().await?;
+        let mut content = request.body_string().await?;
         Ok(serde_json::from_str(&mut content)?)
     }
 
@@ -378,7 +378,7 @@ impl Webhook {
     {
         let mut msg = Message::new();
         let message = t(&mut msg);
-        self.client.post(&self.url).json(&message).send().await?;
+        self.client.post(&self.url).body_json(&message)?.await?;
         Ok(())
     }
 }

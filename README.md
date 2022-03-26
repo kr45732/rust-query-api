@@ -20,8 +20,8 @@ A versatile API facade for the Hypixel Auction API written in Rust. The entire a
 
 ### Steps
 - Clone the repository
-- Copy the `example_env` file into a new `.env` file and fill all fields out **OR** set all the fields using environment variables
-- Run `cargo run --release` (this may take some time to compile)
+- Rename the `.example_env` file to `.env` and fill out all fields **OR** set all fields using environment variables
+- Run `cargo run --release` (may take some time to build)
 - Use it!
 
 ### Configuration Fields or Environment Variables
@@ -50,3 +50,4 @@ A versatile API facade for the Hypixel Auction API written in Rust. The entire a
 ## Todo
 - Better documentation & more examples
 - Improve underbin
+- Deply on Heroku instructions

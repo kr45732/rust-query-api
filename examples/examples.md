@@ -45,5 +45,5 @@
 - Meaning: get all new bins that make at least one million in profit compared to the lowest bin of the previous API update. Experimental and still being improved
 
 ### [example_5.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_5.json)
-- Request /average_auction?key=KEY&time=1639241919048&step=60
-- Meaning: get average auction prices from the unix timestamp 1639241919048 to the present. Average sales by hour
+- Request /average_auction?key=KEY&time=1647830293999&step=60
+- Meaning: get average auction prices from the unix timestamp 1647830293999 to the present. Average sales by hour
