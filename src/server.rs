@@ -126,7 +126,7 @@ async fn debug_log(req: Request<Body>) -> hyper::Result<Response<Body>> {
         .unwrap())
 }
 
-/* /debug */
+/* /info */
 async fn info_log(req: Request<Body>) -> hyper::Result<Response<Body>> {
     let mut key = "".to_string();
 
