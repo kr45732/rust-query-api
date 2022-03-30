@@ -198,11 +198,10 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
 
         let mut split = query.split(",");
         while let Some(pet_name) = split.next() {
-            if param_count == 1 {
-                sql.push_str(format!("${}", param_count).as_str())
-            } else {
-                sql.push_str(format!(", ${}", param_count).as_str())
+            if param_count != 1 {
+                sql.push_str(",");
             }
+            sql.push_str(format!("${}", param_count).as_str());
             param_vec.push(Box::new(pet_name.to_string()));
             param_count += 1;
         }
