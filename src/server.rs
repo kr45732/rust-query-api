@@ -214,7 +214,6 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
             .collect::<Vec<_>>();
 
         // Find and sort using query JSON
-        println!("SQL: {}", sql);
         let results_cursor = database_ref.unwrap().query_raw(&sql, out).await;
 
         if let Err(e) = results_cursor {
