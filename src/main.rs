@@ -124,9 +124,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     unsafe {
         let client = DATABASE.insert(client);
 
-        // Delete all old prepared statements
-        let _ = client.simple_query("DEALLOCATE ALL");
-
         // Create bid custom type
         let _ = client
             .simple_query(
@@ -138,7 +135,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .await;
 
         // Get the bid array type and store for future use
-        let _ = BID_ARRAY.insert(prepare(client, "SELECT $1::_bid").await.params()[0].clone());
+        let _ = BID_ARRAY.insert(client.prepare("SELECT $1::_bid").await.unwrap().params()[0].clone());
 
         // Create avg_ah custom type
         let _ = client
@@ -152,7 +149,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .await;
 
         // Get the avg_ah array type and store for future use
-        let _ = AVG_AH.insert(prepare(client, "SELECT $1::_avg_ah").await.params()[0].clone());
+        let _ = AVG_AH.insert(client.prepare("SELECT $1::_avg_ah").await.unwrap().params()[0].clone());
 
         // Create query table if doesn't exist
         let _ = client
