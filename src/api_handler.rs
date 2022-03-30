@@ -540,12 +540,9 @@ async fn get_auction_page(page_number: i64) -> Value {
         .send()
         .await;
     if res.is_ok() {
-        let text = res.unwrap().body_string().await;
-        if text.is_ok() {
-            let json = serde_json::from_str(text.unwrap().as_mut_str());
-            if json.is_ok() {
-                return json.unwrap();
-            }
+        let json = res.unwrap().body_json().await;
+        if json.is_ok() {
+            return json.unwrap();
         }
     }
 
@@ -559,12 +556,9 @@ async fn get_ended_auctions() -> Value {
         .send()
         .await;
     if res.is_ok() {
-        let text = res.unwrap().body_string().await;
-        if text.is_ok() {
-            let json = serde_json::from_str(text.unwrap().as_mut_str());
-            if json.is_ok() {
-                return json.unwrap();
-            }
+        let json = res.unwrap().body_json().await;
+        if json.is_ok() {
+            return json.unwrap();
         }
     }
 

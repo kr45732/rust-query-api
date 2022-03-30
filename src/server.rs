@@ -18,6 +18,7 @@
 
 use crate::{statics::*, structs::*, utils::*};
 use dashmap::DashMap;
+use futures::TryStreamExt;
 use hyper::{
     header,
     service::{make_service_fn, service_fn},
@@ -28,6 +29,7 @@ use postgres_types::ToSql;
 use std::fs;
 use substring::Substring;
 use surf::Url;
+use tokio_postgres::Row;
 
 /* Starts the server listening on URL */
 pub async fn start_server() {
@@ -39,7 +41,6 @@ pub async fn start_server() {
     let server = Server::bind(&server_address).serve(make_service);
 
     info(format!("Listening on http://{}", server_address));
-
     if let Err(e) = server.await {
         error(format!("Error when starting server: {}", e));
     }
@@ -191,25 +192,44 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
             return internal_error("Database isn't connected");
         }
 
-        let results_cursor;
+        let mut sql: String = "SELECT * FROM pets WHERE name IN (".to_string();
+        let mut param_vec: Vec<Box<String>> = Vec::new();
+        let mut param_count = 1;
+
+        let mut split = query.split(",");
+        while let Some(pet_name) = split.next() {
+            if param_count == 1 {
+                sql.push_str(format!("${}", param_count).as_str())
+            } else {
+                sql.push_str(format!(", ${}", param_count).as_str())
+            }
+            param_vec.push(Box::new(pet_name.to_string()));
+            param_count += 1;
+        }
+        sql.push_str(")");
+
+        let out: &Vec<&String> = &param_vec
+            .iter()
+            .map(std::ops::Deref::deref)
+            .collect::<Vec<_>>();
+
         // Find and sort using query JSON
-        results_cursor = database_ref
-            .unwrap()
-            .query(
-                &format!("SELECT * FROM pets WHERE name IN ({})", query),
-                &[],
-            )
-            .await;
+        println!("SQL: {}", sql);
+        let results_cursor = database_ref.unwrap().query_raw(&sql, out).await;
 
         if let Err(e) = results_cursor {
             return internal_error(&format!("Error when querying database: {}", e).to_string());
         }
 
         // Convert the cursor iterator to a vector
-        let mut results_vec = vec![];
-        results_cursor.unwrap().into_iter().for_each(|ele| {
-            results_vec.push(PetsDatabaseItem::from(ele));
-        });
+        let results_vec: Vec<PetsDatabaseItem> = results_cursor
+            .unwrap()
+            .try_collect::<Vec<Row>>()
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|ele| PetsDatabaseItem::from(ele))
+            .collect();
 
         // Return the vector of auctions serialized into JSON
         Ok(Response::builder()
