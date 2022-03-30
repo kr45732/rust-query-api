@@ -62,17 +62,9 @@ async fn get_duration_until_api_update() -> Duration {
             Ok(res_unwrap) => match res_unwrap.header("age") {
                 Some(age_header) => {
                     let age = age_header.as_str().parse::<u64>().unwrap();
-    
-                    let mut max_age_split = res_unwrap
-                        .header("cache-control")
-                        .unwrap()
-                        .as_str()
-                        .split("s-maxage=");
-                    max_age_split.next();
-                    let max_age = max_age_split.next().unwrap_or("60").parse::<u64>().unwrap();
 
                     // Cloudfare doesn't return an exact time in ms, so the +2 accounts for that
-                    let time = max_age - age + 2;
+                    let time = 60 - age + 2;
 
                     // Retry in 15 seconds if headers are giving weird values
                     if time > 120 {
