@@ -19,6 +19,7 @@
 use crate::{statics::*, structs::*};
 use chrono::prelude::{DateTime, Utc};
 use dashmap::{DashMap, DashSet};
+use deadpool_postgres::Client;
 use futures::{pin_mut, Future};
 use log::{error, info};
 use postgres_types::{ToSql, Type};
@@ -96,22 +97,21 @@ async fn get_duration_until_api_update() -> Duration {
 pub fn info(desc: String) {
     info!("{}", desc);
     tokio::spawn(async move {
-        unsafe {
-            let _ = WEBHOOK
-                .as_ref()
-                .unwrap()
-                .send(|message| {
-                    message.embed(|embed| {
-                        embed
-                            .title("Information")
-                            .url(&format!("http://{}", &URL.lock().unwrap()).to_string())
-                            .color(0x00FFFF)
-                            .description(&desc)
-                            .timestamp(&get_discord_timestamp())
-                    })
+        let _ = WEBHOOK
+            .lock()
+            .await
+            .as_ref()
+            .unwrap()
+            .send(|message| {
+                message.embed(|embed| {
+                    embed
+                        .title("Information")
+                        .color(0x00FFFF)
+                        .description(&desc)
+                        .timestamp(&get_discord_timestamp())
                 })
-                .await;
-        }
+            })
+            .await;
     });
 }
 
@@ -119,44 +119,42 @@ pub fn info(desc: String) {
 pub fn error(desc: String) {
     error!("{}", desc);
     tokio::spawn(async move {
-        unsafe {
-            let _ = WEBHOOK
-                .as_ref()
-                .unwrap()
-                .send(|message| {
-                    message.embed(|embed| {
-                        embed
-                            .title("Error")
-                            .url(&format!("http://{}", &URL.lock().unwrap()).to_string())
-                            .color(0xFF0000)
-                            .description(&desc)
-                            .timestamp(&get_discord_timestamp())
-                    })
+        let _ = WEBHOOK
+            .lock()
+            .await
+            .as_ref()
+            .unwrap()
+            .send(|message| {
+                message.embed(|embed| {
+                    embed
+                        .title("Error")
+                        .color(0xFF0000)
+                        .description(&desc)
+                        .timestamp(&get_discord_timestamp())
                 })
-                .await;
-        }
+            })
+            .await;
     });
 }
 
 /* Send a panic message to the Discord webhook and panic */
 pub fn panic(desc: String) {
     tokio::spawn(async move {
-        unsafe {
-            let _ = WEBHOOK
-                .as_ref()
-                .unwrap()
-                .send(|message| {
-                    message.embed(|embed| {
-                        embed
-                            .title("Force panic")
-                            .url(&format!("http://{}", &URL.lock().unwrap()).to_string())
-                            .color(0xFF0000)
-                            .description(&desc)
-                            .timestamp(&get_discord_timestamp())
-                    })
+        let _ = WEBHOOK
+            .lock()
+            .await
+            .as_ref()
+            .unwrap()
+            .send(|message| {
+                message.embed(|embed| {
+                    embed
+                        .title("Force Panic")
+                        .color(0xFF0000)
+                        .description(&desc)
+                        .timestamp(&get_discord_timestamp())
                 })
-                .await;
-        }
+            })
+            .await;
 
         panic!("{}", desc);
     });
@@ -181,13 +179,13 @@ pub fn calculate_with_taxes(price: i64) -> i64 {
     return (price_float * tax_rate) as i64;
 }
 
-pub fn valid_api_key(key: String, admin_only: bool) -> bool {
-    let admin_api_key = ADMIN_API_KEY.lock().unwrap().to_owned();
+pub async fn valid_api_key(key: String, admin_only: bool) -> bool {
+    let admin_api_key = ADMIN_API_KEY.lock().await.to_owned();
     if admin_only {
         return admin_api_key.is_empty() || admin_api_key == key;
     }
 
-    let api_key = API_KEY.lock().unwrap().to_owned();
+    let api_key = API_KEY.lock().await.to_owned();
     return api_key.is_empty()
         || api_key == key
         || admin_api_key.is_empty()
@@ -207,7 +205,8 @@ pub fn update_lower_else_insert(id: &String, starting_bid: i64, prices: &mut Das
 
 pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, Error> {
     unsafe {
-        let database = DATABASE.as_ref().unwrap();
+        let database = get_client().await;
+
         let _ = database.simple_query("TRUNCATE TABLE query").await;
 
         let copy_statement = database.prepare("COPY query FROM STDIN BINARY").await?;
@@ -225,7 +224,7 @@ pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, E
                 Type::INT8,
                 Type::TEXT_ARRAY,
                 Type::BOOL,
-                BID_ARRAY.to_owned().unwrap(),
+                BID_ARRAY.lock().await.to_owned().unwrap(),
             ],
         );
 
@@ -254,7 +253,7 @@ pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, E
 
 pub async fn update_pets_database(pet_prices: &mut DashMap<String, i64>) -> Result<u64, Error> {
     unsafe {
-        let database = DATABASE.as_ref().unwrap();
+        let database = get_client().await;
 
         // Add all old pet prices to the new prices if the new prices doesn't have that old pet name
         let old_pet_prices = database.query("SELECT * FROM pets", &[]).await?;
@@ -295,28 +294,26 @@ pub async fn update_pets_database(pet_prices: &mut DashMap<String, i64>) -> Resu
 }
 
 pub async fn update_avg_ah_database(avg_ah_prices: Vec<AvgAh>, time_t: i64) -> Result<u64, Error> {
-    unsafe {
-        let database = DATABASE.as_ref().unwrap();
+    let database = get_client().await;
 
-        // Delete auctions older than 5 days
-        let _ = database
-            .simple_query(
-                &format!(
-                    "DELETE FROM average WHERE time_t < {}",
-                    (Utc::now() - chrono::Duration::days(5)).timestamp_millis()
-                )
-                .to_string(),
+    // Delete auctions older than 5 days
+    let _ = database
+        .simple_query(
+            &format!(
+                "DELETE FROM average WHERE time_t < {}",
+                (Utc::now() - chrono::Duration::days(5)).timestamp_millis()
             )
-            .await;
+            .to_string(),
+        )
+        .await;
 
-        // Insert new average auctions
-        database
-            .execute(
-                "INSERT INTO average VALUES ($1, $2)",
-                &[&time_t, &avg_ah_prices],
-            )
-            .await
-    }
+    // Insert new average auctions
+    database
+        .execute(
+            "INSERT INTO average VALUES ($1, $2)",
+            &[&time_t, &avg_ah_prices],
+        )
+        .await
 }
 
 pub async fn update_bins_local(bin_prices: &DashMap<String, i64>) -> Result<(), serde_json::Error> {
@@ -347,4 +344,8 @@ pub async fn update_query_items_local(query_items: DashSet<String>) {
         .open("query_items.json")
         .unwrap();
     let _ = serde_json::to_writer(file, &query_items);
+}
+
+pub async fn get_client() -> Client {
+    DATABASE.lock().await.as_ref().unwrap().get().await.unwrap()
 }

@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use deadpool_postgres::{Manager, ManagerConfig, Pool, RecyclingMethod, Runtime};
 use dotenv::dotenv;
 use query_api::{api_handler::*, server::start_server, statics::*, utils::*, webhook::Webhook};
 use simplelog::*;
@@ -54,13 +55,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
     let _ = BASE_URL
         .lock()
-        .unwrap()
+        .await
         .write_str(&env::var("BASE_URL").expect("Unable to find BASE_URL environment variable"));
     let _ = PORT
         .lock()
-        .unwrap()
+        .await
         .write_str(&env::var("PORT").expect("Unable to find PORT environment variable"));
-    let _ = URL.lock().unwrap().write_str(
+    let _ = URL.lock().await.write_str(
         format!(
             "{}:{}",
             &env::var("BASE_URL").unwrap(),
@@ -68,95 +69,98 @@ async fn main() -> Result<(), Box<dyn Error>> {
         )
         .as_str(),
     );
-    let _ = POSTGRES_DB_URL.lock().unwrap().write_str(
+    let _ = POSTGRES_DB_URL.lock().await.write_str(
         &env::var("POSTGRES_URL").expect("Unable to find POSTGRES_URL environment variable"),
     );
     let _ = API_KEY
         .lock()
-        .unwrap()
+        .await
         .write_str(&env::var("API_KEY").expect("Unable to find API_KEY environment variable"));
     let _ = ADMIN_API_KEY
         .lock()
-        .unwrap()
-        .write_str(&env::var("ADMIN_API_KEY").unwrap_or(API_KEY.lock().unwrap().to_string()));
+        .await
+        .write_str(&env::var("ADMIN_API_KEY").unwrap_or(API_KEY.lock().await.to_string()));
     for feature in env::var("FEATURES")
         .expect("Unable to find FEATURES environment variable")
         .split("+")
     {
         match feature {
-            "QUERY" => *ENABLE_QUERY.lock().unwrap() = true,
-            "PETS" => *ENABLE_PETS.lock().unwrap() = true,
-            "LOWESTBIN" => *ENABLE_LOWESTBIN.lock().unwrap() = true,
+            "QUERY" => *ENABLE_QUERY.lock().await = true,
+            "PETS" => *ENABLE_PETS.lock().await = true,
+            "LOWESTBIN" => *ENABLE_LOWESTBIN.lock().await = true,
             "UNDERBIN" => {
-                if *ENABLE_LOWESTBIN.lock().unwrap() {
-                    *ENABLE_UNDERBIN.lock().unwrap() = true
+                if *ENABLE_LOWESTBIN.lock().await {
+                    *ENABLE_UNDERBIN.lock().await = true
                 } else {
                     panic!("LOWESTBIN must be enabled BEFORE enabling UNDERBIN");
                 }
             }
-            "AVERAGE_AUCTION" => *ENABLE_AVERAGE_AUCTION.lock().unwrap() = true,
+            "AVERAGE_AUCTION" => *ENABLE_AVERAGE_AUCTION.lock().await = true,
             _ => panic!("Invalid feature type: {}", feature),
         }
     }
 
-    unsafe {
-        let _ = WEBHOOK.insert(Webhook::from_url(
-            &env::var("WEBHOOK_URL").expect("Unable to find WEBHOOK_URL environment variable"),
-        ));
-    }
+    let _ = WEBHOOK.lock().await.insert(Webhook::from_url(
+        &env::var("WEBHOOK_URL").expect("Unable to find WEBHOOK_URL environment variable"),
+    ));
 
     // Connect to database
-    let (client, connection) =
-        tokio_postgres::connect(POSTGRES_DB_URL.lock().unwrap().as_str(), NoTls)
-            .await
-            .unwrap();
-    tokio::spawn(async move {
-        match connection.await {
-            Ok(_) => {
-                info("Successfully connected to database".to_string());
-            }
-            Err(e) => {
-                panic(format!("Error connecting to database: {}", e));
-            }
-        };
-    });
+    let database = DATABASE
+        .lock()
+        .await
+        .insert(
+            Pool::builder(Manager::from_config(
+                POSTGRES_DB_URL
+                    .lock()
+                    .await
+                    .as_str()
+                    .parse::<tokio_postgres::Config>()
+                    .unwrap(),
+                NoTls,
+                ManagerConfig {
+                    recycling_method: RecyclingMethod::Fast,
+                },
+            ))
+            .max_size(16)
+            .runtime(Runtime::Tokio1)
+            .build()
+            .unwrap(),
+        )
+        .get()
+        .await
+        .unwrap();
 
-    unsafe {
-        let client = DATABASE.insert(client);
-
-        // Create bid custom type
-        let _ = client
-            .simple_query(
-                "CREATE TYPE bid AS (
+    // Create bid custom type
+    let _ = database
+        .simple_query(
+            "CREATE TYPE bid AS (
                     bidder TEXT,
                     amount BIGINT
                 )",
-            )
-            .await;
+        )
+        .await;
 
-        // Get the bid array type and store for future use
-        let _ =
-            BID_ARRAY.insert(client.prepare("SELECT $1::_bid").await.unwrap().params()[0].clone());
+    // Get the bid array type and store for future use
+    let _ = BID_ARRAY
+        .lock()
+        .await
+        .insert(database.prepare("SELECT $1::_bid").await.unwrap().params()[0].clone());
 
-        // Create avg_ah custom type
-        let _ = client
-            .simple_query(
-                "CREATE TYPE avg_ah AS (
+    // Create avg_ah custom type
+    let _ = database
+        .simple_query(
+            "CREATE TYPE avg_ah AS (
                     item_id TEXT,
                     price DOUBLE PRECISION,
                     sales REAL
                 )",
-            )
-            .await;
+        )
+        .await;
 
-        // Get the avg_ah array type and store for future use
-        let _ =
-            AVG_AH.insert(client.prepare("SELECT $1::_avg_ah").await.unwrap().params()[0].clone());
-
-        // Create query table if doesn't exist
-        let _ = client
-            .simple_query(
-                "CREATE TABLE IF NOT EXISTS query (
+    // Create query table if doesn't exist
+    let _ = database
+        .simple_query(
+            "CREATE TABLE IF NOT EXISTS query (
                     uuid TEXT NOT NULL PRIMARY KEY,
                     auctioneer TEXT,
                     end_t BIGINT,
@@ -168,29 +172,28 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     bin BOOLEAN,
                     bids bid[]
                 )",
-            )
-            .await;
+        )
+        .await;
 
-        // Create pets table if doesn't exist
-        let _ = client
-            .simple_query(
-                "CREATE TABLE IF NOT EXISTS pets (
+    // Create pets table if doesn't exist
+    let _ = database
+        .simple_query(
+            "CREATE TABLE IF NOT EXISTS pets (
                     name TEXT NOT NULL PRIMARY KEY,
                     price BIGINT
                 )",
-            )
-            .await;
+        )
+        .await;
 
-        // Create average auction table if doesn't exist
-        let _ = client
-            .simple_query(
-                "CREATE TABLE IF NOT EXISTS average (
+    // Create average auction table if doesn't exist
+    let _ = database
+        .simple_query(
+            "CREATE TABLE IF NOT EXISTS average (
                     time_t BIGINT NOT NULL PRIMARY KEY,
                     prices avg_ah[]
                 )",
-            )
-            .await;
-    }
+        )
+        .await;
 
     // Remove any files from previous runs
     let _ = fs::remove_file("lowestbin.json");

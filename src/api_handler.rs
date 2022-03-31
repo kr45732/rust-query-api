@@ -30,7 +30,7 @@ pub async fn update_auctions() {
 
     let started = Instant::now();
     let started_epoch = Utc::now().timestamp_millis();
-    *IS_UPDATING.lock().unwrap() = true;
+    *IS_UPDATING.lock().await = true;
 
     // Stores all auction uuids in auctions vector to prevent duplicates
     let mut inserted_uuids: DashSet<String> = DashSet::new();
@@ -50,11 +50,11 @@ pub async fn update_auctions() {
             .unwrap();
 
     // Get which APIs to update
-    let update_query = *ENABLE_QUERY.lock().unwrap();
-    let update_pets = *ENABLE_PETS.lock().unwrap();
-    let update_lowestbin = *ENABLE_LOWESTBIN.lock().unwrap();
-    let update_underbin = *ENABLE_UNDERBIN.lock().unwrap();
-    let update_average_auction = *ENABLE_AVERAGE_AUCTION.lock().unwrap();
+    let update_query = *ENABLE_QUERY.lock().await;
+    let update_pets = *ENABLE_PETS.lock().await;
+    let update_lowestbin = *ENABLE_LOWESTBIN.lock().await;
+    let update_underbin = *ENABLE_UNDERBIN.lock().await;
+    let update_average_auction = *ENABLE_AVERAGE_AUCTION.lock().await;
 
     // Only fetch auctions if any of APIs that need the auctions are enabled
     if update_query || update_pets || update_lowestbin || update_underbin {
@@ -164,6 +164,7 @@ pub async fn update_auctions() {
         parse_avg_auctions(&mut avg_ah_prices).await;
     }
 
+    let fetch_sec = started.elapsed().as_secs();
     info!("Total fetch time: {}s", started.elapsed().as_secs());
 
     debug!("Inserting into database");
@@ -247,14 +248,15 @@ pub async fn update_auctions() {
     }
 
     info(format!(
-        "Insert time: {}s | Total time: {}s",
+        "Fetch time: {}s | Insert time: {}s | Total time: {}s",
+        fetch_sec,
         insert_started.elapsed().as_secs(),
         started.elapsed().as_secs()
     ));
 
-    *IS_UPDATING.lock().unwrap() = false;
-    *TOTAL_UPDATES.lock().unwrap() += 1;
-    *LAST_UPDATED.lock().unwrap() = started_epoch;
+    *IS_UPDATING.lock().await = false;
+    *TOTAL_UPDATES.lock().await += 1;
+    *LAST_UPDATED.lock().await = started_epoch;
 }
 
 /* Parses a page of auctions to a vector of documents  */

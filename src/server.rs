@@ -33,7 +33,7 @@ use tokio_postgres::Row;
 
 /* Starts the server listening on URL */
 pub async fn start_server() {
-    let server_address = URL.lock().unwrap().parse().unwrap();
+    let server_address = URL.lock().await.parse().unwrap();
 
     let make_service =
         make_service_fn(|_| async { Ok::<_, hyper::Error>(service_fn(handle_response)) });
@@ -51,39 +51,39 @@ async fn handle_response(req: Request<Body>) -> hyper::Result<Response<Body>> {
     info!("{} {}", req.method(), req.uri().path().substring(0, 30));
 
     if let (&Method::GET, "/") = (req.method(), req.uri().path()) {
-        base()
+        base().await
     } else if let (&Method::GET, "/query") = (req.method(), req.uri().path()) {
-        if *ENABLE_QUERY.lock().unwrap() {
+        if *ENABLE_QUERY.lock().await {
             query(req).await
         } else {
             bad_request("Query feature is not enabled")
         }
     } else if let (&Method::GET, "/query_items") = (req.method(), req.uri().path()) {
-        if *ENABLE_QUERY.lock().unwrap() {
+        if *ENABLE_QUERY.lock().await {
             query_items(req).await
         } else {
             bad_request("Query feature is not enabled")
         }
     } else if let (&Method::GET, "/pets") = (req.method(), req.uri().path()) {
-        if *ENABLE_PETS.lock().unwrap() {
+        if *ENABLE_PETS.lock().await {
             pets(req).await
         } else {
             bad_request("Pets feature is not enabled")
         }
     } else if let (&Method::GET, "/lowestbin") = (req.method(), req.uri().path()) {
-        if *ENABLE_LOWESTBIN.lock().unwrap() {
+        if *ENABLE_LOWESTBIN.lock().await {
             lowestbin(req).await
         } else {
             bad_request("Lowest bins feature is not enabled")
         }
     } else if let (&Method::GET, "/underbin") = (req.method(), req.uri().path()) {
-        if *ENABLE_UNDERBIN.lock().unwrap() {
+        if *ENABLE_UNDERBIN.lock().await {
             underbin(req).await
         } else {
             bad_request("Under bins feature is not enabled")
         }
     } else if let (&Method::GET, "/average_auction") = (req.method(), req.uri().path()) {
-        if *ENABLE_AVERAGE_AUCTION.lock().unwrap() {
+        if *ENABLE_AVERAGE_AUCTION.lock().await {
             average_auction(req).await
         } else {
             bad_request("Average auction feature is not enabled")
@@ -103,7 +103,7 @@ async fn debug_log(req: Request<Body>) -> hyper::Result<Response<Body>> {
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-        Url::parse(&format!("http://{}{}", URL.lock().unwrap(), &req.uri().to_string()).to_string())
+        Url::parse(&format!("http://{}{}", URL.lock().await, &req.uri().to_string()).to_string())
             .unwrap()
             .query_pairs()
     {
@@ -112,7 +112,7 @@ async fn debug_log(req: Request<Body>) -> hyper::Result<Response<Body>> {
         }
     }
 
-    if !valid_api_key(key, true) {
+    if !valid_api_key(key, true).await {
         return bad_request("Not authorized");
     }
 
@@ -133,7 +133,7 @@ async fn info_log(req: Request<Body>) -> hyper::Result<Response<Body>> {
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-        Url::parse(&format!("http://{}{}", URL.lock().unwrap(), &req.uri().to_string()).to_string())
+        Url::parse(&format!("http://{}{}", URL.lock().await, &req.uri().to_string()).to_string())
             .unwrap()
             .query_pairs()
     {
@@ -142,7 +142,7 @@ async fn info_log(req: Request<Body>) -> hyper::Result<Response<Body>> {
         }
     }
 
-    if !valid_api_key(key, true) {
+    if !valid_api_key(key, true).await {
         return bad_request("Not authorized");
     }
 
@@ -164,7 +164,7 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-        Url::parse(&format!("http://{}{}", URL.lock().unwrap(), &req.uri().to_string()).to_string())
+        Url::parse(&format!("http://{}{}", URL.lock().await, &req.uri().to_string()).to_string())
             .unwrap()
             .query_pairs()
     {
@@ -176,7 +176,7 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
     }
 
     // The API key in request doesn't match
-    if !valid_api_key(key, true) {
+    if !valid_api_key(key, true).await {
         return bad_request("Not authorized");
     }
 
@@ -184,58 +184,51 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
         return bad_request("The query parameter cannot be empty");
     }
 
-    unsafe {
-        let database_ref = DATABASE.as_ref();
+    let database_ref = get_client().await;
 
-        // Check to see if the database is connected
-        if database_ref.is_none() {
-            return internal_error("Database isn't connected");
+    let mut sql: String = "SELECT * FROM pets WHERE name IN (".to_string();
+    let mut param_vec: Vec<Box<String>> = Vec::new();
+    let mut param_count = 1;
+
+    let mut split = query.split(",");
+    while let Some(pet_name) = split.next() {
+        if param_count != 1 {
+            sql.push_str(",");
         }
-
-        let mut sql: String = "SELECT * FROM pets WHERE name IN (".to_string();
-        let mut param_vec: Vec<Box<String>> = Vec::new();
-        let mut param_count = 1;
-
-        let mut split = query.split(",");
-        while let Some(pet_name) = split.next() {
-            if param_count != 1 {
-                sql.push_str(",");
-            }
-            sql.push_str(format!("${}", param_count).as_str());
-            param_vec.push(Box::new(pet_name.to_string()));
-            param_count += 1;
-        }
-        sql.push_str(")");
-
-        let out: &Vec<&String> = &param_vec
-            .iter()
-            .map(std::ops::Deref::deref)
-            .collect::<Vec<_>>();
-
-        // Find and sort using query JSON
-        let results_cursor = database_ref.unwrap().query_raw(&sql, out).await;
-
-        if let Err(e) = results_cursor {
-            return internal_error(&format!("Error when querying database: {}", e).to_string());
-        }
-
-        // Convert the cursor iterator to a vector
-        let results_vec: Vec<PetsDatabaseItem> = results_cursor
-            .unwrap()
-            .try_collect::<Vec<Row>>()
-            .await
-            .unwrap()
-            .into_iter()
-            .map(|ele| PetsDatabaseItem::from(ele))
-            .collect();
-
-        // Return the vector of auctions serialized into JSON
-        Ok(Response::builder()
-            .status(StatusCode::OK)
-            .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(serde_json::to_vec(&results_vec).unwrap()))
-            .unwrap())
+        sql.push_str(format!("${}", param_count).as_str());
+        param_vec.push(Box::new(pet_name.to_string()));
+        param_count += 1;
     }
+    sql.push_str(")");
+
+    let out: &Vec<&String> = &param_vec
+        .iter()
+        .map(std::ops::Deref::deref)
+        .collect::<Vec<_>>();
+
+    // Find and sort using query JSON
+    let results_cursor = database_ref.query_raw(&sql, out).await;
+
+    if let Err(e) = results_cursor {
+        return internal_error(&format!("Error when querying database: {}", e).to_string());
+    }
+
+    // Convert the cursor iterator to a vector
+    let results_vec: Vec<PetsDatabaseItem> = results_cursor
+        .unwrap()
+        .try_collect::<Vec<Row>>()
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|ele| PetsDatabaseItem::from(ele))
+        .collect();
+
+    // Return the vector of auctions serialized into JSON
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(serde_json::to_vec(&results_vec).unwrap()))
+        .unwrap())
 }
 
 /* /average_auction */
@@ -246,7 +239,7 @@ async fn average_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-        Url::parse(&format!("http://{}{}", URL.lock().unwrap(), &req.uri().to_string()).to_string())
+        Url::parse(&format!("http://{}{}", URL.lock().await, &req.uri().to_string()).to_string())
             .unwrap()
             .query_pairs()
     {
@@ -265,7 +258,7 @@ async fn average_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
     }
 
     // The API key in request doesn't match
-    if !valid_api_key(key, false) {
+    if !valid_api_key(key, false).await {
         return bad_request("Not authorized");
     }
 
@@ -273,78 +266,69 @@ async fn average_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
         return bad_request("The time parameter must be provided and positive");
     }
 
-    unsafe {
-        let database_ref = DATABASE.as_ref();
+    let database_ref = get_client().await;
 
-        // Check to see if the database is connected
-        if database_ref.is_none() {
-            return internal_error("Database isn't connected");
-        }
+    // Find and sort using query JSON
+    let results_cursor = database_ref
+        .query(
+            "SELECT * FROM average WHERE time_t > $1 ORDER BY time_t",
+            &[&time],
+        )
+        .await;
 
-        let results_cursor;
-        // Find and sort using query JSON
-        results_cursor = database_ref
-            .unwrap()
-            .query(
-                "SELECT * FROM average WHERE time_t > $1 ORDER BY time_t",
-                &[&time],
-            )
-            .await;
-
-        if let Err(e) = results_cursor {
-            return internal_error(&format!("Error when querying database: {}", e).to_string());
-        }
-
-        // Map each item id to its prices and sales
-        let avg_ah_map: DashMap<String, AvgAhVec> = DashMap::new();
-        results_cursor.unwrap().into_iter().for_each(|ele_row| {
-            for ele in AverageDatabaseItem::from(ele_row).prices {
-                // If the id already exists in the map, append the new values, otherwise create a new entry
-                if avg_ah_map.contains_key(&ele.item_id) {
-                    avg_ah_map.alter(&ele.item_id, |_, value| value.add(&ele));
-                } else {
-                    avg_ah_map.insert(ele.item_id.to_owned(), AvgAhVec::from(&ele));
-                }
-            }
-        });
-
-        // Stores the values after averaging by 'step'
-        let avg_ah_map_final: DashMap<String, AvgAh> = DashMap::new();
-        for ele in avg_ah_map {
-            let mut count: i64 = 0;
-            let mut sales: f32 = 0.0;
-
-            // Average the number of sales by the step parameter
-            for i in (0..ele.1.sales.len()).step_by(step) {
-                for j in i..(i + step) {
-                    if j >= ele.1.sales.len() {
-                        break;
-                    }
-
-                    sales += ele.1.sales.get(j).unwrap();
-                }
-                count += 1;
-            }
-
-            avg_ah_map_final.insert(
-                ele.0.to_owned(),
-                AvgAh {
-                    item_id: ele.0,
-                    price: ele.1.get_average(),
-                    sales: sales / (count as f32),
-                },
-            );
-        }
-
-        // Return the vector of auctions serialized into JSON
-        Ok(Response::builder()
-            .status(StatusCode::OK)
-            .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(
-                serde_json::to_string(&avg_ah_map_final).unwrap(),
-            ))
-            .unwrap())
+    if let Err(e) = results_cursor {
+        return internal_error(&format!("Error when querying database: {}", e).to_string());
     }
+
+    // Map each item id to its prices and sales
+    let avg_ah_map: DashMap<String, AvgAhVec> = DashMap::new();
+    results_cursor.unwrap().into_iter().for_each(|ele_row| {
+        for ele in AverageDatabaseItem::from(ele_row).prices {
+            // If the id already exists in the map, append the new values, otherwise create a new entry
+            if avg_ah_map.contains_key(&ele.item_id) {
+                avg_ah_map.alter(&ele.item_id, |_, value| value.add(&ele));
+            } else {
+                avg_ah_map.insert(ele.item_id.to_owned(), AvgAhVec::from(&ele));
+            }
+        }
+    });
+
+    // Stores the values after averaging by 'step'
+    let avg_ah_map_final: DashMap<String, AvgAh> = DashMap::new();
+    for ele in avg_ah_map {
+        let mut count: i64 = 0;
+        let mut sales: f32 = 0.0;
+
+        // Average the number of sales by the step parameter
+        for i in (0..ele.1.sales.len()).step_by(step) {
+            for j in i..(i + step) {
+                if j >= ele.1.sales.len() {
+                    break;
+                }
+
+                sales += ele.1.sales.get(j).unwrap();
+            }
+            count += 1;
+        }
+
+        avg_ah_map_final.insert(
+            ele.0.to_owned(),
+            AvgAh {
+                item_id: ele.0,
+                price: ele.1.get_average(),
+                sales: sales / (count as f32),
+            },
+        );
+    }
+
+    // Return the vector of auctions serialized into JSON
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            serde_json::to_string(&avg_ah_map_final).unwrap(),
+        ))
+        .unwrap())
 }
 
 /* /query */
@@ -363,7 +347,7 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-        Url::parse(&format!("http://{}{}", URL.lock().unwrap(), &req.uri().to_string()).to_string())
+        Url::parse(&format!("http://{}{}", URL.lock().await, &req.uri().to_string()).to_string())
             .unwrap()
             .query_pairs()
     {
@@ -392,123 +376,117 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
         }
     }
 
-    if !valid_api_key(key.to_owned(), false) {
+    if !valid_api_key(key.to_owned(), false).await {
         return bad_request("Not authorized");
     }
 
-    unsafe {
-        // Checks if the database is connected
-        if DATABASE.as_ref().is_none() {
-            return internal_error("Database isn't connected");
-        }
+    let database_ref = get_client().await;
 
-        let database_ref = DATABASE.as_ref().unwrap();
-        let results_cursor;
+    let results_cursor;
 
-        // Find and sort using query
-        if query.is_empty() {
-            let mut sql;
-            let mut param_vec: Vec<&(dyn ToSql + Sync)> = Vec::new();
-            let mut param_count = 1;
+    // Find and sort using query
+    if query.is_empty() {
+        let mut sql;
+        let mut param_vec: Vec<&(dyn ToSql + Sync)> = Vec::new();
+        let mut param_count = 1;
 
-            if !bids.is_empty() {
-                sql = "SELECT * FROM query, unnest(bids) AS bid WHERE bid.bidder = $1".to_string();
-                param_vec.push(&bids);
-                param_count += 1;
-            } else {
-                sql = "SELECT * FROM query WHERE".to_string();
-            }
-
-            if !tier.is_empty() {
-                if param_count != 1 {
-                    sql.push_str(" AND");
-                }
-                sql.push_str(format!(" tier = ${}", param_count).as_str());
-                param_vec.push(&tier);
-                param_count += 1;
-            }
-            if !item_name.is_empty() {
-                if param_count != 1 {
-                    sql.push_str(" AND");
-                }
-                sql.push_str(format!(" item_name ILIKE ${}", param_count).as_str());
-                param_vec.push(&item_name);
-                param_count += 1;
-            }
-            if !item_id.is_empty() {
-                if param_count != 1 {
-                    sql.push_str(" AND");
-                }
-                sql.push_str(format!(" item_id = ${}", param_count).as_str());
-                param_vec.push(&item_id);
-                param_count += 1;
-            }
-            if !enchants.is_empty() {
-                if param_count != 1 {
-                    sql.push_str(" AND");
-                }
-                sql.push_str(format!(" ${} = ANY (enchants)", param_count).as_str());
-                param_vec.push(&enchants);
-                param_count += 1;
-            };
-            if end >= 0 {
-                if param_count != 1 {
-                    sql.push_str(" AND");
-                }
-                sql.push_str(format!(" end_t > ${}", param_count).as_str());
-                param_vec.push(&end);
-                param_count += 1;
-            }
-            let bin_unwrapped;
-            if bin.is_some() {
-                if param_count != 1 {
-                    sql.push_str(" AND");
-                }
-                sql.push_str(format!(" bin = ${}", param_count).as_str());
-                bin_unwrapped = bin.unwrap();
-                param_vec.push(&bin_unwrapped);
-                param_count += 1;
-            }
-            if !sort.is_empty() {
-                if sort == "ASC" {
-                    sql.push_str(" ORDER BY starting_bid ASC");
-                } else if sort == "DESC" {
-                    sql.push_str(" ORDER BY starting_bid DESC");
-                }
-            };
-            if limit > 0 {
-                sql.push_str(format!(" LIMIT ${}", param_count).as_str());
-                param_vec.push(&limit);
-            }
-
-            results_cursor = database_ref.query(&sql, &param_vec).await;
+        if !bids.is_empty() {
+            sql = "SELECT * FROM query, unnest(bids) AS bid WHERE bid.bidder = $1".to_string();
+            param_vec.push(&bids);
+            param_count += 1;
         } else {
-            if !valid_api_key(key, true) {
-                return bad_request("Not authorized");
+            sql = "SELECT * FROM query WHERE".to_string();
+        }
+
+        if !tier.is_empty() {
+            if param_count != 1 {
+                sql.push_str(" AND");
             }
-
-            results_cursor = database_ref
-                .query(&format!("SELECT * FROM query WHERE {}", query), &[])
-                .await;
+            sql.push_str(format!(" tier = ${}", param_count).as_str());
+            param_vec.push(&tier);
+            param_count += 1;
+        }
+        if !item_name.is_empty() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" item_name ILIKE ${}", param_count).as_str());
+            param_vec.push(&item_name);
+            param_count += 1;
+        }
+        if !item_id.is_empty() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" item_id = ${}", param_count).as_str());
+            param_vec.push(&item_id);
+            param_count += 1;
+        }
+        if !enchants.is_empty() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" ${} = ANY (enchants)", param_count).as_str());
+            param_vec.push(&enchants);
+            param_count += 1;
+        };
+        if end >= 0 {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" end_t > ${}", param_count).as_str());
+            param_vec.push(&end);
+            param_count += 1;
+        }
+        let bin_unwrapped;
+        if bin.is_some() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" bin = ${}", param_count).as_str());
+            bin_unwrapped = bin.unwrap();
+            param_vec.push(&bin_unwrapped);
+            param_count += 1;
+        }
+        if !sort.is_empty() {
+            if sort == "ASC" {
+                sql.push_str(" ORDER BY starting_bid ASC");
+            } else if sort == "DESC" {
+                sql.push_str(" ORDER BY starting_bid DESC");
+            }
+        };
+        if limit > 0 {
+            sql.push_str(format!(" LIMIT ${}", param_count).as_str());
+            param_vec.push(&limit);
         }
 
-        if let Err(e) = results_cursor {
-            return internal_error(&format!("Error when querying database: {}", e));
+        results_cursor = database_ref.query(&sql, &param_vec).await;
+    } else {
+        if !valid_api_key(key, true).await {
+            return bad_request("Not authorized");
         }
 
-        // Convert the cursor iterator to a vector
-        let mut results_vec = vec![];
-        results_cursor.unwrap().into_iter().for_each(|ele| {
-            results_vec.push(DatabaseItem::from(ele));
-        });
-
-        // Return the vector of auctions serialized into JSON
-        Ok(Response::builder()
-            .status(StatusCode::OK)
-            .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(serde_json::to_vec(&results_vec).unwrap()))
-            .unwrap())
+        results_cursor = database_ref
+            .query(&format!("SELECT * FROM query WHERE {}", query), &[])
+            .await;
     }
+
+    if let Err(e) = results_cursor {
+        return internal_error(&format!("Error when querying database: {}", e));
+    }
+
+    // Convert the cursor iterator to a vector
+    let mut results_vec = vec![];
+    results_cursor.unwrap().into_iter().for_each(|ele| {
+        results_vec.push(DatabaseItem::from(ele));
+    });
+
+    // Return the vector of auctions serialized into JSON
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(serde_json::to_vec(&results_vec).unwrap()))
+        .unwrap())
 }
 
 /* /query_items */
@@ -517,7 +495,7 @@ async fn query_items(req: Request<Body>) -> hyper::Result<Response<Body>> {
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-        Url::parse(&format!("http://{}{}", URL.lock().unwrap(), &req.uri().to_string()).to_string())
+        Url::parse(&format!("http://{}{}", URL.lock().await, &req.uri().to_string()).to_string())
             .unwrap()
             .query_pairs()
     {
@@ -526,7 +504,7 @@ async fn query_items(req: Request<Body>) -> hyper::Result<Response<Body>> {
         }
     }
 
-    if !valid_api_key(key, false) {
+    if !valid_api_key(key, false).await {
         return bad_request("Not authorized");
     }
 
@@ -548,7 +526,7 @@ async fn lowestbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-        Url::parse(&format!("http://{}{}", URL.lock().unwrap(), &req.uri().to_string()).to_string())
+        Url::parse(&format!("http://{}{}", URL.lock().await, &req.uri().to_string()).to_string())
             .unwrap()
             .query_pairs()
     {
@@ -557,7 +535,7 @@ async fn lowestbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
         }
     }
 
-    if !valid_api_key(key, false) {
+    if !valid_api_key(key, false).await {
         return bad_request("Not authorized");
     }
 
@@ -579,7 +557,7 @@ async fn underbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-        Url::parse(&format!("http://{}{}", URL.lock().unwrap(), &req.uri().to_string()).to_string())
+        Url::parse(&format!("http://{}{}", URL.lock().await, &req.uri().to_string()).to_string())
             .unwrap()
             .query_pairs()
     {
@@ -588,7 +566,7 @@ async fn underbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
         }
     }
 
-    if !valid_api_key(key, false) {
+    if !valid_api_key(key, false).await {
         return bad_request("Not authorized");
     }
 
@@ -605,7 +583,7 @@ async fn underbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
 }
 
 /* / */
-fn base() -> hyper::Result<Response<Body>> {
+async fn base() -> hyper::Result<Response<Body>> {
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
@@ -613,11 +591,11 @@ fn base() -> hyper::Result<Response<Body>> {
             "{{
             \"success\":true,
             \"enabled_features\":{{
-                \"QUERY\":{},
-                \"PETS\":{},
-                \"LOWESTBIN\":{},
-                \"UNDERBIN\":{},
-                \"AVERAGE_AUCTION\":{}
+                \"query\":{},
+                \"pets\":{},
+                \"lowestbin\":{},
+                \"underbin\":{},
+                \"average_auction\":{}
             }},\"statistics\":
             {{
                 \"is_updating\":{},
@@ -625,14 +603,14 @@ fn base() -> hyper::Result<Response<Body>> {
                 \"last_updated\":{}
             }}
         }}",
-            *ENABLE_QUERY.lock().unwrap(),
-            *ENABLE_PETS.lock().unwrap(),
-            *ENABLE_LOWESTBIN.lock().unwrap(),
-            *ENABLE_UNDERBIN.lock().unwrap(),
-            *ENABLE_AVERAGE_AUCTION.lock().unwrap(),
-            *IS_UPDATING.lock().unwrap(),
-            *TOTAL_UPDATES.lock().unwrap(),
-            *LAST_UPDATED.lock().unwrap()
+            *ENABLE_QUERY.lock().await,
+            *ENABLE_PETS.lock().await,
+            *ENABLE_LOWESTBIN.lock().await,
+            *ENABLE_UNDERBIN.lock().await,
+            *ENABLE_AVERAGE_AUCTION.lock().await,
+            *IS_UPDATING.lock().await,
+            *TOTAL_UPDATES.lock().await,
+            *LAST_UPDATED.lock().await
         )))
         .unwrap())
 }

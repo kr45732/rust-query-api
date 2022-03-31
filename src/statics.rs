@@ -17,11 +17,12 @@
  */
 
 use crate::webhook::Webhook;
+use deadpool_postgres::Pool;
 use lazy_static::lazy_static;
 use postgres_types::Type;
 use regex::Regex;
-use std::{sync::Mutex, time::Duration};
-use tokio_postgres::Client;
+use std::time::Duration;
+use tokio::sync::Mutex;
 
 lazy_static! {
     pub static ref HTTP_CLIENT: surf::Client = surf::Config::new()
@@ -43,9 +44,7 @@ lazy_static! {
     pub static ref ENABLE_LOWESTBIN: Mutex<bool> = Mutex::new(false);
     pub static ref ENABLE_UNDERBIN: Mutex<bool> = Mutex::new(false);
     pub static ref ENABLE_AVERAGE_AUCTION: Mutex<bool> = Mutex::new(false);
+    pub static ref WEBHOOK: Mutex<Option<Webhook>> = Mutex::new(None);
+    pub static ref BID_ARRAY: Mutex<Option<Type>> = Mutex::new(None);
+    pub static ref DATABASE: Mutex<Option<Pool>> = Mutex::new(None);
 }
-
-pub static mut DATABASE: Option<Client> = None;
-pub static mut WEBHOOK: Option<Webhook> = None;
-pub static mut BID_ARRAY: Option<Type> = None;
-pub static mut AVG_AH: Option<Type> = None;
