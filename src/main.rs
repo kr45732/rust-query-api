@@ -16,36 +16,38 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use deadpool_postgres::{Manager, ManagerConfig, Pool, RecyclingMethod, Runtime};
-use dotenv::dotenv;
-use query_api::{api_handler::*, server::start_server, statics::*, utils::*, webhook::Webhook};
-use simplelog::*;
 use std::{
-    env,
     error::Error,
-    fmt::Write,
     fs::{self, File},
 };
+use std::sync::Arc;
+
+use deadpool_postgres::{Manager, ManagerConfig, Pool, RecyclingMethod, Runtime};
+use dotenv::dotenv;
+use simplelog::{CombinedLogger, LevelFilter, SimpleLogger, WriteLogger};
 use tokio_postgres::NoTls;
+
+use query_api::{api_handler::*, server::start_server, statics::*, utils::*, webhook::Webhook};
+use query_api::config::Config;
 
 /* Entry point to the program. Creates loggers, reads config, creates tables, starts auction loop and server */
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     // Create log files
     CombinedLogger::init(vec![
-        SimpleLogger::new(LevelFilter::Info, Config::default()),
+        SimpleLogger::new(LevelFilter::Info, Default::default()),
         WriteLogger::new(
             LevelFilter::Info,
-            Config::default(),
+            Default::default(),
             File::create("info.log").unwrap(),
         ),
         WriteLogger::new(
             LevelFilter::Debug,
-            Config::default(),
+            Default::default(),
             File::create("debug.log").unwrap(),
         ),
     ])
-    .expect("Error when creating loggers");
+        .expect("Error when creating loggers");
     println!("Loggers Created");
 
     // Read config
@@ -53,67 +55,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if dotenv().is_err() {
         println!("Cannot find a .env file, will attempt to use environment variables");
     }
-    let _ = BASE_URL
-        .lock()
-        .await
-        .write_str(&env::var("BASE_URL").expect("Unable to find BASE_URL environment variable"));
-    let _ = PORT
-        .lock()
-        .await
-        .write_str(&env::var("PORT").expect("Unable to find PORT environment variable"));
-    let _ = URL.lock().await.write_str(
-        format!(
-            "{}:{}",
-            &env::var("BASE_URL").unwrap(),
-            &env::var("PORT").unwrap()
-        )
-        .as_str(),
-    );
-    let _ = POSTGRES_DB_URL.lock().await.write_str(
-        &env::var("POSTGRES_URL").expect("Unable to find POSTGRES_URL environment variable"),
-    );
-    let _ = API_KEY
-        .lock()
-        .await
-        .write_str(&env::var("API_KEY").expect("Unable to find API_KEY environment variable"));
-    let _ = ADMIN_API_KEY
-        .lock()
-        .await
-        .write_str(&env::var("ADMIN_API_KEY").unwrap_or(API_KEY.lock().await.to_string()));
-    for feature in env::var("FEATURES")
-        .expect("Unable to find FEATURES environment variable")
-        .split("+")
-    {
-        match feature {
-            "QUERY" => *ENABLE_QUERY.lock().await = true,
-            "PETS" => *ENABLE_PETS.lock().await = true,
-            "LOWESTBIN" => *ENABLE_LOWESTBIN.lock().await = true,
-            "UNDERBIN" => {
-                if *ENABLE_LOWESTBIN.lock().await {
-                    *ENABLE_UNDERBIN.lock().await = true
-                } else {
-                    panic!("LOWESTBIN must be enabled BEFORE enabling UNDERBIN");
-                }
-            }
-            "AVERAGE_AUCTION" => *ENABLE_AVERAGE_AUCTION.lock().await = true,
-            _ => panic!("Invalid feature type: {}", feature),
-        }
-    }
 
-    let _ = WEBHOOK.lock().await.insert(Webhook::from_url(
-        &env::var("WEBHOOK_URL").expect("Unable to find WEBHOOK_URL environment variable"),
-    ));
-
+    let config = Arc::new(Config::load_or_panic());
+    let _ = WEBHOOK.lock().await.insert(Webhook::from_url(config.webhook_url.as_str()));
     // Connect to database
     let database = DATABASE
         .lock()
         .await
         .insert(
             Pool::builder(Manager::from_config(
-                POSTGRES_DB_URL
-                    .lock()
-                    .await
-                    .as_str()
+                config.postgres_url
                     .parse::<tokio_postgres::Config>()
                     .unwrap(),
                 NoTls,
@@ -121,10 +72,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     recycling_method: RecyclingMethod::Fast,
                 },
             ))
-            .max_size(16)
-            .runtime(Runtime::Tokio1)
-            .build()
-            .unwrap(),
+                .max_size(16)
+                .runtime(Runtime::Tokio1)
+                .build()
+                .unwrap(),
         )
         .get()
         .await
@@ -201,13 +152,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let _ = fs::remove_file("query_items.json");
 
     info("Starting auction loop...".to_string());
-    start_auction_loop(|| async {
-        update_auctions().await;
+    let auction_config = config.clone();
+    start_auction_loop(move || {
+        let auction_config = auction_config.clone();
+        async move {
+            update_auctions(auction_config).await;
+        }
     })
-    .await;
+        .await;
 
     info("Starting server...".to_string());
-    start_server().await;
+    start_server(config.clone()).await;
 
     Ok(())
 }

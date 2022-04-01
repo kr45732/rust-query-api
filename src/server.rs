@@ -16,27 +16,36 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::{statics::*, structs::*, utils::*};
+use std::fs;
+use std::sync::Arc;
+
 use dashmap::DashMap;
 use futures::TryStreamExt;
 use hyper::{
+    Body,
     header,
-    service::{make_service_fn, service_fn},
-    Body, Method, Request, Response, Server, StatusCode,
+    Method, Request, Response, Server, service::{make_service_fn, service_fn}, StatusCode,
 };
 use log::info;
 use postgres_types::ToSql;
-use std::fs;
 use substring::Substring;
 use surf::Url;
 use tokio_postgres::Row;
 
-/* Starts the server listening on URL */
-pub async fn start_server() {
-    let server_address = URL.lock().await.parse().unwrap();
+use crate::{statics::*, structs::*, utils::*};
+use crate::config::{Config, Feature};
 
+/// Starts the server listening on URL
+pub async fn start_server(config: Arc<Config>) {
+    let server_address = config.full_url.parse().unwrap();
     let make_service =
-        make_service_fn(|_| async { Ok::<_, hyper::Error>(service_fn(handle_response)) });
+        make_service_fn(move |_| {
+            let captured_config = config.clone();
+            async {
+                Ok::<_, hyper::Error>(
+                    service_fn(move |req| handle_response(captured_config.clone(), req)))
+            }
+        });
 
     let server = Server::bind(&server_address).serve(make_service);
 
@@ -47,72 +56,72 @@ pub async fn start_server() {
 }
 
 /* Handles http requests to the server */
-async fn handle_response(req: Request<Body>) -> hyper::Result<Response<Body>> {
+async fn handle_response(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
     info!("{} {}", req.method(), req.uri().path().substring(0, 30));
 
     if let (&Method::GET, "/") = (req.method(), req.uri().path()) {
-        base().await
+        base(config).await
     } else if let (&Method::GET, "/query") = (req.method(), req.uri().path()) {
-        if *ENABLE_QUERY.lock().await {
-            query(req).await
+        if config.enabled_features.contains(Feature::QUERY) {
+            query(config, req).await
         } else {
             bad_request("Query feature is not enabled")
         }
     } else if let (&Method::GET, "/query_items") = (req.method(), req.uri().path()) {
-        if *ENABLE_QUERY.lock().await {
-            query_items(req).await
+        if config.enabled_features.contains(Feature::QUERY) {
+            query_items(config, req).await
         } else {
             bad_request("Query feature is not enabled")
         }
     } else if let (&Method::GET, "/pets") = (req.method(), req.uri().path()) {
-        if *ENABLE_PETS.lock().await {
-            pets(req).await
+        if config.enabled_features.contains(Feature::PETS) {
+            pets(config, req).await
         } else {
             bad_request("Pets feature is not enabled")
         }
     } else if let (&Method::GET, "/lowestbin") = (req.method(), req.uri().path()) {
-        if *ENABLE_LOWESTBIN.lock().await {
-            lowestbin(req).await
+        if config.enabled_features.contains(Feature::LOWESTBIN) {
+            lowestbin(config, req).await
         } else {
             bad_request("Lowest bins feature is not enabled")
         }
     } else if let (&Method::GET, "/underbin") = (req.method(), req.uri().path()) {
-        if *ENABLE_UNDERBIN.lock().await {
-            underbin(req).await
+        if config.enabled_features.contains(Feature::UNDERBIN) {
+            underbin(config, req).await
         } else {
             bad_request("Under bins feature is not enabled")
         }
     } else if let (&Method::GET, "/average_auction") = (req.method(), req.uri().path()) {
-        if *ENABLE_AVERAGE_AUCTION.lock().await {
-            average_auction(req).await
+        if config.enabled_features.contains(Feature::AVERAGE_AUCTION) {
+            average_auction(config, req).await
         } else {
             bad_request("Average auction feature is not enabled")
         }
     } else if let (&Method::GET, "/debug") = (req.method(), req.uri().path()) {
-        debug_log(req).await
+        debug_log(config, req).await
     } else if let (&Method::GET, "/info") = (req.method(), req.uri().path()) {
-        info_log(req).await
+        info_log(config, req).await
     } else {
         not_found()
     }
 }
 
 /* /debug */
-async fn debug_log(req: Request<Body>) -> hyper::Result<Response<Body>> {
+async fn debug_log(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
     let mut key = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-        Url::parse(&format!("http://{}{}", URL.lock().await, &req.uri().to_string()).to_string())
-            .unwrap()
-            .query_pairs()
+    Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
+        .unwrap()
+        .query_pairs()
     {
         if query_pair.0 == "key" {
             key = query_pair.1.to_string();
         }
     }
 
-    if !valid_api_key(key, true).await {
+    if !valid_api_key(config, key, true) {
         return bad_request("Not authorized");
     }
 
@@ -128,21 +137,21 @@ async fn debug_log(req: Request<Body>) -> hyper::Result<Response<Body>> {
 }
 
 /* /info */
-async fn info_log(req: Request<Body>) -> hyper::Result<Response<Body>> {
+async fn info_log(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
     let mut key = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-        Url::parse(&format!("http://{}{}", URL.lock().await, &req.uri().to_string()).to_string())
-            .unwrap()
-            .query_pairs()
+    Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
+        .unwrap()
+        .query_pairs()
     {
         if query_pair.0 == "key" {
             key = query_pair.1.to_string();
         }
     }
 
-    if !valid_api_key(key, true).await {
+    if !valid_api_key(config, key, true) {
         return bad_request("Not authorized");
     }
 
@@ -158,15 +167,15 @@ async fn info_log(req: Request<Body>) -> hyper::Result<Response<Body>> {
 }
 
 /* /pets */
-async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
+async fn pets(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
     let mut query = "".to_string();
     let mut key = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-        Url::parse(&format!("http://{}{}", URL.lock().await, &req.uri().to_string()).to_string())
-            .unwrap()
-            .query_pairs()
+    Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
+        .unwrap()
+        .query_pairs()
     {
         if query_pair.0 == "query" {
             query = query_pair.1.to_string();
@@ -176,7 +185,7 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
     }
 
     // The API key in request doesn't match
-    if !valid_api_key(key, true).await {
+    if !valid_api_key(config, key, true) {
         return bad_request("Not authorized");
     }
 
@@ -232,16 +241,16 @@ async fn pets(req: Request<Body>) -> hyper::Result<Response<Body>> {
 }
 
 /* /average_auction */
-async fn average_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
+async fn average_auction(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
     let mut key = "".to_string();
     let mut time = -1;
     let mut step: usize = 1;
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-        Url::parse(&format!("http://{}{}", URL.lock().await, &req.uri().to_string()).to_string())
-            .unwrap()
-            .query_pairs()
+    Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
+        .unwrap()
+        .query_pairs()
     {
         match query_pair.0.to_string().as_str() {
             "time" => match query_pair.1.to_string().parse::<i64>() {
@@ -258,7 +267,7 @@ async fn average_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
     }
 
     // The API key in request doesn't match
-    if !valid_api_key(key, false).await {
+    if !valid_api_key(config, key, false) {
         return bad_request("Not authorized");
     }
 
@@ -331,8 +340,8 @@ async fn average_auction(req: Request<Body>) -> hyper::Result<Response<Body>> {
         .unwrap())
 }
 
-/* /query */
-async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
+/// HTTP Handler for query
+async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
     let mut query = "".to_string();
     let mut sort = "".to_string();
     let mut limit: i64 = 1;
@@ -347,9 +356,9 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-        Url::parse(&format!("http://{}{}", URL.lock().await, &req.uri().to_string()).to_string())
-            .unwrap()
-            .query_pairs()
+    Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
+        .unwrap()
+        .query_pairs()
     {
         match query_pair.0.to_string().as_str() {
             "query" => query = query_pair.1.to_string(),
@@ -376,7 +385,7 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
         }
     }
 
-    if !valid_api_key(key.to_owned(), false).await {
+    if !valid_api_key(config.clone(), key.to_owned(), false) {
         return bad_request("Not authorized");
     }
 
@@ -462,7 +471,7 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
 
         results_cursor = database_ref.query(&sql, &param_vec).await;
     } else {
-        if !valid_api_key(key, true).await {
+        if !valid_api_key(config, key, true) {
             return bad_request("Not authorized");
         }
 
@@ -490,21 +499,21 @@ async fn query(req: Request<Body>) -> hyper::Result<Response<Body>> {
 }
 
 /* /query_items */
-async fn query_items(req: Request<Body>) -> hyper::Result<Response<Body>> {
+async fn query_items(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
     let mut key = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-        Url::parse(&format!("http://{}{}", URL.lock().await, &req.uri().to_string()).to_string())
-            .unwrap()
-            .query_pairs()
+    Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
+        .unwrap()
+        .query_pairs()
     {
         if query_pair.0 == "key" {
             key = query_pair.1.to_string();
         }
     }
 
-    if !valid_api_key(key, false).await {
+    if !valid_api_key(config, key, false) {
         return bad_request("Not authorized");
     }
 
@@ -521,21 +530,21 @@ async fn query_items(req: Request<Body>) -> hyper::Result<Response<Body>> {
 }
 
 /* /lowestbin */
-async fn lowestbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
+async fn lowestbin(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
     let mut key = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-        Url::parse(&format!("http://{}{}", URL.lock().await, &req.uri().to_string()).to_string())
-            .unwrap()
-            .query_pairs()
+    Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
+        .unwrap()
+        .query_pairs()
     {
         if query_pair.0 == "key" {
             key = query_pair.1.to_string();
         }
     }
 
-    if !valid_api_key(key, false).await {
+    if !valid_api_key(config, key, false) {
         return bad_request("Not authorized");
     }
 
@@ -552,21 +561,21 @@ async fn lowestbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
 }
 
 /* /underbin */
-async fn underbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
+async fn underbin(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
     let mut key = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-        Url::parse(&format!("http://{}{}", URL.lock().await, &req.uri().to_string()).to_string())
-            .unwrap()
-            .query_pairs()
+    Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
+        .unwrap()
+        .query_pairs()
     {
         if query_pair.0 == "key" {
             key = query_pair.1.to_string();
         }
     }
 
-    if !valid_api_key(key, false).await {
+    if !valid_api_key(config, key, false) {
         return bad_request("Not authorized");
     }
 
@@ -583,7 +592,7 @@ async fn underbin(req: Request<Body>) -> hyper::Result<Response<Body>> {
 }
 
 /* / */
-async fn base() -> hyper::Result<Response<Body>> {
+async fn base(config: Arc<Config>) -> hyper::Result<Response<Body>> {
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
@@ -603,11 +612,11 @@ async fn base() -> hyper::Result<Response<Body>> {
                 \"last_updated\":{}
             }}
         }}",
-            *ENABLE_QUERY.lock().await,
-            *ENABLE_PETS.lock().await,
-            *ENABLE_LOWESTBIN.lock().await,
-            *ENABLE_UNDERBIN.lock().await,
-            *ENABLE_AVERAGE_AUCTION.lock().await,
+            config.enabled_features.contains(Feature::QUERY),
+            config.enabled_features.contains(Feature::PETS),
+            config.enabled_features.contains(Feature::LOWESTBIN),
+            config.enabled_features.contains(Feature::UNDERBIN),
+            config.enabled_features.contains(Feature::AVERAGE_AUCTION),
             *IS_UPDATING.lock().await,
             *TOTAL_UPDATES.lock().await,
             *LAST_UPDATED.lock().await

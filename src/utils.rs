@@ -16,23 +16,27 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::{statics::*, structs::*};
+use std::{fs::OpenOptions, result::Result as StdResult, thread, time::SystemTime};
+use std::sync::Arc;
+
 use chrono::prelude::{DateTime, Utc};
 use dashmap::{DashMap, DashSet};
 use deadpool_postgres::Client;
-use futures::{pin_mut, Future};
+use futures::{Future, pin_mut};
 use log::{error, info};
 use postgres_types::{ToSql, Type};
 use serde_json::Value;
-use std::{fs::OpenOptions, result::Result as StdResult, thread, time::SystemTime};
 use tokio::time::{self, Duration};
 use tokio_postgres::{binary_copy::BinaryCopyInWriter, Error};
 
+use crate::{statics::*, structs::*};
+use crate::config::Config;
+
 /* Repeat a task */
 pub async fn start_auction_loop<F, Fut>(mut f: F)
-where
-    F: Send + 'static + FnMut() -> Fut,
-    Fut: Future<Output = ()> + Send + 'static,
+    where
+        F: Send + 'static + FnMut() -> Fut,
+        Fut: Future<Output=()> + Send + 'static,
 {
     // Create stream of intervals.
     let mut interval = time::interval(get_duration_until_api_update().await);
@@ -179,17 +183,14 @@ pub fn calculate_with_taxes(price: i64) -> i64 {
     return (price_float * tax_rate) as i64;
 }
 
-pub async fn valid_api_key(key: String, admin_only: bool) -> bool {
-    let admin_api_key = ADMIN_API_KEY.lock().await.to_owned();
-    if admin_only {
-        return admin_api_key.is_empty() || admin_api_key == key;
+pub fn valid_api_key(config: Arc<Config>, key: String, admin_only: bool) -> bool {
+    if config.admin_api_key == key {
+        return true;
     }
-
-    let api_key = API_KEY.lock().await.to_owned();
-    return api_key.is_empty()
-        || api_key == key
-        || admin_api_key.is_empty()
-        || admin_api_key == key;
+    if admin_only {
+        return false;
+    }
+    return key == config.api_key;
 }
 
 pub fn update_lower_else_insert(id: &String, starting_bid: i64, prices: &mut DashMap<String, i64>) {
@@ -303,7 +304,7 @@ pub async fn update_avg_ah_database(avg_ah_prices: Vec<AvgAh>, time_t: i64) -> R
                 "DELETE FROM average WHERE time_t < {}",
                 (Utc::now() - chrono::Duration::days(5)).timestamp_millis()
             )
-            .to_string(),
+                .to_string(),
         )
         .await;
 

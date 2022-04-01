@@ -16,16 +16,20 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::{statics::*, structs::*, utils::*};
+use std::{fs, time::Instant};
+use std::sync::Arc;
+
 use chrono::Utc;
 use dashmap::{DashMap, DashSet};
 use futures::{stream::FuturesUnordered, StreamExt};
 use log::{debug, info};
 use serde_json::{json, Value};
-use std::{fs, time::Instant};
 
-/* Update the enabled APIs */
-pub async fn update_auctions() {
+use crate::{statics::*, structs::*, utils::*};
+use crate::config::{Config, Feature};
+
+/// Update the enabled APIs
+pub async fn update_auctions(config: Arc<Config>) {
     info("Fetching auctions...".to_string());
 
     let started = Instant::now();
@@ -50,11 +54,11 @@ pub async fn update_auctions() {
             .unwrap();
 
     // Get which APIs to update
-    let update_query = *ENABLE_QUERY.lock().await;
-    let update_pets = *ENABLE_PETS.lock().await;
-    let update_lowestbin = *ENABLE_LOWESTBIN.lock().await;
-    let update_underbin = *ENABLE_UNDERBIN.lock().await;
-    let update_average_auction = *ENABLE_AVERAGE_AUCTION.lock().await;
+    let update_query = config.enabled_features.contains(Feature::QUERY);
+    let update_pets = config.enabled_features.contains(Feature::PETS);
+    let update_lowestbin = config.enabled_features.contains(Feature::LOWESTBIN);
+    let update_underbin = config.enabled_features.contains(Feature::UNDERBIN);
+    let update_average_auction = config.enabled_features.contains(Feature::AVERAGE_AUCTION);
 
     // Only fetch auctions if any of APIs that need the auctions are enabled
     if update_query || update_pets || update_lowestbin || update_underbin {
@@ -299,8 +303,8 @@ fn parse_auctions(
             let nbt = &to_nbt(
                 serde_json::from_value(auction.get("item_bytes").unwrap().to_owned()).unwrap(),
             )
-            .unwrap()
-            .i[0];
+                .unwrap()
+                .i[0];
             let id = &nbt.tag.extra_attributes.id;
             let mut internal_id = id.to_owned();
 
@@ -329,7 +333,7 @@ fn parse_auctions(
                         .to_owned()
                         .as_mut_str(),
                 )
-                .unwrap();
+                    .unwrap();
                 let mut tb_str = "";
 
                 if match pet_info.get("heldItem") {
@@ -453,8 +457,8 @@ async fn parse_avg_auctions(avg_ah_prices: &mut Vec<AvgAh>) {
             let nbt = &to_nbt(
                 serde_json::from_value(auction.get("item_bytes").unwrap().to_owned()).unwrap(),
             )
-            .unwrap()
-            .i[0];
+                .unwrap()
+                .i[0];
             let mut id = nbt.tag.extra_attributes.id.to_owned();
 
             if id == "ENCHANTED_BOOK" && nbt.tag.extra_attributes.enchantments.is_some() {
@@ -478,7 +482,7 @@ async fn parse_avg_auctions(avg_ah_prices: &mut Vec<AvgAh>) {
                         .to_owned()
                         .as_mut_str(),
                 )
-                .unwrap();
+                    .unwrap();
 
                 let item_name = MC_CODE_REGEX
                     .replace_all(&nbt.tag.display.name, "")

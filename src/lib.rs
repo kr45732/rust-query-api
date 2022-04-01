@@ -22,3 +22,4 @@ pub mod statics;
 pub mod structs;
 pub mod utils;
 pub mod webhook;
+pub mod config;
