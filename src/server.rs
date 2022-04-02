@@ -22,9 +22,9 @@ use std::sync::Arc;
 use dashmap::DashMap;
 use futures::TryStreamExt;
 use hyper::{
-    Body,
     header,
-    Method, Request, Response, Server, service::{make_service_fn, service_fn}, StatusCode,
+    service::{make_service_fn, service_fn},
+    Body, Method, Request, Response, Server, StatusCode,
 };
 use log::info;
 use postgres_types::ToSql;
@@ -32,20 +32,20 @@ use substring::Substring;
 use surf::Url;
 use tokio_postgres::Row;
 
-use crate::{statics::*, structs::*, utils::*};
 use crate::config::{Config, Feature};
+use crate::{statics::*, structs::*, utils::*};
 
 /// Starts the server listening on URL
 pub async fn start_server(config: Arc<Config>) {
     let server_address = config.full_url.parse().unwrap();
-    let make_service =
-        make_service_fn(move |_| {
-            let captured_config = config.clone();
-            async {
-                Ok::<_, hyper::Error>(
-                    service_fn(move |req| handle_response(captured_config.clone(), req)))
-            }
-        });
+    let make_service = make_service_fn(move |_| {
+        let captured_config = config.clone();
+        async {
+            Ok::<_, hyper::Error>(service_fn(move |req| {
+                handle_response(captured_config.clone(), req)
+            }))
+        }
+    });
 
     let server = Server::bind(&server_address).serve(make_service);
 
@@ -112,9 +112,9 @@ async fn debug_log(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Res
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-    Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
-        .unwrap()
-        .query_pairs()
+        Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
+            .unwrap()
+            .query_pairs()
     {
         if query_pair.0 == "key" {
             key = query_pair.1.to_string();
@@ -142,9 +142,9 @@ async fn info_log(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Resp
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-    Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
-        .unwrap()
-        .query_pairs()
+        Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
+            .unwrap()
+            .query_pairs()
     {
         if query_pair.0 == "key" {
             key = query_pair.1.to_string();
@@ -173,9 +173,9 @@ async fn pets(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-    Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
-        .unwrap()
-        .query_pairs()
+        Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
+            .unwrap()
+            .query_pairs()
     {
         if query_pair.0 == "query" {
             query = query_pair.1.to_string();
@@ -248,9 +248,9 @@ async fn average_auction(config: Arc<Config>, req: Request<Body>) -> hyper::Resu
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-    Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
-        .unwrap()
-        .query_pairs()
+        Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
+            .unwrap()
+            .query_pairs()
     {
         match query_pair.0.to_string().as_str() {
             "time" => match query_pair.1.to_string().parse::<i64>() {
@@ -356,9 +356,9 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-    Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
-        .unwrap()
-        .query_pairs()
+        Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
+            .unwrap()
+            .query_pairs()
     {
         match query_pair.0.to_string().as_str() {
             "query" => query = query_pair.1.to_string(),
@@ -504,9 +504,9 @@ async fn query_items(config: Arc<Config>, req: Request<Body>) -> hyper::Result<R
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-    Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
-        .unwrap()
-        .query_pairs()
+        Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
+            .unwrap()
+            .query_pairs()
     {
         if query_pair.0 == "key" {
             key = query_pair.1.to_string();
@@ -535,9 +535,9 @@ async fn lowestbin(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Res
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-    Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
-        .unwrap()
-        .query_pairs()
+        Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
+            .unwrap()
+            .query_pairs()
     {
         if query_pair.0 == "key" {
             key = query_pair.1.to_string();
@@ -566,9 +566,9 @@ async fn underbin(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Resp
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in
-    Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
-        .unwrap()
-        .query_pairs()
+        Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
+            .unwrap()
+            .query_pairs()
     {
         if query_pair.0 == "key" {
             key = query_pair.1.to_string();

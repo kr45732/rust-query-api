@@ -16,8 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::{fs, time::Instant};
 use std::sync::Arc;
+use std::{fs, time::Instant};
 
 use chrono::Utc;
 use dashmap::{DashMap, DashSet};
@@ -25,8 +25,8 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use log::{debug, info};
 use serde_json::{json, Value};
 
-use crate::{statics::*, structs::*, utils::*};
 use crate::config::{Config, Feature};
+use crate::{statics::*, structs::*, utils::*};
 
 /// Update the enabled APIs
 pub async fn update_auctions(config: Arc<Config>) {
@@ -303,8 +303,8 @@ fn parse_auctions(
             let nbt = &to_nbt(
                 serde_json::from_value(auction.get("item_bytes").unwrap().to_owned()).unwrap(),
             )
-                .unwrap()
-                .i[0];
+            .unwrap()
+            .i[0];
             let id = &nbt.tag.extra_attributes.id;
             let mut internal_id = id.to_owned();
 
@@ -333,7 +333,7 @@ fn parse_auctions(
                         .to_owned()
                         .as_mut_str(),
                 )
-                    .unwrap();
+                .unwrap();
                 let mut tb_str = "";
 
                 if match pet_info.get("heldItem") {
@@ -457,8 +457,8 @@ async fn parse_avg_auctions(avg_ah_prices: &mut Vec<AvgAh>) {
             let nbt = &to_nbt(
                 serde_json::from_value(auction.get("item_bytes").unwrap().to_owned()).unwrap(),
             )
-                .unwrap()
-                .i[0];
+            .unwrap()
+            .i[0];
             let mut id = nbt.tag.extra_attributes.id.to_owned();
 
             if id == "ENCHANTED_BOOK" && nbt.tag.extra_attributes.enchantments.is_some() {
@@ -482,7 +482,7 @@ async fn parse_avg_auctions(avg_ah_prices: &mut Vec<AvgAh>) {
                         .to_owned()
                         .as_mut_str(),
                 )
-                    .unwrap();
+                .unwrap();
 
                 let item_name = MC_CODE_REGEX
                     .replace_all(&nbt.tag.display.name, "")

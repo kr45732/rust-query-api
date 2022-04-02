@@ -16,27 +16,27 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::{fs::OpenOptions, result::Result as StdResult, thread, time::SystemTime};
 use std::sync::Arc;
+use std::{fs::OpenOptions, result::Result as StdResult, thread, time::SystemTime};
 
 use chrono::prelude::{DateTime, Utc};
 use dashmap::{DashMap, DashSet};
 use deadpool_postgres::Client;
-use futures::{Future, pin_mut};
+use futures::{pin_mut, Future};
 use log::{error, info};
 use postgres_types::{ToSql, Type};
 use serde_json::Value;
 use tokio::time::{self, Duration};
 use tokio_postgres::{binary_copy::BinaryCopyInWriter, Error};
 
-use crate::{statics::*, structs::*};
 use crate::config::Config;
+use crate::{statics::*, structs::*};
 
 /* Repeat a task */
 pub async fn start_auction_loop<F, Fut>(mut f: F)
-    where
-        F: Send + 'static + FnMut() -> Fut,
-        Fut: Future<Output=()> + Send + 'static,
+where
+    F: Send + 'static + FnMut() -> Fut,
+    Fut: Future<Output = ()> + Send + 'static,
 {
     // Create stream of intervals.
     let mut interval = time::interval(get_duration_until_api_update().await);
@@ -304,7 +304,7 @@ pub async fn update_avg_ah_database(avg_ah_prices: Vec<AvgAh>, time_t: i64) -> R
                 "DELETE FROM average WHERE time_t < {}",
                 (Utc::now() - chrono::Duration::days(5)).timestamp_millis()
             )
-                .to_string(),
+            .to_string(),
         )
         .await;
 

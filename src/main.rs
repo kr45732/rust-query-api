@@ -16,19 +16,19 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::sync::Arc;
 use std::{
     error::Error,
     fs::{self, File},
 };
-use std::sync::Arc;
 
 use deadpool_postgres::{Manager, ManagerConfig, Pool, RecyclingMethod, Runtime};
 use dotenv::dotenv;
 use simplelog::{CombinedLogger, LevelFilter, SimpleLogger, WriteLogger};
 use tokio_postgres::NoTls;
 
-use query_api::{api_handler::*, server::start_server, statics::*, utils::*, webhook::Webhook};
 use query_api::config::Config;
+use query_api::{api_handler::*, server::start_server, statics::*, utils::*, webhook::Webhook};
 
 /* Entry point to the program. Creates loggers, reads config, creates tables, starts auction loop and server */
 #[tokio::main]
@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             File::create("debug.log").unwrap(),
         ),
     ])
-        .expect("Error when creating loggers");
+    .expect("Error when creating loggers");
     println!("Loggers Created");
 
     // Read config
@@ -57,14 +57,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let config = Arc::new(Config::load_or_panic());
-    let _ = WEBHOOK.lock().await.insert(Webhook::from_url(config.webhook_url.as_str()));
+    let _ = WEBHOOK
+        .lock()
+        .await
+        .insert(Webhook::from_url(config.webhook_url.as_str()));
     // Connect to database
     let database = DATABASE
         .lock()
         .await
         .insert(
             Pool::builder(Manager::from_config(
-                config.postgres_url
+                config
+                    .postgres_url
                     .parse::<tokio_postgres::Config>()
                     .unwrap(),
                 NoTls,
@@ -72,10 +76,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     recycling_method: RecyclingMethod::Fast,
                 },
             ))
-                .max_size(16)
-                .runtime(Runtime::Tokio1)
-                .build()
-                .unwrap(),
+            .max_size(16)
+            .runtime(Runtime::Tokio1)
+            .build()
+            .unwrap(),
         )
         .get()
         .await
@@ -159,7 +163,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             update_auctions(auction_config).await;
         }
     })
-        .await;
+    .await;
 
     info("Starting server...".to_string());
     start_server(config.clone()).await;

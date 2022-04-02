@@ -22,7 +22,7 @@ impl FromStr for Feature {
             "LOWESTBIN" => Self::LOWESTBIN,
             "UNDERBIN" => Self::UNDERBIN,
             "AVERAGE_AUCTION" => Self::AVERAGE_AUCTION,
-            _ => return Err(format!("Unknown feature flag {}", s))
+            _ => return Err(format!("Unknown feature flag {}", s)),
         })
     }
 }
@@ -41,7 +41,6 @@ pub struct Config {
 fn get_env(name: &str) -> String {
     env::var(name).expect(&format!("Unable to find {} environment variable", name))
 }
-
 
 impl Config {
     pub fn load_or_panic() -> Self {
@@ -70,5 +69,3 @@ impl Config {
         }
     }
 }
-
-
