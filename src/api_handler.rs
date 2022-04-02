@@ -54,11 +54,11 @@ pub async fn update_auctions(config: Arc<Config>) {
             .unwrap();
 
     // Get which APIs to update
-    let update_query = config.enabled_features.contains(Feature::QUERY);
-    let update_pets = config.enabled_features.contains(Feature::PETS);
-    let update_lowestbin = config.enabled_features.contains(Feature::LOWESTBIN);
-    let update_underbin = config.enabled_features.contains(Feature::UNDERBIN);
-    let update_average_auction = config.enabled_features.contains(Feature::AVERAGE_AUCTION);
+    let update_query = config.enabled_features.contains(Feature::Query);
+    let update_pets = config.enabled_features.contains(Feature::Pets);
+    let update_lowestbin = config.enabled_features.contains(Feature::Lowestbin);
+    let update_underbin = config.enabled_features.contains(Feature::Underbin);
+    let update_average_auction = config.enabled_features.contains(Feature::AverageAuction);
 
     // Only fetch auctions if any of APIs that need the auctions are enabled
     if update_query || update_pets || update_lowestbin || update_underbin {

@@ -62,37 +62,37 @@ async fn handle_response(config: Arc<Config>, req: Request<Body>) -> hyper::Resu
     if let (&Method::GET, "/") = (req.method(), req.uri().path()) {
         base(config).await
     } else if let (&Method::GET, "/query") = (req.method(), req.uri().path()) {
-        if config.enabled_features.contains(Feature::QUERY) {
+        if config.enabled_features.contains(Feature::Query) {
             query(config, req).await
         } else {
             bad_request("Query feature is not enabled")
         }
     } else if let (&Method::GET, "/query_items") = (req.method(), req.uri().path()) {
-        if config.enabled_features.contains(Feature::QUERY) {
+        if config.enabled_features.contains(Feature::Query) {
             query_items(config, req).await
         } else {
             bad_request("Query feature is not enabled")
         }
     } else if let (&Method::GET, "/pets") = (req.method(), req.uri().path()) {
-        if config.enabled_features.contains(Feature::PETS) {
+        if config.enabled_features.contains(Feature::Pets) {
             pets(config, req).await
         } else {
             bad_request("Pets feature is not enabled")
         }
     } else if let (&Method::GET, "/lowestbin") = (req.method(), req.uri().path()) {
-        if config.enabled_features.contains(Feature::LOWESTBIN) {
+        if config.enabled_features.contains(Feature::Lowestbin) {
             lowestbin(config, req).await
         } else {
             bad_request("Lowest bins feature is not enabled")
         }
     } else if let (&Method::GET, "/underbin") = (req.method(), req.uri().path()) {
-        if config.enabled_features.contains(Feature::UNDERBIN) {
+        if config.enabled_features.contains(Feature::Underbin) {
             underbin(config, req).await
         } else {
             bad_request("Under bins feature is not enabled")
         }
     } else if let (&Method::GET, "/average_auction") = (req.method(), req.uri().path()) {
-        if config.enabled_features.contains(Feature::AVERAGE_AUCTION) {
+        if config.enabled_features.contains(Feature::AverageAuction) {
             average_auction(config, req).await
         } else {
             bad_request("Average auction feature is not enabled")
@@ -612,11 +612,11 @@ async fn base(config: Arc<Config>) -> hyper::Result<Response<Body>> {
                 \"last_updated\":{}
             }}
         }}",
-            config.enabled_features.contains(Feature::QUERY),
-            config.enabled_features.contains(Feature::PETS),
-            config.enabled_features.contains(Feature::LOWESTBIN),
-            config.enabled_features.contains(Feature::UNDERBIN),
-            config.enabled_features.contains(Feature::AVERAGE_AUCTION),
+            config.enabled_features.contains(Feature::Query),
+            config.enabled_features.contains(Feature::Pets),
+            config.enabled_features.contains(Feature::Lowestbin),
+            config.enabled_features.contains(Feature::Underbin),
+            config.enabled_features.contains(Feature::AverageAuction),
             *IS_UPDATING.lock().await,
             *TOTAL_UPDATES.lock().await,
             *LAST_UPDATED.lock().await

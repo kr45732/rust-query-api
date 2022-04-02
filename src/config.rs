@@ -5,11 +5,11 @@ use enumset::{EnumSet, EnumSetType};
 
 #[derive(Debug, EnumSetType)]
 pub enum Feature {
-    QUERY,
-    PETS,
-    LOWESTBIN,
-    UNDERBIN,
-    AVERAGE_AUCTION,
+    Query,
+    Pets,
+    Lowestbin,
+    Underbin,
+    AverageAuction,
 }
 
 impl FromStr for Feature {
@@ -17,11 +17,11 @@ impl FromStr for Feature {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
-            "QUERY" => Self::QUERY,
-            "PETS" => Self::PETS,
-            "LOWESTBIN" => Self::LOWESTBIN,
-            "UNDERBIN" => Self::UNDERBIN,
-            "AVERAGE_AUCTION" => Self::AVERAGE_AUCTION,
+            "QUERY" => Self::Query,
+            "PETS" => Self::Pets,
+            "LOWESTBIN" => Self::Lowestbin,
+            "UNDERBIN" => Self::Underbin,
+            "AVERAGE_AUCTION" => Self::AverageAuction,
             _ => return Err(format!("Unknown feature flag {}", s)),
         })
     }
@@ -54,17 +54,17 @@ impl Config {
             .split("+")
             .map(|s| Feature::from_str(s).unwrap())
             .fold(EnumSet::<Feature>::new(), |x, y| x | y);
-        if features.contains(Feature::UNDERBIN) && !features.contains(Feature::LOWESTBIN) {
+        if features.contains(Feature::Underbin) && !features.contains(Feature::Lowestbin) {
             panic!("Please enable LOWESTBIN if you want to enable UNDERBIN");
         }
         Config {
             enabled_features: features,
             full_url: format!("{}:{}", base_url, port),
-            postgres_url: postgres_url,
-            base_url: base_url,
-            webhook_url: webhook_url,
-            api_key: api_key,
-            admin_api_key: admin_api_key,
+            postgres_url,
+            base_url,
+            webhook_url,
+            api_key,
+            admin_api_key,
             port,
         }
     }
