@@ -205,93 +205,89 @@ pub fn update_lower_else_insert(id: &String, starting_bid: i64, prices: &mut Das
 }
 
 pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, Error> {
-    unsafe {
-        let database = get_client().await;
+    let database = get_client().await;
 
-        let _ = database.simple_query("TRUNCATE TABLE query").await;
+    let _ = database.simple_query("TRUNCATE TABLE query").await;
 
-        let copy_statement = database.prepare("COPY query FROM STDIN BINARY").await?;
-        let copy_sink = database.copy_in(&copy_statement).await?;
+    let copy_statement = database.prepare("COPY query FROM STDIN BINARY").await?;
+    let copy_sink = database.copy_in(&copy_statement).await?;
 
-        let copy_writer = BinaryCopyInWriter::new(
-            copy_sink,
-            &[
-                Type::TEXT,
-                Type::TEXT,
-                Type::INT8,
-                Type::TEXT,
-                Type::TEXT,
-                Type::TEXT,
-                Type::INT8,
-                Type::TEXT_ARRAY,
-                Type::BOOL,
-                BID_ARRAY.lock().await.to_owned().unwrap(),
-            ],
-        );
+    let copy_writer = BinaryCopyInWriter::new(
+        copy_sink,
+        &[
+            Type::TEXT,
+            Type::TEXT,
+            Type::INT8,
+            Type::TEXT,
+            Type::TEXT,
+            Type::TEXT,
+            Type::INT8,
+            Type::TEXT_ARRAY,
+            Type::BOOL,
+            BID_ARRAY.lock().await.to_owned().unwrap(),
+        ],
+    );
 
-        pin_mut!(copy_writer);
+    pin_mut!(copy_writer);
 
-        // Write to copy sink
-        for m in &auctions {
-            let mut row: Vec<&'_ (dyn ToSql + Sync)> = Vec::new();
-            row.push(&m.uuid);
-            row.push(&m.auctioneer);
-            row.push(&m.end_t);
-            row.push(&m.item_name);
-            row.push(&m.tier);
-            row.push(&m.item_id);
-            row.push(&m.starting_bid);
-            row.push(&m.enchants);
-            row.push(&m.bin);
-            row.push(&m.bids);
+    // Write to copy sink
+    for m in &auctions {
+        let mut row: Vec<&'_ (dyn ToSql + Sync)> = Vec::new();
+        row.push(&m.uuid);
+        row.push(&m.auctioneer);
+        row.push(&m.end_t);
+        row.push(&m.item_name);
+        row.push(&m.tier);
+        row.push(&m.item_id);
+        row.push(&m.starting_bid);
+        row.push(&m.enchants);
+        row.push(&m.bin);
+        row.push(&m.bids);
 
-            copy_writer.as_mut().write(&row).await?;
-        }
-
-        copy_writer.finish().await
+        copy_writer.as_mut().write(&row).await?;
     }
+
+    copy_writer.finish().await
 }
 
 pub async fn update_pets_database(pet_prices: &mut DashMap<String, i64>) -> Result<u64, Error> {
-    unsafe {
-        let database = get_client().await;
+    let database = get_client().await;
 
-        // Add all old pet prices to the new prices if the new prices doesn't have that old pet name
-        let old_pet_prices = database.query("SELECT * FROM pets", &[]).await?;
-        for old_price in old_pet_prices {
-            let old_price_name: String = old_price.get("name");
-            let mut new_has = false;
-            for new_price in pet_prices.iter_mut() {
-                if old_price_name == *new_price.key() {
-                    new_has = true;
-                    break;
-                }
-            }
-            if !new_has {
-                pet_prices.insert(old_price_name, old_price.get("price"));
+    // Add all old pet prices to the new prices if the new prices doesn't have that old pet name
+    let old_pet_prices = database.query("SELECT * FROM pets", &[]).await?;
+    for old_price in old_pet_prices {
+        let old_price_name: String = old_price.get("name");
+        let mut new_has = false;
+        for new_price in pet_prices.iter_mut() {
+            if old_price_name == *new_price.key() {
+                new_has = true;
+                break;
             }
         }
-
-        let _ = database.simple_query("TRUNCATE TABLE pets").await;
-
-        let copy_statement = database.prepare("COPY pets FROM STDIN BINARY").await?;
-        let copy_sink = database.copy_in(&copy_statement).await?;
-        let copy_writer = BinaryCopyInWriter::new(copy_sink, &[Type::TEXT, Type::INT8]);
-        pin_mut!(copy_writer);
-
-        // Write to copy sink
-        for m in pet_prices.iter() {
-            copy_writer
-                .as_mut()
-                .write(&[
-                    m.key() as &(dyn ToSql + Sync),
-                    m.value() as &(dyn ToSql + Sync),
-                ])
-                .await?;
+        if !new_has {
+            pet_prices.insert(old_price_name, old_price.get("price"));
         }
-
-        copy_writer.finish().await
     }
+
+    let _ = database.simple_query("TRUNCATE TABLE pets").await;
+
+    let copy_statement = database.prepare("COPY pets FROM STDIN BINARY").await?;
+    let copy_sink = database.copy_in(&copy_statement).await?;
+    let copy_writer = BinaryCopyInWriter::new(copy_sink, &[Type::TEXT, Type::INT8]);
+    pin_mut!(copy_writer);
+
+    // Write to copy sink
+    for m in pet_prices.iter() {
+        copy_writer
+            .as_mut()
+            .write(&[
+                m.key() as &(dyn ToSql + Sync),
+                m.value() as &(dyn ToSql + Sync),
+            ])
+            .await?;
+    }
+
+    copy_writer.finish().await
 }
 
 pub async fn update_avg_ah_database(avg_ah_prices: Vec<AvgAh>, time_t: i64) -> Result<u64, Error> {
