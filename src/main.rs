@@ -155,15 +155,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let _ = fs::remove_file("underbin.json");
     let _ = fs::remove_file("query_items.json");
 
-    info("Starting auction loop...".to_string());
-    let auction_config = config.clone();
-    start_auction_loop(move || {
-        let auction_config = auction_config.clone();
-        async move {
-            update_auctions(auction_config).await;
-        }
-    })
-    .await;
+    // info("Starting auction loop...".to_string());
+    // let auction_config = config.clone();
+    // start_auction_loop(move || {
+    //     let auction_config = auction_config.clone();
+    //     async move {
+    //         update_auctions(auction_config).await;
+    //     }
+    // })
+    // .await;
 
     info("Starting server...".to_string());
     start_server(config.clone()).await;
