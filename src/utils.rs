@@ -180,7 +180,7 @@ pub fn calculate_with_taxes(price: i64) -> i64 {
     let price_float = price as f64;
     let tax_rate = if price >= 1000000 { 0.98 } else { 0.99 };
 
-    return (price_float * tax_rate) as i64;
+    (price_float * tax_rate) as i64
 }
 
 pub fn valid_api_key(config: Arc<Config>, key: String, admin_only: bool) -> bool {
@@ -190,7 +190,7 @@ pub fn valid_api_key(config: Arc<Config>, key: String, admin_only: bool) -> bool
     if admin_only {
         return false;
     }
-    return key == config.api_key;
+    key == config.api_key
 }
 
 pub fn update_lower_else_insert(id: &String, starting_bid: i64, prices: &mut DashMap<String, i64>) {
@@ -232,17 +232,18 @@ pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, E
 
     // Write to copy sink
     for m in &auctions {
-        let mut row: Vec<&'_ (dyn ToSql + Sync)> = Vec::new();
-        row.push(&m.uuid);
-        row.push(&m.auctioneer);
-        row.push(&m.end_t);
-        row.push(&m.item_name);
-        row.push(&m.tier);
-        row.push(&m.item_id);
-        row.push(&m.starting_bid);
-        row.push(&m.enchants);
-        row.push(&m.bin);
-        row.push(&m.bids);
+        let row: Vec<&'_ (dyn ToSql + Sync)> = vec![
+            &m.uuid,
+            &m.auctioneer,
+            &m.end_t,
+            &m.item_name,
+            &m.tier,
+            &m.item_id,
+            &m.starting_bid,
+            &m.enchants,
+            &m.bin,
+            &m.bids,
+        ];
 
         copy_writer.as_mut().write(&row).await?;
     }

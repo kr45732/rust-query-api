@@ -39,7 +39,7 @@ pub struct Config {
 }
 
 fn get_env(name: &str) -> String {
-    env::var(name).expect(&format!("Unable to find {} environment variable", name))
+    env::var(name).unwrap_or_else(|_| panic!("Unable to find {} environment variable", name))
 }
 
 impl Config {
@@ -48,10 +48,10 @@ impl Config {
         let port = get_env("PORT").parse::<u32>().expect("PORT not valid");
         let api_key = get_env("API_KEY");
         let webhook_url = get_env("WEBHOOK_URL");
-        let admin_api_key = env::var("ADMIN_API_KEY").unwrap_or(api_key.clone());
+        let admin_api_key = env::var("ADMIN_API_KEY").unwrap_or_else(|_| api_key.clone());
         let postgres_url = get_env("POSTGRES_URL");
         let features = get_env("FEATURES")
-            .split("+")
+            .split('+')
             .map(|s| Feature::from_str(s).unwrap())
             .fold(EnumSet::<Feature>::new(), |x, y| x | y);
         if features.contains(Feature::Underbin) && !features.contains(Feature::Lowestbin) {

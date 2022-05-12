@@ -49,9 +49,10 @@ pub async fn update_auctions(config: Arc<Config>) {
     // Stores average auction prices
     let mut avg_ah_prices: Vec<AvgAh> = Vec::new();
     // Previous bin prices
-    let past_bin_prices: DashMap<String, i64> =
-        serde_json::from_str(&fs::read_to_string("lowestbin.json").unwrap_or("{}".to_string()))
-            .unwrap();
+    let past_bin_prices: DashMap<String, i64> = serde_json::from_str(
+        &fs::read_to_string("lowestbin.json").unwrap_or_else(|_| "{}".to_string()),
+    )
+    .unwrap();
 
     // Get which APIs to update
     let update_query = config.enabled_features.contains(Feature::Query);
@@ -178,7 +179,7 @@ pub async fn update_auctions(config: Arc<Config>) {
     if update_lowestbin {
         // Lowest bin API
         let bins_started = Instant::now();
-        match update_bins_local(&mut bin_prices).await {
+        match update_bins_local(&bin_prices).await {
             Ok(_) => {
                 info(format!(
                     "Successfully updated bins file in {}ms",
@@ -191,7 +192,7 @@ pub async fn update_auctions(config: Arc<Config>) {
         // Under bin API
         if update_underbin {
             let under_bins_started = Instant::now();
-            match update_under_bins_local(&mut under_bin_prices).await {
+            match update_under_bins_local(&under_bin_prices).await {
                 Ok(_) => {
                     info(format!(
                         "Successfully updated under bins file in {}ms",
@@ -264,8 +265,9 @@ pub async fn update_auctions(config: Arc<Config>) {
 }
 
 /* Parses a page of auctions to a vector of documents  */
+#[allow(clippy::too_many_arguments)]
 fn parse_auctions(
-    auctions: &Vec<Value>,
+    auctions: &[Value],
     inserted_uuids: &mut DashSet<String>,
     query_prices: &mut Vec<DatabaseItem>,
     pet_prices: &mut DashMap<String, i64>,
@@ -277,7 +279,7 @@ fn parse_auctions(
     update_lowestbin: bool,
     update_underbin: bool,
 ) {
-    for auction in auctions.into_iter() {
+    for auction in auctions.iter() {
         let uuid = auction.get("uuid").unwrap().as_str().unwrap();
         // Prevent duplicate auctions
         if inserted_uuids.insert(uuid.to_string()) {
@@ -352,8 +354,8 @@ fn parse_auctions(
 
                 if bin && update_pets {
                     update_lower_else_insert(
-                        &mut format!("{}_{}{}", item_name.replace("_✦", ""), tier, tb_str)
-                            .replace(" ", "_")
+                        &format!("{}_{}{}", item_name.replace("_✦", ""), tier, tb_str)
+                            .replace(' ', "_")
                             .to_uppercase(),
                         starting_bid,
                         pet_prices,
@@ -367,7 +369,7 @@ fn parse_auctions(
                     if let Some(pet_name) = split.next() {
                         internal_id = format!(
                             "{};{}",
-                            pet_name.replace(" ", "_").replace("_✦", "").to_uppercase(),
+                            pet_name.replace(' ', "_").replace("_✦", "").to_uppercase(),
                             match tier {
                                 "COMMON" => 0,
                                 "UNCOMMON" => 1,
@@ -424,7 +426,7 @@ fn parse_auctions(
                     end_t: auction.get("end").unwrap().as_i64().unwrap(),
                     item_name: if id == "ENCHANTED_BOOK" {
                         MC_CODE_REGEX
-                            .replace_all(item_lore.split("\n").next().unwrap_or(""), "")
+                            .replace_all(item_lore.split('\n').next().unwrap_or(""), "")
                             .to_string()
                     } else {
                         item_name
@@ -495,7 +497,7 @@ async fn parse_avg_auctions(avg_ah_prices: &mut Vec<AvgAh>) {
                     split
                         .next()
                         .unwrap()
-                        .replace(" ", "_")
+                        .replace(' ', "_")
                         .replace("_✦", "")
                         .to_uppercase(),
                     match pet_info.get("tier").unwrap().as_str().unwrap() {
