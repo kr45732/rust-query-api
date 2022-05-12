@@ -2,7 +2,6 @@ name: CI
 
 on:
   push:
-    branches: [ "*" ]
   pull_request:
   workflow_dispatch:
 
@@ -11,14 +10,15 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - name: Cache dependencies
-        uses: Swatinem/rust-cache@v1
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
-      # make sure all code has been formatted with rustfmt
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v1
+
       - name: check rustfmt
         run: |
           rustup component add rustfmt
@@ -30,18 +30,17 @@ jobs:
           cargo clippy --all-targets --all-features -- -D warnings
   test:
     name: Test
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
-      - name: Cache dependencies
-        uses: Swatinem/rust-cache@v1
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v1
+
       - run: cargo fetch
       - name: cargo test build
         run: cargo build --tests --release
