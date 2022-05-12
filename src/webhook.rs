@@ -185,7 +185,7 @@ impl EmbedBuilder {
             description: self.description.clone(),
             url: self.url.clone(),
             timestamp: self.timestamp.clone(),
-            color: self.color.clone(),
+            color: self.color,
             fields: self.fields.clone(),
             footer: self.footer.clone(),
             image: self.image.clone(),
@@ -193,6 +193,12 @@ impl EmbedBuilder {
             author: self.author.clone(),
             video: self.video.clone(),
         }
+    }
+}
+
+impl Default for EmbedBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -355,6 +361,12 @@ impl Message {
         let embed = embed(&mut em);
         self.embeds.push(embed.build());
         self
+    }
+}
+
+impl Default for Message {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

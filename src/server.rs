@@ -111,10 +111,13 @@ async fn debug_log(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Res
     let mut key = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
-    for query_pair in
-        Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
-            .unwrap()
-            .query_pairs()
+    for query_pair in Url::parse(&format!(
+        "http://{}{}",
+        config.full_url,
+        &req.uri().to_string()
+    ))
+    .unwrap()
+    .query_pairs()
     {
         if query_pair.0 == "key" {
             key = query_pair.1.to_string();
@@ -141,10 +144,13 @@ async fn info_log(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Resp
     let mut key = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
-    for query_pair in
-        Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
-            .unwrap()
-            .query_pairs()
+    for query_pair in Url::parse(&format!(
+        "http://{}{}",
+        config.full_url,
+        &req.uri().to_string()
+    ))
+    .unwrap()
+    .query_pairs()
     {
         if query_pair.0 == "key" {
             key = query_pair.1.to_string();
@@ -172,10 +178,13 @@ async fn pets(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response
     let mut key = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
-    for query_pair in
-        Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
-            .unwrap()
-            .query_pairs()
+    for query_pair in Url::parse(&format!(
+        "http://{}{}",
+        config.full_url,
+        &req.uri().to_string()
+    ))
+    .unwrap()
+    .query_pairs()
     {
         if query_pair.0 == "query" {
             query = query_pair.1.to_string();
@@ -189,7 +198,7 @@ async fn pets(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response
         return bad_request("Not authorized");
     }
 
-    if query.len() == 0 {
+    if query.is_empty() {
         return bad_request("The query parameter cannot be empty");
     }
 
@@ -199,16 +208,16 @@ async fn pets(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response
     let mut param_vec: Vec<Box<String>> = Vec::new();
     let mut param_count = 1;
 
-    let mut split = query.split(",");
-    while let Some(pet_name) = split.next() {
+    let mut split = query.split(',');
+    for pet_name in split.by_ref() {
         if param_count != 1 {
-            sql.push_str(",");
+            sql.push(',');
         }
         sql.push_str(format!("${}", param_count).as_str());
         param_vec.push(Box::new(pet_name.to_string()));
         param_count += 1;
     }
-    sql.push_str(")");
+    sql.push(')');
 
     let out: &Vec<&String> = &param_vec
         .iter()
@@ -219,7 +228,7 @@ async fn pets(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response
     let results_cursor = database_ref.query_raw(&sql, out).await;
 
     if let Err(e) = results_cursor {
-        return internal_error(&format!("Error when querying database: {}", e).to_string());
+        return internal_error(&format!("Error when querying database: {}", e));
     }
 
     // Convert the cursor iterator to a vector
@@ -229,7 +238,7 @@ async fn pets(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response
         .await
         .unwrap()
         .into_iter()
-        .map(|ele| PetsDatabaseItem::from(ele))
+        .map(PetsDatabaseItem::from)
         .collect();
 
     // Return the vector of auctions serialized into JSON
@@ -247,10 +256,13 @@ async fn average_auction(config: Arc<Config>, req: Request<Body>) -> hyper::Resu
     let mut step: usize = 1;
 
     // Reads the query parameters from the request and stores them in the corresponding variable
-    for query_pair in
-        Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
-            .unwrap()
-            .query_pairs()
+    for query_pair in Url::parse(&format!(
+        "http://{}{}",
+        config.full_url,
+        &req.uri().to_string()
+    ))
+    .unwrap()
+    .query_pairs()
     {
         match query_pair.0.to_string().as_str() {
             "time" => match query_pair.1.to_string().parse::<i64>() {
@@ -286,7 +298,7 @@ async fn average_auction(config: Arc<Config>, req: Request<Body>) -> hyper::Resu
         .await;
 
     if let Err(e) = results_cursor {
-        return internal_error(&format!("Error when querying database: {}", e).to_string());
+        return internal_error(&format!("Error when querying database: {}", e));
     }
 
     // Map each item id to its prices and sales
@@ -355,10 +367,13 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
     let mut bin = Option::None;
 
     // Reads the query parameters from the request and stores them in the corresponding variable
-    for query_pair in
-        Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
-            .unwrap()
-            .query_pairs()
+    for query_pair in Url::parse(&format!(
+        "http://{}{}",
+        config.full_url,
+        &req.uri().to_string()
+    ))
+    .unwrap()
+    .query_pairs()
     {
         match query_pair.0.to_string().as_str() {
             "query" => query = query_pair.1.to_string(),
@@ -503,10 +518,13 @@ async fn query_items(config: Arc<Config>, req: Request<Body>) -> hyper::Result<R
     let mut key = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
-    for query_pair in
-        Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
-            .unwrap()
-            .query_pairs()
+    for query_pair in Url::parse(&format!(
+        "http://{}{}",
+        config.full_url,
+        &req.uri().to_string()
+    ))
+    .unwrap()
+    .query_pairs()
     {
         if query_pair.0 == "key" {
             key = query_pair.1.to_string();
@@ -534,10 +552,9 @@ async fn lowestbin(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Res
     let mut key = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
-    for query_pair in
-        Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
-            .unwrap()
-            .query_pairs()
+    for query_pair in Url::parse(&format!("http://{}{}", config.full_url, &req.uri()))
+        .unwrap()
+        .query_pairs()
     {
         if query_pair.0 == "key" {
             key = query_pair.1.to_string();
@@ -565,10 +582,9 @@ async fn underbin(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Resp
     let mut key = "".to_string();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
-    for query_pair in
-        Url::parse(&format!("http://{}{}", config.full_url, &req.uri().to_string()).to_string())
-            .unwrap()
-            .query_pairs()
+    for query_pair in Url::parse(&format!("http://{}{}", config.full_url, &req.uri()))
+        .unwrap()
+        .query_pairs()
     {
         if query_pair.0 == "key" {
             key = query_pair.1.to_string();

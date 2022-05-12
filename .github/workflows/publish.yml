@@ -1,0 +1,48 @@
+name: Publish update
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    name: Build & publish
+    env:
+      DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+      DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKER_TARGET_ACCOUNT: ${{ secrets.DOCKERHUB_TARGET }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v1
+      - name: Enable experimental Docker features
+        run: |
+            mkdir -p ~/.docker
+            echo "{\"experimental\": \"enabled\"}" > ~/.docker/config.json
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        if: env.DOCKER_USERNAME
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Login to ghcr
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Convert GITHUB_REPOSITORY into lowercase
+        run: |
+          echo "REPO=${GITHUB_REPOSITORY,,}" >>${GITHUB_ENV}
+      - name: Build for x86_64
+        run: |
+            docker build -t http-proxy:amd64 .
+      - name: Build for aarch64
+        run: |
+            docker build --no-cache --build-arg RUST_TARGET=aarch64-unknown-linux-musl --build-arg MUSL_TARGET=aarch64-linux-musl --build-arg FINAL_TARGET=aarch64 -t http-proxy:armv8 .
+      - name: Create manifest and push it
+        if: env.DOCKER_USERNAME
+        run: |
+            docker tag query-api:armv8 ${{ secrets.DOCKERHUB_TARGET }}/query-api:amd64
+            docker tag query-api:armv8 ${{ secrets.DOCKERHUB_TARGET }}/query-api:armv8
+            docker push ${{ secrets.DOCKERHUB_TARGET }}/query-api:amd64
+            docker push ${{ secrets.DOCKERHUB_TARGET }}/query-api:armv8
