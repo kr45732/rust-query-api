@@ -29,6 +29,7 @@ jobs:
       - name: Build for x86_64
         run: |
             docker build -t query-api:amd64 .
+            
       - name: Build for aarch64
         run: |
             docker build --no-cache --build-arg RUST_TARGET=aarch64-unknown-linux-musl --build-arg MUSL_TARGET=aarch64-linux-musl --build-arg FINAL_TARGET=aarch64 -t query-api:armv8 .
