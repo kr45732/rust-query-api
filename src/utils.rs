@@ -4,13 +4,13 @@ use ntex::http::Client;
 use tokio::time::Duration;
 use tracing::error;
 
-async fn duration_until_update() -> Duration {
+#[allow(dead_code)]
+pub async fn duration_until_update() -> Duration {
     let mut num_attempts = 0;
-    let client = Client::default();
     loop {
         num_attempts += 1;
-        let res = client
-            .get("placeholder")
+        let res = Client::new()
+            .get("https://api.hypixel.net/skyblock/auctions?page=0")
             .header("User-Agent", "ntex::web")
             .send()
             .await;
