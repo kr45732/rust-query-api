@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use anyhow::Result;
 use enumset::{EnumSet, EnumSetType};
 use std::env;
 use std::str::FromStr;

@@ -1,19 +1,23 @@
 use std::thread;
 
+use futures::Future;
 use ntex::http::Client;
-use tokio::time::Duration;
+use tokio::time::{self, Duration};
 use tracing::error;
 
 #[allow(dead_code)]
+// + Send + Sync
 pub async fn duration_until_update() -> Duration {
     let mut num_attempts = 0;
+    let client = Client::default();
     loop {
         num_attempts += 1;
-        let res = Client::new()
+        let res = client
             .get("https://api.hypixel.net/skyblock/auctions?page=0")
             .header("User-Agent", "ntex::web")
             .send()
             .await;
+
         match res {
             Ok(res) => match res.header("age") {
                 Some(age_header) => {
@@ -49,4 +53,27 @@ pub async fn duration_until_update() -> Duration {
             error!("Failed 15 consecutive attempts to contact the Hypixel API");
         }
     }
+}
+
+pub async fn start_auction_loop<F, Fut>(mut f: F)
+where
+    F: Send + 'static + FnMut() -> Fut,
+    Fut: Future<Output = ()> + Send + Sync +  'static,
+{
+    // Create stream of intervals.
+    let mut interval = time::interval(duration_until_update().await);
+    tokio::task::Builder::new()
+    .name("auction_loop")
+    .spawn(async move {
+        loop {
+            // Skip tick at 0ms
+            interval.tick().await;
+            // Wait until next tick.
+            interval.tick().await;
+            // Spawn a task for this tick.
+            f().await;
+            // Updated to new interval
+            interval = time::interval(duration_until_update().await);
+        }
+    });
 }

@@ -925,6 +925,8 @@ dependencies = [
  "dashmap",
  "deadpool-postgres",
  "enumset",
+ "futures",
+ "futures-util",
  "lazy_static",
  "ntex",
  "postgres-types",

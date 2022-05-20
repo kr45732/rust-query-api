@@ -4,7 +4,7 @@ version = "2.0.0"
 edition = "2021"
 
 [dependencies]
-tokio = { version="1.18.2",default-features=false, features=["rt-multi-thread", "macros", "time"] }
+tokio = { version="1.18.2",default-features=false, features=["rt-multi-thread", "macros", "time", tracing] }
 postgres-types = { version = "0.2.3", features = ["derive", "array-impls"] }
 tokio-postgres = { version = "0.7.6", features = ["with-serde_json-1"] }
 ntex = { version="0.5.17", default-features=false, features=["tokio"] }
@@ -19,3 +19,5 @@ base64 = "0.13.0"
 lazy_static = "1.4.0"
 regex = "1.5.5"
 serde_json = "1.0.81"
+futures = "0.3.21"
+futures-util = "0.3.21"

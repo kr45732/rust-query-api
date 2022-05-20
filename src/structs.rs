@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use anyhow::Result;
 use dashmap::DashMap;
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
@@ -192,8 +193,8 @@ impl Into<String> for ItemBytes {
     }
 }
 
-impl Into<Result<Vec<u8>, Box<dyn std::error::Error>>> for ItemBytes {
-    fn into(self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+impl Into<Result<Vec<u8>>> for ItemBytes {
+    fn into(self) -> Result<Vec<u8>> {
         let b64: String = self.into();
         Ok(base64::decode(&b64)?)
     }

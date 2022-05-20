@@ -91,13 +91,13 @@
     rust_2018_idioms
 )]
 
-use anyhow::Error;
+use anyhow::Result;
 use config::Config;
 use ntex::web::{self, middleware, App};
 use std::fs;
 use tracing::{debug, info};
 
-use crate::routes::index;
+use crate::{routes::index, utils::duration_until_update};
 
 mod config;
 mod handler;
@@ -107,7 +107,7 @@ mod structs;
 mod utils;
 
 #[ntex::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let config = Config::load();
