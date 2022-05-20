@@ -206,10 +206,14 @@ async fn main() -> Result<(), Error> {
     let _ = fs::remove_file("query_items.json");
     debug!("Removed files from previous runs");
 
-    web::server(|| App::new().wrap(middleware::Logger::default()))
-        .bind(url)?
-        .run()
-        .await
-        .unwrap();
+    web::server(|| {
+        App::new()
+            .wrap(middleware::Logger::default())
+            .wrap(middleware::Compress::default())
+    })
+    .bind(url)?
+    .run()
+    .await
+    .unwrap();
     Ok(())
 }
