@@ -6,7 +6,7 @@ ARG RUST_TARGET
 ARG MUSL_TARGET
 
 RUN apk upgrade && \
-    apk add curl gcc musl-dev openssl-dev && \
+    apk add curl gcc musl-dev && \
     curl -sSf https://sh.rustup.rs | sh -s -- --profile minimal --default-toolchain nightly --component rust-src -y
 
 # Build-std

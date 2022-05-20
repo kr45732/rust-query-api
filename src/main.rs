@@ -91,34 +91,20 @@
     rust_2018_idioms
 )]
 
-use anyhow::Error;
-use axum::{response::Html, routing::get, Router};
-use std::env;
-use std::net::SocketAddr;
-use tower::limit::ConcurrencyLimitLayer;
-use tower_http::{compression::CompressionLayer, trace::TraceLayer};
-use tracing::info;
+use ntex::web::{self, middleware, App};
 
-#[tokio::main]
-async fn main() -> Result<(), Error> {
-    tracing_subscriber::fmt::init();
-    // TODO: move to actual config
-    let port = env::var("PORT").expect("port env not found");
-    let addr = SocketAddr::from(([127, 0, 0, 1], port.parse().unwrap()));
-    let app = Router::new()
-        .route("/", get(test))
-        .layer(ConcurrencyLimitLayer::new(512))
-        .layer(TraceLayer::new_for_http())
-        .layer(CompressionLayer::new());
-    info!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
-
-    Ok(())
+#[ntex::main]
+async fn main() -> std::io::Result<()> {
+    web::server(|| {
+        App::new()
+            .wrap(middleware::Logger::default())
+            .service((web::resource("/").to(index),))
+    })
+    .bind("127.0.0.1:3000")?
+    .run()
+    .await
 }
 
-async fn test() -> Html<&'static str> {
-    Html("<h1>Hello, World!</h1>")
+async fn index() -> &'static str {
+    "hello world!"
 }

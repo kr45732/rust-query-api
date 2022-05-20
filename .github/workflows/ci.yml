@@ -1,0 +1,96 @@
+name: CI
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  MSRV:
+    name: Minimum supported Rust version
+    runs-on: ubuntu-latest
+    env:
+      minrust: '1.61'
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install toolchain (${{ env.minrust }})
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.minrust }}
+          profile: minimal
+          override: true
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v1
+      - name: run cargo check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --all-features --all-targets
+
+  build:
+    name: build
+    needs: [MSRV]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: minimal
+          override: true
+          components: clippy
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v1
+      - name: build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --all-features
+
+  lint:
+    name: lint
+    needs: [MSRV]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: minimal
+          override: true
+          components: clippy
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v1
+      - name: run clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-features --all-targets
+
+  format:
+    name: format
+    needs: [MSRV]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: minimal
+          override: true
+          components: rustfmt
+
+      - name: fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: -- --check --color always
+
+  test:
+    name: test
+    needs: [MSRV]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: minimal
+          override: true
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v1
