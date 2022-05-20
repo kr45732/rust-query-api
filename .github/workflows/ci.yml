@@ -98,6 +98,11 @@ jobs:
           override: true
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v1
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+      - name: Run tests
+        run: cargo nextest --config-file ${{ github.workspace }}/nextest.toml run --profile ci
+
 
   deny:
     name: deny
