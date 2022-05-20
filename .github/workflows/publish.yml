@@ -29,14 +29,14 @@ jobs:
       - name: Build for x86_64
         run: |
             docker build -t query-api:amd64 .
-            
+
       - name: Build for aarch64
         run: |
             docker build --no-cache --build-arg RUST_TARGET=aarch64-unknown-linux-musl --build-arg MUSL_TARGET=aarch64-linux-musl --build-arg FINAL_TARGET=aarch64 -t query-api:armv8 .
       - name: Create manifest and push it
         if: env.DOCKER_USERNAME
         run: |
-            docker tag query-api:armv8 ${{ secrets.DOCKERHUB_TARGET }}/query-api:amd64
+            docker tag query-api:amd64 ${{ secrets.DOCKERHUB_TARGET }}/query-api:amd64
             docker tag query-api:armv8 ${{ secrets.DOCKERHUB_TARGET }}/query-api:armv8
             docker push ${{ secrets.DOCKERHUB_TARGET }}/query-api:amd64
             docker push ${{ secrets.DOCKERHUB_TARGET }}/query-api:armv8
