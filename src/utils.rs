@@ -1,8 +1,8 @@
 use std::thread;
 
-use futures::Future;
+// use futures::Future;
 use ntex::http::Client;
-use tokio::time::{self, Duration};
+use tokio::time::Duration;
 use tracing::error;
 
 #[allow(dead_code)]
@@ -55,25 +55,25 @@ pub async fn duration_until_update() -> Duration {
     }
 }
 
-pub async fn start_auction_loop<F, Fut>(mut f: F)
-where
-    F: Send + 'static + FnMut() -> Fut,
-    Fut: Future<Output = ()> + Send + Sync +  'static,
-{
-    // Create stream of intervals.
-    let mut interval = time::interval(duration_until_update().await);
-    tokio::task::Builder::new()
-    .name("auction_loop")
-    .spawn(async move {
-        loop {
-            // Skip tick at 0ms
-            interval.tick().await;
-            // Wait until next tick.
-            interval.tick().await;
-            // Spawn a task for this tick.
-            f().await;
-            // Updated to new interval
-            interval = time::interval(duration_until_update().await);
-        }
-    });
-}
+// pub async fn start_auction_loop<F, Fut>(mut f: F)
+// where
+//     F: Send + 'static + FnMut() -> Fut,
+//     Fut: Future<Output = ()> + Send + Sync +  'static,
+// {
+//     // Create stream of intervals.
+//     let mut interval = time::interval(duration_until_update().await);
+//     tokio::task::Builder::new()
+//     .name("auction_loop")
+//     .spawn(async move {
+//         loop {
+//             // Skip tick at 0ms
+//             interval.tick().await;
+//             // Wait until next tick.
+//             interval.tick().await;
+//             // Spawn a task for this tick.
+//             f().await;
+//             // Updated to new interval
+//             interval = time::interval(duration_until_update().await);
+//         }
+//     });
+// }

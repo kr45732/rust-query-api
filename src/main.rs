@@ -97,9 +97,10 @@ use ntex::web::{self, middleware, App};
 use std::fs;
 use tracing::{debug, info};
 
-use crate::{routes::index, utils::duration_until_update};
+use crate::{database::init_database, routes::index};
 
 mod config;
+mod database;
 mod handler;
 mod routes;
 mod statics;
@@ -120,6 +121,9 @@ async fn main() -> Result<()> {
     let _ = fs::remove_file("underbin.json");
     let _ = fs::remove_file("query_items.json");
     debug!("Removed files from previous runs");
+
+    info!("Initializing database");
+    init_database(config).await;
 
     web::server(|| {
         App::new()
