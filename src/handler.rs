@@ -15,18 +15,3 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
-use deadpool_postgres::Pool;
-use lazy_static::lazy_static;
-use postgres_types::Type;
-use regex::Regex;
-use tokio::sync::Mutex;
-
-lazy_static! {
-    pub static ref MC_CODE_REGEX: Regex = Regex::new("(?i)\u{00A7}[0-9A-FK-OR]").unwrap();
-    pub static ref IS_UPDATING: Mutex<bool> = Mutex::new(false);
-    pub static ref TOTAL_UPDATES: Mutex<i16> = Mutex::new(0);
-    pub static ref LAST_UPDATED: Mutex<i64> = Mutex::new(0);
-    pub static ref BID_ARRAY: Mutex<Option<Type>> = Mutex::new(None);
-    pub static ref DATABASE: Mutex<Option<Pool>> = Mutex::new(None);
-}

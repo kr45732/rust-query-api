@@ -91,157 +91,48 @@
     rust_2018_idioms
 )]
 
-use std::sync::Arc;
-use std::{
-    error::Error,
-    fs::{self, File},
-};
+use anyhow::Result;
+use config::Config;
+use ntex::web::{self, middleware, App};
+use std::fs;
+use tracing::{debug, info};
 
-use deadpool_postgres::{Manager, ManagerConfig, Pool, RecyclingMethod, Runtime};
-use dotenv::dotenv;
-use simplelog::{CombinedLogger, LevelFilter, SimpleLogger, WriteLogger};
-use tokio_postgres::NoTls;
+use crate::{database::init_database, routes::index};
 
-use query_api::config::Config;
-use query_api::{api_handler::*, server::start_server, statics::*, utils::*, webhook::Webhook};
+mod config;
+mod database;
+mod handler;
+mod routes;
+mod statics;
+mod structs;
+mod utils;
 
-/* Entry point to the program. Creates loggers, reads config, creates tables, starts auction loop and server */
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    // Create log files
-    CombinedLogger::init(vec![
-        SimpleLogger::new(LevelFilter::Info, Default::default()),
-        WriteLogger::new(
-            LevelFilter::Info,
-            Default::default(),
-            File::create("info.log").unwrap(),
-        ),
-        WriteLogger::new(
-            LevelFilter::Debug,
-            Default::default(),
-            File::create("debug.log").unwrap(),
-        ),
-    ])
-    .expect("Error when creating loggers");
-    println!("Loggers Created");
+#[ntex::main]
+async fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
 
-    // Read config
-    println!("Reading config");
-    if dotenv().is_err() {
-        println!("Cannot find a .env file, will attempt to use environment variables");
-    }
-
-    let config = Arc::new(Config::load_or_panic());
-    let _ = WEBHOOK
-        .lock()
-        .await
-        .insert(Webhook::from_url(config.webhook_url.as_str()));
-    // Connect to database
-    let database = DATABASE
-        .lock()
-        .await
-        .insert(
-            Pool::builder(Manager::from_config(
-                config
-                    .postgres_url
-                    .parse::<tokio_postgres::Config>()
-                    .unwrap(),
-                NoTls,
-                ManagerConfig {
-                    recycling_method: RecyclingMethod::Fast,
-                },
-            ))
-            .max_size(16)
-            .runtime(Runtime::Tokio1)
-            .build()
-            .unwrap(),
-        )
-        .get()
-        .await
-        .unwrap();
-
-    // Create bid custom type
-    let _ = database
-        .simple_query(
-            "CREATE TYPE bid AS (
-                    bidder TEXT,
-                    amount BIGINT
-                )",
-        )
-        .await;
-
-    // Get the bid array type and store for future use
-    let _ = BID_ARRAY
-        .lock()
-        .await
-        .insert(database.prepare("SELECT $1::_bid").await.unwrap().params()[0].clone());
-
-    // Create avg_ah custom type
-    let _ = database
-        .simple_query(
-            "CREATE TYPE avg_ah AS (
-                    item_id TEXT,
-                    price DOUBLE PRECISION,
-                    sales REAL
-                )",
-        )
-        .await;
-
-    // Create query table if doesn't exist
-    let _ = database
-        .simple_query(
-            "CREATE TABLE IF NOT EXISTS query (
-                    uuid TEXT NOT NULL PRIMARY KEY,
-                    auctioneer TEXT,
-                    end_t BIGINT,
-                    item_name TEXT,
-                    tier TEXT,
-                    item_id TEXT,
-                    starting_bid BIGINT,
-                    enchants TEXT[],
-                    bin BOOLEAN,
-                    bids bid[]
-                )",
-        )
-        .await;
-
-    // Create pets table if doesn't exist
-    let _ = database
-        .simple_query(
-            "CREATE TABLE IF NOT EXISTS pets (
-                    name TEXT NOT NULL PRIMARY KEY,
-                    price BIGINT
-                )",
-        )
-        .await;
-
-    // Create average auction table if doesn't exist
-    let _ = database
-        .simple_query(
-            "CREATE TABLE IF NOT EXISTS average (
-                    time_t BIGINT NOT NULL PRIMARY KEY,
-                    prices avg_ah[]
-                )",
-        )
-        .await;
+    let config = Config::load();
+    let features = config.enabled_features;
+    let url = format!("127.0.0.1:{}", config.port);
+    info!("Using features: {:#?}", features);
 
     // Remove any files from previous runs
     let _ = fs::remove_file("lowestbin.json");
     let _ = fs::remove_file("underbin.json");
     let _ = fs::remove_file("query_items.json");
+    debug!("Removed files from previous runs");
 
-    info("Starting auction loop...".to_string());
-    let auction_config = config.clone();
-    start_auction_loop(move || {
-        let auction_config = auction_config.clone();
-        async move {
-            update_auctions(auction_config).await;
-        }
+    info!("Initializing database...");
+    init_database(config).await;
+
+    web::server(|| {
+        App::new()
+            .wrap(middleware::Logger::default())
+            .service((web::resource("/").to(index),))
     })
-    .await;
-
-    info("Starting server...".to_string());
-    start_server(config.clone()).await;
-
+    .bind(url)?
+    .run()
+    .await
+    .unwrap();
     Ok(())
 }

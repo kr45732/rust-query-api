@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use anyhow::Result;
 use dashmap::DashMap;
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
@@ -84,13 +85,14 @@ pub struct AvgAh {
     pub sales: f32,
 }
 
+#[allow(dead_code)]
 pub struct AvgAhSum {
     pub sum: i64,
     pub count: i32,
 }
 
-#[allow(clippy::should_implement_trait)]
 impl AvgAhSum {
+    #[allow(dead_code)]
     pub fn add(mut self, new_amount: i64) -> Self {
         self.sum += new_amount;
         self.count += 1;
@@ -98,26 +100,27 @@ impl AvgAhSum {
     }
 }
 
+#[allow(dead_code)]
 pub struct AvgAhVec {
     pub sum: Vec<f64>,
     pub sales: Vec<f32>,
 }
 
-#[allow(clippy::should_implement_trait)]
 impl AvgAhVec {
+    #[allow(dead_code)]
     pub fn add(mut self, avg_ah: &AvgAh) -> Self {
         self.sum.push(avg_ah.price);
         self.sales.push(avg_ah.sales);
         self
     }
-
+    #[allow(dead_code)]
     pub fn from(avg_ah: &AvgAh) -> Self {
         Self {
             sum: vec![avg_ah.price],
             sales: vec![avg_ah.sales],
         }
     }
-
+    #[allow(dead_code)]
     pub fn get_average(&self) -> f64 {
         self.sum.iter().sum::<f64>() / (self.sum.len() as f64)
     }
@@ -182,7 +185,6 @@ pub enum ItemBytes {
     Data(String),
 }
 
-#[allow(clippy::from_over_into)]
 impl Into<String> for ItemBytes {
     fn into(self) -> String {
         match self {
@@ -195,9 +197,8 @@ impl Into<String> for ItemBytes {
     }
 }
 
-#[allow(clippy::from_over_into)]
-impl Into<Result<Vec<u8>, Box<dyn std::error::Error>>> for ItemBytes {
-    fn into(self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+impl Into<Result<Vec<u8>>> for ItemBytes {
+    fn into(self) -> Result<Vec<u8>> {
         let b64: String = self.into();
         Ok(base64::decode(&b64)?)
     }

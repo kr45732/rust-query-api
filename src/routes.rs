@@ -16,10 +16,16 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-pub mod api_handler;
-pub mod config;
-pub mod server;
-pub mod statics;
-pub mod structs;
-pub mod utils;
-pub mod webhook;
+pub async fn index() -> &'static str {
+    "test"
+}
+
+// pub async fn query() {}
+
+// pub async fn pets() {}
+
+// pub async fn lowestbin() {}
+
+// pub async fn underbin() {}
+
+// pub async fn average_auctions() {}

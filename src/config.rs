@@ -1,7 +1,25 @@
+/*
+ * Rust Query API - A versatile API facade for the Hypixel Auction API
+ * Copyright (c) 2021 kr45732
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+use anyhow::Result;
+use enumset::{EnumSet, EnumSetType};
 use std::env;
 use std::str::FromStr;
-
-use enumset::{EnumSet, EnumSetType};
 
 #[derive(Debug, EnumSetType)]
 pub enum Feature {
@@ -10,6 +28,14 @@ pub enum Feature {
     Lowestbin,
     Underbin,
     AverageAuction,
+}
+
+pub struct Config {
+    pub enabled_features: EnumSet<Feature>,
+    pub port: u16,
+    pub postgres_url: String,
+    pub api_key: String,
+    pub admin_api_key: String,
 }
 
 impl FromStr for Feature {
@@ -22,32 +48,19 @@ impl FromStr for Feature {
             "LOWESTBIN" => Self::Lowestbin,
             "UNDERBIN" => Self::Underbin,
             "AVERAGE_AUCTION" => Self::AverageAuction,
-            _ => return Err(format!("Unknown feature flag {}", s)),
+            _ => return Err(format!("Unknown feature flag: \"{}\"", s)),
         })
     }
 }
 
-pub struct Config {
-    pub enabled_features: EnumSet<Feature>,
-    pub webhook_url: String,
-    pub base_url: String,
-    pub port: u32,
-    pub full_url: String,
-    pub postgres_url: String,
-    pub api_key: String,
-    pub admin_api_key: String,
-}
-
 fn get_env(name: &str) -> String {
-    env::var(name).unwrap_or_else(|_| panic!("Unable to find {} environment variable", name))
+    env::var(name).unwrap_or_else(|_| panic!("Unable to find \"{}\" environment variable", name))
 }
 
 impl Config {
-    pub fn load_or_panic() -> Self {
-        let base_url = get_env("BASE_URL");
-        let port = get_env("PORT").parse::<u32>().expect("PORT not valid");
+    pub fn load() -> Self {
+        let port = get_env("PORT").parse::<u16>().expect("Invalid PORT");
         let api_key = get_env("API_KEY");
-        let webhook_url = get_env("WEBHOOK_URL");
         let admin_api_key = env::var("ADMIN_API_KEY").unwrap_or_else(|_| api_key.clone());
         let postgres_url = get_env("POSTGRES_URL");
         let features = get_env("FEATURES")
@@ -59,10 +72,7 @@ impl Config {
         }
         Config {
             enabled_features: features,
-            full_url: format!("{}:{}", base_url, port),
             postgres_url,
-            base_url,
-            webhook_url,
             api_key,
             admin_api_key,
             port,
