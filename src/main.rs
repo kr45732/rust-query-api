@@ -114,7 +114,7 @@ async fn main() -> Result<()> {
     let config = Config::load();
     let features = config.enabled_features;
     let url = format!("127.0.0.1:{}", config.port);
-    info!("Using features: {:?}", features);
+    info!("Using features: {:#?}", features);
 
     // Remove any files from previous runs
     let _ = fs::remove_file("lowestbin.json");
@@ -122,7 +122,7 @@ async fn main() -> Result<()> {
     let _ = fs::remove_file("query_items.json");
     debug!("Removed files from previous runs");
 
-    info!("Initializing database");
+    info!("Initializing database...");
     init_database(config).await;
 
     web::server(|| {

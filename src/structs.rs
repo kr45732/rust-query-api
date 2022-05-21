@@ -85,12 +85,14 @@ pub struct AvgAh {
     pub sales: f32,
 }
 
+#[allow(dead_code)]
 pub struct AvgAhSum {
     pub sum: i64,
     pub count: i32,
 }
 
 impl AvgAhSum {
+    #[allow(dead_code)]
     pub fn add(mut self, new_amount: i64) -> Self {
         self.sum += new_amount;
         self.count += 1;
@@ -98,25 +100,27 @@ impl AvgAhSum {
     }
 }
 
+#[allow(dead_code)]
 pub struct AvgAhVec {
     pub sum: Vec<f64>,
     pub sales: Vec<f32>,
 }
 
 impl AvgAhVec {
+    #[allow(dead_code)]
     pub fn add(mut self, avg_ah: &AvgAh) -> Self {
         self.sum.push(avg_ah.price);
         self.sales.push(avg_ah.sales);
         self
     }
-
+    #[allow(dead_code)]
     pub fn from(avg_ah: &AvgAh) -> Self {
         Self {
             sum: vec![avg_ah.price],
             sales: vec![avg_ah.sales],
         }
     }
-
+    #[allow(dead_code)]
     pub fn get_average(&self) -> f64 {
         self.sum.iter().sum::<f64>() / (self.sum.len() as f64)
     }
