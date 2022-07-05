@@ -20,7 +20,7 @@ dotenv = "0.15.0"
 chrono = "0.4.19"
 log = "0.4.17"
 enumset = "*"
-regex = "1.5.6"
+regex = "1.6.0"
 serde_json = "1.0.82"
 surf = { version = "2.3.2", features = ["curl-client"] }
 deadpool-postgres = "0.10.2"
