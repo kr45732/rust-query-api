@@ -15,17 +15,15 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
+use crate::statics::HTTP_CLIENT;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
-use surf::Client;
 
 type OString = Option<String>;
 type OInt32 = Option<i32>;
 
 pub struct Webhook {
     url: String,
-    client: Client,
 }
 
 #[derive(Deserialize, Debug)]
@@ -374,12 +372,11 @@ impl Webhook {
     pub fn from_url(url: &str) -> Self {
         Self {
             url: url.to_owned(),
-            client: Client::new(),
         }
     }
 
     pub async fn get_info(&self) -> Result<WebhookModel, Box<dyn Error>> {
-        let mut request = self.client.get(&self.url).send().await?;
+        let mut request = HTTP_CLIENT.get(&self.url).send().await?;
         Ok(serde_json::from_value(request.body_json().await?)?)
     }
 
@@ -389,7 +386,7 @@ impl Webhook {
     {
         let mut msg = Message::new();
         let message = t(&mut msg);
-        self.client.post(&self.url).body_json(&message)?.await?;
+        HTTP_CLIENT.post(&self.url).body_json(&message)?.await?;
         Ok(())
     }
 }

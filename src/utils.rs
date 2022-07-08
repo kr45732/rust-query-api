@@ -101,21 +101,19 @@ async fn get_duration_until_api_update() -> Duration {
 pub fn info(desc: String) {
     info!("{}", desc);
     tokio::spawn(async move {
-        let _ = WEBHOOK
-            .lock()
-            .await
-            .as_ref()
-            .unwrap()
-            .send(|message| {
-                message.embed(|embed| {
-                    embed
-                        .title("Information")
-                        .color(0x00FFFF)
-                        .description(&desc)
-                        .timestamp(&get_discord_timestamp())
+        if let Some(webhook) = WEBHOOK.lock().await.as_ref() {
+            let _ = webhook
+                .send(|message| {
+                    message.embed(|embed| {
+                        embed
+                            .title("Information")
+                            .color(0x00FFFF)
+                            .description(&desc)
+                            .timestamp(&get_discord_timestamp())
+                    })
                 })
-            })
-            .await;
+                .await;
+        }
     });
 }
 
@@ -123,12 +121,8 @@ pub fn info(desc: String) {
 pub fn error(desc: String) {
     error!("{}", desc);
     tokio::spawn(async move {
-        let _ = WEBHOOK
-            .lock()
-            .await
-            .as_ref()
-            .unwrap()
-            .send(|message| {
+        if let Some(webhook) = WEBHOOK.lock().await.as_ref() {
+            let _ = webhook.send(|message| {
                 message.embed(|embed| {
                     embed
                         .title("Error")
@@ -136,29 +130,27 @@ pub fn error(desc: String) {
                         .description(&desc)
                         .timestamp(&get_discord_timestamp())
                 })
-            })
-            .await;
+            });
+        }
     });
 }
 
 /* Send a panic message to the Discord webhook and panic */
 pub fn panic(desc: String) {
     tokio::spawn(async move {
-        let _ = WEBHOOK
-            .lock()
-            .await
-            .as_ref()
-            .unwrap()
-            .send(|message| {
-                message.embed(|embed| {
-                    embed
-                        .title("Force Panic")
-                        .color(0xFF0000)
-                        .description(&desc)
-                        .timestamp(&get_discord_timestamp())
+        if let Some(webhook) = WEBHOOK.lock().await.as_ref() {
+            let _ = webhook
+                .send(|message| {
+                    message.embed(|embed| {
+                        embed
+                            .title("Force Panic")
+                            .color(0xFF0000)
+                            .description(&desc)
+                            .timestamp(&get_discord_timestamp())
+                    })
                 })
-            })
-            .await;
+                .await;
+        }
 
         panic!("{}", desc);
     });

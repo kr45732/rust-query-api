@@ -47,10 +47,11 @@ impl Config {
         let base_url = get_env("BASE_URL");
         let port = get_env("PORT").parse::<u32>().expect("PORT not valid");
         let api_key = get_env("API_KEY");
-        let webhook_url = get_env("WEBHOOK_URL");
+        let webhook_url = env::var("WEBHOOK_URL").unwrap_or("".to_string());
         let admin_api_key = env::var("ADMIN_API_KEY").unwrap_or_else(|_| api_key.clone());
         let postgres_url = get_env("POSTGRES_URL");
         let features = get_env("FEATURES")
+            .replace(",", "+")
             .split('+')
             .map(|s| Feature::from_str(s).unwrap())
             .fold(EnumSet::<Feature>::new(), |x, y| x | y);

@@ -89,7 +89,6 @@ pub struct AvgAhSum {
     pub count: i32,
 }
 
-#[allow(clippy::should_implement_trait)]
 impl AvgAhSum {
     pub fn add(mut self, new_amount: i64) -> Self {
         self.sum += new_amount;
@@ -103,7 +102,6 @@ pub struct AvgAhVec {
     pub sales: Vec<f32>,
 }
 
-#[allow(clippy::should_implement_trait)]
 impl AvgAhVec {
     pub fn add(mut self, avg_ah: &AvgAh) -> Self {
         self.sum.push(avg_ah.price);
@@ -182,7 +180,6 @@ pub enum ItemBytes {
     Data(String),
 }
 
-#[allow(clippy::from_over_into)]
 impl Into<String> for ItemBytes {
     fn into(self) -> String {
         match self {
@@ -195,7 +192,6 @@ impl Into<String> for ItemBytes {
     }
 }
 
-#[allow(clippy::from_over_into)]
 impl Into<Result<Vec<u8>, Box<dyn std::error::Error>>> for ItemBytes {
     fn into(self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         let b64: String = self.into();

@@ -265,7 +265,6 @@ pub async fn update_auctions(config: Arc<Config>) {
 }
 
 /* Parses a page of auctions to a vector of documents  */
-#[allow(clippy::too_many_arguments)]
 fn parse_auctions(
     auctions: &[Value],
     inserted_uuids: &mut DashSet<String>,
