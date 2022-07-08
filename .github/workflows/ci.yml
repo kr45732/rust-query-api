@@ -1,48 +1,20 @@
-name: CI
+name: Rust
 
 on:
   push:
+    branches: [ main ]
   pull_request:
-  workflow_dispatch:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
-  lint:
-    name: Lint
+  build:
+
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-
-      - name: Cache dependencies
-        uses: Swatinem/rust-cache@v1
-
-      - name: check rustfmt
-        run: |
-          rustup component add rustfmt
-          cargo fmt -- --check --color always
-      - run: cargo fetch
-      - name: cargo clippy
-        run: |
-          rustup component add clippy
-          cargo clippy --all-targets --all-features -- -D warnings
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-
-      - name: Cache dependencies
-        uses: Swatinem/rust-cache@v1
-
-      - run: cargo fetch
-      - name: cargo test build
-        run: cargo build --tests --release
-      - name: cargo test
-        run: cargo test --release
+    - uses: actions/checkout@v3
+    - name: Build
+      run: cargo build --verbose
