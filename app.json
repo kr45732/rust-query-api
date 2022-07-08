@@ -6,7 +6,6 @@
     "env": {
         "API_KEY": {
             "description": "Key needed to access this API (NOT a Hypixel API key)",
-            "generator": "secret",
             "required": true
         },
         "POSTGRES_URL": {
@@ -14,10 +13,12 @@
             "required": true
         },
         "ADMIN_API_KEY": {
-            "description": "Admin key required to use raw SQL parameters. Will default to the API_KEY if not provided."
+            "description": "Admin key required to use raw SQL parameters. Will default to the API_KEY if not provided.",
+            "required": false
         },
         "WEBHOOK_URL": {
-            "description": "A discord webhook URL for logging."
+            "description": "A discord webhook URL for logging.",
+            "required": false
         },
         "BASE_URL": {
             "description": "The base URL of the domain. Do not modify this.",
