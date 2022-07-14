@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 # Runtime
-tokio = { version = "1.19.2", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.20.0", features = ["macros", "rt-multi-thread"] }
 
 # Serde
 serde = { version = "1.0.139", features = ["derive"] }
@@ -16,7 +16,7 @@ deadpool-postgres = "0.10.2"
 tokio-postgres = { version = "0.7.6", features = ["with-serde_json-1"] }
 postgres-types = { version = "0.2.3", features = ["derive", "array-impls"] }
 
-# Http
+# Https
 surf = { version = "2.3.2", features = ["curl-client"] }
 hyper = { version = "0.14.20", features = ["full"] }
 
