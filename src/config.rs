@@ -1,9 +1,8 @@
+use std::collections::HashSet;
 use std::env;
 use std::str::FromStr;
 
-use enumset::{EnumSet, EnumSetType};
-
-#[derive(Debug, EnumSetType)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Feature {
     Query,
     Pets,
@@ -28,7 +27,7 @@ impl FromStr for Feature {
 }
 
 pub struct Config {
-    pub enabled_features: EnumSet<Feature>,
+    pub enabled_features: HashSet<Feature>,
     pub webhook_url: String,
     pub base_url: String,
     pub port: u32,
@@ -54,8 +53,8 @@ impl Config {
             .replace(",", "+")
             .split('+')
             .map(|s| Feature::from_str(s).unwrap())
-            .fold(EnumSet::<Feature>::new(), |x, y| x | y);
-        if features.contains(Feature::Underbin) && !features.contains(Feature::Lowestbin) {
+            .collect::<HashSet<Feature>>();
+        if features.contains(&Feature::Underbin) && !features.contains(&Feature::Lowestbin) {
             panic!("Please enable LOWESTBIN if you want to enable UNDERBIN");
         }
         Config {

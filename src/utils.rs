@@ -16,21 +16,19 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::sync::Arc;
-use std::{fs::OpenOptions, result::Result as StdResult, thread, time::SystemTime};
-
-use chrono::prelude::{DateTime, Utc};
+use crate::config::Config;
+use crate::{statics::*, structs::*};
 use dashmap::{DashMap, DashSet};
 use deadpool_postgres::Client;
 use futures::{pin_mut, Future};
 use log::{error, info};
 use postgres_types::{ToSql, Type};
 use serde_json::Value;
+use std::sync::Arc;
+use std::time::UNIX_EPOCH;
+use std::{fs::OpenOptions, result::Result as StdResult, thread, time::SystemTime};
 use tokio::time::{self, Duration};
 use tokio_postgres::{binary_copy::BinaryCopyInWriter, Error};
-
-use crate::config::Config;
-use crate::{statics::*, structs::*};
 
 /* Repeat a task */
 pub async fn start_auction_loop<F, Fut>(mut f: F)
@@ -109,7 +107,6 @@ pub fn info(desc: String) {
                             .title("Information")
                             .color(0x00FFFF)
                             .description(&desc)
-                            .timestamp(&get_discord_timestamp())
                     })
                 })
                 .await;
@@ -123,13 +120,7 @@ pub fn error(desc: String) {
     tokio::spawn(async move {
         if let Some(webhook) = WEBHOOK.lock().await.as_ref() {
             let _ = webhook.send(|message| {
-                message.embed(|embed| {
-                    embed
-                        .title("Error")
-                        .color(0xFF0000)
-                        .description(&desc)
-                        .timestamp(&get_discord_timestamp())
-                })
+                message.embed(|embed| embed.title("Error").color(0xFF0000).description(&desc))
             });
         }
     });
@@ -146,7 +137,6 @@ pub fn panic(desc: String) {
                             .title("Force Panic")
                             .color(0xFF0000)
                             .description(&desc)
-                            .timestamp(&get_discord_timestamp())
                     })
                 })
                 .await;
@@ -154,12 +144,6 @@ pub fn panic(desc: String) {
 
         panic!("{}", desc);
     });
-}
-
-/* Forms the current timestamp for a Discord Embed */
-fn get_discord_timestamp() -> String {
-    let dt: DateTime<Utc> = SystemTime::now().into();
-    format!("{}", dt.format("%+"))
 }
 
 pub fn to_nbt(item_bytes: ItemBytes) -> Result<PartialNbt, Box<dyn std::error::Error>> {
@@ -291,7 +275,7 @@ pub async fn update_avg_ah_database(avg_ah_prices: Vec<AvgAh>, time_t: i64) -> R
         .simple_query(
             &format!(
                 "DELETE FROM average WHERE time_t < {}",
-                (Utc::now() - chrono::Duration::days(5)).timestamp_millis()
+                (get_timestamp_millis() - Duration::from_secs(432000).as_millis())
             )
             .to_string(),
         )
@@ -338,4 +322,11 @@ pub async fn update_query_items_local(query_items: DashSet<String>) {
 
 pub async fn get_client() -> Client {
     DATABASE.lock().await.as_ref().unwrap().get().await.unwrap()
+}
+
+pub fn get_timestamp_millis() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis()
 }

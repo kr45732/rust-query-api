@@ -16,24 +16,21 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::sync::Arc;
-use std::{fs, time::Instant};
-
-use chrono::Utc;
+use crate::config::{Config, Feature};
+use crate::{statics::*, structs::*, utils::*};
 use dashmap::{DashMap, DashSet};
 use futures::{stream::FuturesUnordered, StreamExt};
 use log::{debug, info};
 use serde_json::{json, Value};
-
-use crate::config::{Config, Feature};
-use crate::{statics::*, structs::*, utils::*};
+use std::sync::Arc;
+use std::{fs, time::Instant};
 
 /// Update the enabled APIs
 pub async fn update_auctions(config: Arc<Config>) {
     info("Fetching auctions...".to_string());
 
     let started = Instant::now();
-    let started_epoch = Utc::now().timestamp_millis();
+    let started_epoch = get_timestamp_millis() as i64;
     *IS_UPDATING.lock().await = true;
 
     // Stores all auction uuids in auctions vector to prevent duplicates
@@ -55,11 +52,11 @@ pub async fn update_auctions(config: Arc<Config>) {
     .unwrap();
 
     // Get which APIs to update
-    let update_query = config.enabled_features.contains(Feature::Query);
-    let update_pets = config.enabled_features.contains(Feature::Pets);
-    let update_lowestbin = config.enabled_features.contains(Feature::Lowestbin);
-    let update_underbin = config.enabled_features.contains(Feature::Underbin);
-    let update_average_auction = config.enabled_features.contains(Feature::AverageAuction);
+    let update_query = config.enabled_features.contains(&Feature::Query);
+    let update_pets = config.enabled_features.contains(&Feature::Pets);
+    let update_lowestbin = config.enabled_features.contains(&Feature::Lowestbin);
+    let update_underbin = config.enabled_features.contains(&Feature::Underbin);
+    let update_average_auction = config.enabled_features.contains(&Feature::AverageAuction);
 
     // Only fetch auctions if any of APIs that need the auctions are enabled
     if update_query || update_pets || update_lowestbin || update_underbin {
