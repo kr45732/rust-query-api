@@ -90,7 +90,9 @@ async fn get_duration_until_api_update() -> Duration {
             }
         }
         if num_attempts == 15 {
-            panic("Failed 15 consecutive attempts to contact the Hypixel API".to_string());
+            panic(String::from(
+                "Failed 15 consecutive attempts to contact the Hypixel API",
+            ));
         }
     }
 }
@@ -166,7 +168,7 @@ pub fn valid_api_key(config: Arc<Config>, key: String, admin_only: bool) -> bool
     if admin_only {
         return false;
     }
-    key == config.api_key
+    config.api_key.is_empty() || (key == config.api_key)
 }
 
 pub fn update_lower_else_insert(id: &String, starting_bid: i64, prices: &mut DashMap<String, i64>) {
@@ -286,6 +288,34 @@ pub async fn update_avg_ah_database(avg_ah_prices: Vec<AvgAh>, time_t: i64) -> R
         .execute(
             "INSERT INTO average VALUES ($1, $2)",
             &[&time_t, &avg_ah_prices],
+        )
+        .await
+}
+
+pub async fn update_avg_bin_database(
+    avg_bin_prices: Vec<AvgAh>,
+    time_t: i64,
+) -> Result<u64, Error> {
+    tokio::spawn(async {
+        // Delete bins older than 5 days
+        let _ = get_client()
+            .await
+            .simple_query(
+                &format!(
+                    "DELETE FROM average_bin WHERE time_t < {}",
+                    (get_timestamp_millis() - Duration::from_secs(432000).as_millis())
+                )
+                .to_string(),
+            )
+            .await;
+    });
+
+    // Insert new bins auctions
+    get_client()
+        .await
+        .execute(
+            "INSERT INTO average_bin VALUES ($1, $2)",
+            &[&time_t, &avg_bin_prices],
         )
         .await
 }

@@ -27,7 +27,7 @@ use dotenv::dotenv;
 use simplelog::{CombinedLogger, LevelFilter, SimpleLogger, WriteLogger};
 use tokio_postgres::NoTls;
 
-use query_api::config::Config;
+use query_api::config::{Config, Feature};
 use query_api::{api_handler::*, server::start_server, statics::*, utils::*, webhook::Webhook};
 
 /* Entry point to the program. Creates loggers, reads config, creates tables, starts auction loop and server */
@@ -87,37 +87,27 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .await
         .unwrap();
 
-    // Create bid custom type
-    let _ = database
-        .simple_query(
-            "CREATE TYPE bid AS (
+    if config.is_enabled(Feature::Query) {
+        // Create bid custom type
+        let _ = database
+            .simple_query(
+                "CREATE TYPE bid AS (
                     bidder TEXT,
                     amount BIGINT
                 )",
-        )
-        .await;
+            )
+            .await;
 
-    // Get the bid array type and store for future use
-    let _ = BID_ARRAY
-        .lock()
-        .await
-        .insert(database.prepare("SELECT $1::_bid").await.unwrap().params()[0].clone());
+        // Get the bid array type and store for future use
+        let _ = BID_ARRAY
+            .lock()
+            .await
+            .insert(database.prepare("SELECT $1::_bid").await.unwrap().params()[0].clone());
 
-    // Create avg_ah custom type
-    let _ = database
-        .simple_query(
-            "CREATE TYPE avg_ah AS (
-                    item_id TEXT,
-                    price DOUBLE PRECISION,
-                    sales REAL
-                )",
-        )
-        .await;
-
-    // Create query table if doesn't exist
-    let _ = database
-        .simple_query(
-            "CREATE TABLE IF NOT EXISTS query (
+        // Create query table if doesn't exist
+        let _ = database
+            .simple_query(
+                "CREATE TABLE IF NOT EXISTS query (
                     uuid TEXT NOT NULL PRIMARY KEY,
                     auctioneer TEXT,
                     end_t BIGINT,
@@ -129,35 +119,65 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     bin BOOLEAN,
                     bids bid[]
                 )",
-        )
-        .await;
+            )
+            .await;
+    }
 
-    // Create pets table if doesn't exist
-    let _ = database
-        .simple_query(
-            "CREATE TABLE IF NOT EXISTS pets (
+    if config.is_enabled(Feature::AverageAuction) || config.is_enabled(Feature::AverageBin) {
+        // Create avg_ah custom type
+        let _ = database
+            .simple_query(
+                "CREATE TYPE avg_ah AS (
+                    item_id TEXT,
+                    price DOUBLE PRECISION,
+                    sales REAL
+                )",
+            )
+            .await;
+
+        if config.is_enabled(Feature::AverageAuction) {
+            // Create average auction table if doesn't exist
+            let _ = database
+                .simple_query(
+                    "CREATE TABLE IF NOT EXISTS average (
+                        time_t BIGINT NOT NULL PRIMARY KEY,
+                        prices avg_ah[]
+                    )",
+                )
+                .await;
+        }
+
+        if config.is_enabled(Feature::AverageBin) {
+            // Create average bins table if doesn't exist
+            let _ = database
+                .simple_query(
+                    "CREATE TABLE IF NOT EXISTS average_bin (
+                        time_t BIGINT NOT NULL PRIMARY KEY,
+                        prices avg_ah[]
+                    )",
+                )
+                .await;
+        }
+    }
+
+    if config.is_enabled(Feature::Pets) {
+        // Create pets table if doesn't exist
+        let _ = database
+            .simple_query(
+                "CREATE TABLE IF NOT EXISTS pets (
                     name TEXT NOT NULL PRIMARY KEY,
                     price BIGINT
                 )",
-        )
-        .await;
-
-    // Create average auction table if doesn't exist
-    let _ = database
-        .simple_query(
-            "CREATE TABLE IF NOT EXISTS average (
-                    time_t BIGINT NOT NULL PRIMARY KEY,
-                    prices avg_ah[]
-                )",
-        )
-        .await;
+            )
+            .await;
+    }
 
     // Remove any files from previous runs
     let _ = fs::remove_file("lowestbin.json");
     let _ = fs::remove_file("underbin.json");
     let _ = fs::remove_file("query_items.json");
 
-    info("Starting auction loop...".to_string());
+    info(String::from("Starting auction loop..."));
     let auction_config = config.clone();
     start_auction_loop(move || {
         let auction_config = auction_config.clone();
@@ -167,7 +187,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     })
     .await;
 
-    info("Starting server...".to_string());
+    info(String::from("Starting server..."));
     start_server(config.clone()).await;
 
     Ok(())

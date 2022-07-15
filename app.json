@@ -26,8 +26,8 @@
             "required": true
         },
         "FEATURES": {
-            "description": "The features (QUERY, PETS, LOWESTBIN, UNDERBIN, AVERAGE_AUCTION) you want enabled separated with a comma.",
-            "value": "QUERY,PETS,LOWESTBIN,UNDERBIN,AVERAGE_AUCTION",
+            "description": "The features (QUERY, PETS, LOWESTBIN, UNDERBIN, AVERAGE_AUCTION, AVERAGE_BIN) you want enabled separated with a comma.",
+            "value": "QUERY,PETS,LOWESTBIN,UNDERBIN,AVERAGE_AUCTION,AVERAGE_BIN",
             "required": true
         }
     },

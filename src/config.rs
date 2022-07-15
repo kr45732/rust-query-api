@@ -9,6 +9,7 @@ pub enum Feature {
     Lowestbin,
     Underbin,
     AverageAuction,
+    AverageBin,
 }
 
 impl FromStr for Feature {
@@ -21,6 +22,7 @@ impl FromStr for Feature {
             "LOWESTBIN" => Self::Lowestbin,
             "UNDERBIN" => Self::Underbin,
             "AVERAGE_AUCTION" => Self::AverageAuction,
+            "AVERAGE_BIN" => Self::AverageBin,
             _ => return Err(format!("Unknown feature flag {}", s)),
         })
     }
@@ -46,7 +48,7 @@ impl Config {
         let base_url = get_env("BASE_URL");
         let port = get_env("PORT").parse::<u32>().expect("PORT not valid");
         let api_key = get_env("API_KEY");
-        let webhook_url = env::var("WEBHOOK_URL").unwrap_or("".to_string());
+        let webhook_url = env::var("WEBHOOK_URL").unwrap_or(String::new());
         let admin_api_key = env::var("ADMIN_API_KEY").unwrap_or_else(|_| api_key.clone());
         let postgres_url = get_env("POSTGRES_URL");
         let features = get_env("FEATURES")
@@ -55,7 +57,7 @@ impl Config {
             .map(|s| Feature::from_str(s).unwrap())
             .collect::<HashSet<Feature>>();
         if features.contains(&Feature::Underbin) && !features.contains(&Feature::Lowestbin) {
-            panic!("Please enable LOWESTBIN if you want to enable UNDERBIN");
+            panic!("The LOWESTBIN feature must be enabled to enable the UNDERBIN feature");
         }
         Config {
             enabled_features: features,
@@ -67,5 +69,9 @@ impl Config {
             admin_api_key,
             port,
         }
+    }
+
+    pub fn is_enabled(&self, feature: Feature) -> bool {
+        self.enabled_features.contains(&feature)
     }
 }

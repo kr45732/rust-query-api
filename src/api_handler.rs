@@ -27,7 +27,7 @@ use std::{fs, time::Instant};
 
 /// Update the enabled APIs
 pub async fn update_auctions(config: Arc<Config>) {
-    info("Fetching auctions...".to_string());
+    info(String::from("Fetching auctions..."));
 
     let started = Instant::now();
     let started_epoch = get_timestamp_millis() as i64;
@@ -35,37 +35,32 @@ pub async fn update_auctions(config: Arc<Config>) {
 
     // Stores all auction uuids in auctions vector to prevent duplicates
     let mut inserted_uuids: DashSet<String> = DashSet::new();
-    // Stores query prices
     let mut query_prices: Vec<DatabaseItem> = Vec::new();
-    // Stores pet prices
     let mut pet_prices: DashMap<String, i64> = DashMap::new();
-    // Stores bin prices
     let mut bin_prices: DashMap<String, i64> = DashMap::new();
-    // Stores under bin prices
     let mut under_bin_prices: Vec<Value> = Vec::new();
-    // Stores average auction prices
     let mut avg_ah_prices: Vec<AvgAh> = Vec::new();
-    // Previous bin prices
-    let past_bin_prices: DashMap<String, i64> = serde_json::from_str(
-        &fs::read_to_string("lowestbin.json").unwrap_or_else(|_| "{}".to_string()),
-    )
-    .unwrap();
+    let mut avg_bin_prices: Vec<AvgAh> = Vec::new();
+    let past_bin_prices: DashMap<String, i64> =
+        serde_json::from_str(&fs::read_to_string("lowestbin.json").unwrap_or(String::from("{}")))
+            .unwrap();
 
     // Get which APIs to update
-    let update_query = config.enabled_features.contains(&Feature::Query);
-    let update_pets = config.enabled_features.contains(&Feature::Pets);
-    let update_lowestbin = config.enabled_features.contains(&Feature::Lowestbin);
-    let update_underbin = config.enabled_features.contains(&Feature::Underbin);
-    let update_average_auction = config.enabled_features.contains(&Feature::AverageAuction);
+    let update_query = config.is_enabled(Feature::Query);
+    let update_pets = config.is_enabled(Feature::Pets);
+    let update_lowestbin = config.is_enabled(Feature::Lowestbin);
+    let update_underbin = config.is_enabled(Feature::Underbin);
+    let update_average_auction = config.is_enabled(Feature::AverageAuction);
+    let update_average_bin = config.is_enabled(Feature::AverageBin);
 
     // Only fetch auctions if any of APIs that need the auctions are enabled
-    if update_query || update_pets || update_lowestbin || update_underbin {
+    if update_query || update_pets || update_lowestbin || update_underbin || update_average_bin {
         // First page to get the total number of pages
         let json = get_auction_page(0).await;
         if json.is_null() || json.get("auctions").is_none() {
-            error(
-                "Failed to fetch the first (page=0) auction page. Canceling this run.".to_string(),
-            );
+            error(String::from(
+                "Failed to fetch the first (page=0) auction page. Canceling this run.",
+            ));
             return;
         }
 
@@ -84,7 +79,7 @@ pub async fn update_auctions(config: Arc<Config>) {
             update_underbin,
         );
 
-        // Stores the futures for all auction page in order to utilize multithreading
+        // Stores the futures for all auction pages in order to utilize multithreading
         let mut futures = FuturesUnordered::new();
 
         let total_pages: i64 = json.get("totalPages").unwrap().as_i64().unwrap();
@@ -162,8 +157,14 @@ pub async fn update_auctions(config: Arc<Config>) {
     }
 
     // Update average auctions if the feature is enabled
-    if update_average_auction {
-        parse_avg_auctions(&mut avg_ah_prices).await;
+    if update_average_auction || update_average_bin {
+        parse_ended_auctions(
+            &mut avg_ah_prices,
+            &mut avg_bin_prices,
+            update_average_auction,
+            update_average_bin,
+        )
+        .await;
     }
 
     let fetch_sec = started.elapsed().as_secs();
@@ -246,6 +247,20 @@ pub async fn update_auctions(config: Arc<Config>) {
                 "Error inserting average auctions into database: {}",
                 e
             )),
+        }
+    }
+
+    // Average bins API
+    if update_average_bin {
+        let avg_bin_started = Instant::now();
+        match update_avg_bin_database(avg_bin_prices, started_epoch).await {
+            Ok(_) => {
+                info(format!(
+                    "Successfully inserted average bins into database in {}ms",
+                    avg_bin_started.elapsed().as_millis()
+                ));
+            }
+            Err(e) => error(format!("Error inserting average bins into database: {}", e)),
         }
     }
 
@@ -440,16 +455,27 @@ fn parse_auctions(
 }
 
 /* Parse ended auctions into Vec<AvgAh> */
-async fn parse_avg_auctions(avg_ah_prices: &mut Vec<AvgAh>) {
+async fn parse_ended_auctions(
+    avg_ah_prices: &mut Vec<AvgAh>,
+    avg_bin_prices: &mut Vec<AvgAh>,
+    update_average_auction: bool,
+    update_average_bin: bool,
+) {
     let page_request = get_ended_auctions().await;
     if page_request.is_null() {
-        error("Failed to fetch ended auctions".to_string());
+        error(String::from("Failed to fetch ended auctions"));
     } else {
         // Store the sum and count for each unique item id across all ended auctions
-        let avg_ah_map: DashMap<String, AvgAhSum> = DashMap::new();
+        let avg_ah_map: DashMap<String, AvgSum> = DashMap::new();
+        let avg_bin_map: DashMap<String, AvgSum> = DashMap::new();
         for auction in page_request.get("auctions").unwrap().as_array().unwrap() {
-            if auction.get("bin").unwrap().as_bool().unwrap() {
-                continue;
+            let bin = auction.get("bin").unwrap().as_bool().unwrap();
+
+            if !update_average_auction || !update_average_bin {
+                // Only update avg ah is enabled but is bin or only update avg bin is enabled but isn't bin
+                if (update_average_auction && bin) || (update_average_bin && !bin) {
+                    continue;
+                }
             }
 
             let nbt = &to_nbt(
@@ -509,23 +535,48 @@ async fn parse_avg_auctions(avg_ah_prices: &mut Vec<AvgAh>) {
             }
 
             let price = auction.get("price").unwrap().as_i64().unwrap();
-            // If the map already has this id, then add this auction to the existing auctions, otherwise create a new entry
-            if avg_ah_map.contains_key(&id) {
-                avg_ah_map.alter(&id, |_, value| value.add(price));
+
+            if bin {
+                // If the map already has this id, then add this bin to the existing bins, otherwise create a new entry
+                if avg_bin_map.contains_key(&id) {
+                    avg_bin_map.alter(&id, |_, value| value.add(price));
+                } else {
+                    avg_bin_map.insert(
+                        id,
+                        AvgSum {
+                            sum: price,
+                            count: 1,
+                        },
+                    );
+                }
             } else {
-                avg_ah_map.insert(
-                    id,
-                    AvgAhSum {
-                        sum: price,
-                        count: 1,
-                    },
-                );
+                // If the map already has this id, then add this auction to the existing auctions, otherwise create a new entry
+                if avg_ah_map.contains_key(&id) {
+                    avg_ah_map.alter(&id, |_, value| value.add(price));
+                } else {
+                    avg_ah_map.insert(
+                        id,
+                        AvgSum {
+                            sum: price,
+                            count: 1,
+                        },
+                    );
+                }
             }
         }
 
-        // Average all the id's and store them in the avg_ah_prices vector
+        // Average all the averaged auctions and store them in the avg_ah_prices vector
         for ele in avg_ah_map {
             avg_ah_prices.push(AvgAh {
+                item_id: ele.0,
+                price: (ele.1.sum as f64) / (ele.1.count as f64),
+                sales: ele.1.count as f32,
+            })
+        }
+
+        // Average all the averaged bins and store them in the avg_bin_prices vector
+        for ele in avg_bin_map {
+            avg_bin_prices.push(AvgAh {
                 item_id: ele.0,
                 price: (ele.1.sum as f64) / (ele.1.count as f64),
                 sales: ele.1.count as f32,

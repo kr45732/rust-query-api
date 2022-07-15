@@ -28,6 +28,7 @@ use hyper::{
 };
 use log::info;
 use postgres_types::ToSql;
+use serde_json::json;
 use surf::Url;
 use tokio_postgres::Row;
 
@@ -61,40 +62,46 @@ async fn handle_response(config: Arc<Config>, req: Request<Body>) -> hyper::Resu
     if let (&Method::GET, "/") = (req.method(), req.uri().path()) {
         base(config).await
     } else if let (&Method::GET, "/query") = (req.method(), req.uri().path()) {
-        if config.enabled_features.contains(&Feature::Query) {
+        if config.is_enabled(Feature::Query) {
             query(config, req).await
         } else {
             bad_request("Query feature is not enabled")
         }
     } else if let (&Method::GET, "/query_items") = (req.method(), req.uri().path()) {
-        if config.enabled_features.contains(&Feature::Query) {
+        if config.is_enabled(Feature::Query) {
             query_items(config, req).await
         } else {
             bad_request("Query feature is not enabled")
         }
     } else if let (&Method::GET, "/pets") = (req.method(), req.uri().path()) {
-        if config.enabled_features.contains(&Feature::Pets) {
+        if config.is_enabled(Feature::Pets) {
             pets(config, req).await
         } else {
             bad_request("Pets feature is not enabled")
         }
     } else if let (&Method::GET, "/lowestbin") = (req.method(), req.uri().path()) {
-        if config.enabled_features.contains(&Feature::Lowestbin) {
+        if config.is_enabled(Feature::Lowestbin) {
             lowestbin(config, req).await
         } else {
             bad_request("Lowest bins feature is not enabled")
         }
     } else if let (&Method::GET, "/underbin") = (req.method(), req.uri().path()) {
-        if config.enabled_features.contains(&Feature::Underbin) {
+        if config.is_enabled(Feature::Underbin) {
             underbin(config, req).await
         } else {
             bad_request("Under bins feature is not enabled")
         }
     } else if let (&Method::GET, "/average_auction") = (req.method(), req.uri().path()) {
-        if config.enabled_features.contains(&Feature::AverageAuction) {
-            average_auction(config, req).await
+        if config.is_enabled(Feature::AverageAuction) {
+            average_ah_bin(config, req, "average").await
         } else {
             bad_request("Average auction feature is not enabled")
+        }
+    } else if let (&Method::GET, "/average_bin") = (req.method(), req.uri().path()) {
+        if config.is_enabled(Feature::AverageBin) {
+            average_ah_bin(config, req, "average_bin").await
+        } else {
+            bad_request("Average bin feature is not enabled")
         }
     } else if let (&Method::GET, "/debug") = (req.method(), req.uri().path()) {
         debug_log(config, req).await
@@ -107,7 +114,7 @@ async fn handle_response(config: Arc<Config>, req: Request<Body>) -> hyper::Resu
 
 /* /debug */
 async fn debug_log(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
-    let mut key = "".to_string();
+    let mut key = String::new();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in Url::parse(&format!(
@@ -140,7 +147,7 @@ async fn debug_log(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Res
 
 /* /info */
 async fn info_log(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
-    let mut key = "".to_string();
+    let mut key = String::new();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in Url::parse(&format!(
@@ -173,8 +180,8 @@ async fn info_log(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Resp
 
 /* /pets */
 async fn pets(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
-    let mut query = "".to_string();
-    let mut key = "".to_string();
+    let mut query = String::new();
+    let mut key = String::new();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in Url::parse(&format!(
@@ -193,7 +200,7 @@ async fn pets(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response
     }
 
     // The API key in request doesn't match
-    if !valid_api_key(config, key, true) {
+    if !valid_api_key(config, key, false) {
         return bad_request("Not authorized");
     }
 
@@ -201,9 +208,7 @@ async fn pets(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response
         return bad_request("The query parameter cannot be empty");
     }
 
-    let database_ref = get_client().await;
-
-    let mut sql: String = "SELECT * FROM pets WHERE name IN (".to_string();
+    let mut sql: String = String::from("SELECT * FROM pets WHERE name IN (");
     let mut param_vec: Vec<Box<String>> = Vec::new();
     let mut param_count = 1;
 
@@ -224,7 +229,7 @@ async fn pets(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response
         .collect::<Vec<_>>();
 
     // Find and sort using query JSON
-    let results_cursor = database_ref.query_raw(&sql, out).await;
+    let results_cursor = get_client().await.query_raw(&sql, out).await;
 
     if let Err(e) = results_cursor {
         return internal_error(&format!("Error when querying database: {}", e));
@@ -248,9 +253,13 @@ async fn pets(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response
         .unwrap())
 }
 
-/* /average_auction */
-async fn average_auction(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
-    let mut key = "".to_string();
+/* /average_auction or /average_bin */
+async fn average_ah_bin(
+    config: Arc<Config>,
+    req: Request<Body>,
+    table: &str,
+) -> hyper::Result<Response<Body>> {
+    let mut key = String::new();
     let mut time = -1;
     let mut step: usize = 1;
 
@@ -286,12 +295,11 @@ async fn average_auction(config: Arc<Config>, req: Request<Body>) -> hyper::Resu
         return bad_request("The time parameter must be provided and positive");
     }
 
-    let database_ref = get_client().await;
-
     // Find and sort using query JSON
-    let results_cursor = database_ref
+    let results_cursor = get_client()
+        .await
         .query(
-            "SELECT * FROM average WHERE time_t > $1 ORDER BY time_t",
+            format!("SELECT * FROM {} WHERE time_t > $1 ORDER BY time_t", table).as_str(),
             &[&time],
         )
         .await;
@@ -301,21 +309,21 @@ async fn average_auction(config: Arc<Config>, req: Request<Body>) -> hyper::Resu
     }
 
     // Map each item id to its prices and sales
-    let avg_ah_map: DashMap<String, AvgAhVec> = DashMap::new();
+    let avg_map: DashMap<String, AvgVec> = DashMap::new();
     results_cursor.unwrap().into_iter().for_each(|ele_row| {
         for ele in AverageDatabaseItem::from(ele_row).prices {
             // If the id already exists in the map, append the new values, otherwise create a new entry
-            if avg_ah_map.contains_key(&ele.item_id) {
-                avg_ah_map.alter(&ele.item_id, |_, value| value.add(&ele));
+            if avg_map.contains_key(&ele.item_id) {
+                avg_map.alter(&ele.item_id, |_, value| value.add(&ele));
             } else {
-                avg_ah_map.insert(ele.item_id.to_owned(), AvgAhVec::from(&ele));
+                avg_map.insert(ele.item_id.to_owned(), AvgVec::from(&ele));
             }
         }
     });
 
     // Stores the values after averaging by 'step'
-    let avg_ah_map_final: DashMap<String, AvgAh> = DashMap::new();
-    for ele in avg_ah_map {
+    let avg_map_final: DashMap<String, AvgAh> = DashMap::new();
+    for ele in avg_map {
         let mut count: i64 = 0;
         let mut sales: f32 = 0.0;
 
@@ -331,7 +339,7 @@ async fn average_auction(config: Arc<Config>, req: Request<Body>) -> hyper::Resu
             count += 1;
         }
 
-        avg_ah_map_final.insert(
+        avg_map_final.insert(
             ele.0.to_owned(),
             AvgAh {
                 item_id: ele.0,
@@ -341,28 +349,26 @@ async fn average_auction(config: Arc<Config>, req: Request<Body>) -> hyper::Resu
         );
     }
 
-    // Return the vector of auctions serialized into JSON
+    // Return the vector of auctions or bins serialized into JSON
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(
-            serde_json::to_string(&avg_ah_map_final).unwrap(),
-        ))
+        .body(Body::from(serde_json::to_string(&avg_map_final).unwrap()))
         .unwrap())
 }
 
 /// HTTP Handler for query
 async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
-    let mut query = "".to_string();
-    let mut sort = "".to_string();
+    let mut query = String::new();
+    let mut sort = String::new();
     let mut limit: i64 = 1;
-    let mut key = "".to_string();
-    let mut item_name = "".to_string();
-    let mut tier = "".to_string();
-    let mut item_id = "".to_string();
-    let mut enchants = "".to_string();
+    let mut key = String::new();
+    let mut item_name = String::new();
+    let mut tier = String::new();
+    let mut item_id = String::new();
+    let mut enchants = String::new();
     let mut end: i64 = -1;
-    let mut bids = "".to_string();
+    let mut bids = String::new();
     let mut bin = Option::None;
 
     // Reads the query parameters from the request and stores them in the corresponding variable
@@ -414,11 +420,11 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
         let mut param_count = 1;
 
         if !bids.is_empty() {
-            sql = "SELECT * FROM query, unnest(bids) AS bid WHERE bid.bidder = $1".to_string();
+            sql = String::from("SELECT * FROM query, unnest(bids) AS bid WHERE bid.bidder = $1");
             param_vec.push(&bids);
             param_count += 1;
         } else {
-            sql = "SELECT * FROM query WHERE".to_string();
+            sql = String::from("SELECT * FROM query WHERE");
         }
 
         if !tier.is_empty() {
@@ -472,13 +478,19 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
             param_count += 1;
         }
         if !sort.is_empty() {
+            if param_count == 1 {
+                sql.push_str(" 1=1"); // Handles the unfinished WHERE
+            }
             if sort == "ASC" {
                 sql.push_str(" ORDER BY starting_bid ASC");
-            } else if sort == "DESC" {
+            } else {
                 sql.push_str(" ORDER BY starting_bid DESC");
             }
         };
         if limit > 0 {
+            if param_count == 1 && sort.is_empty() {
+                sql.push_str(" 1=1"); // Handles the unfinished WHERE
+            }
             sql.push_str(format!(" LIMIT ${}", param_count).as_str());
             param_vec.push(&limit);
         }
@@ -514,7 +526,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
 
 /* /query_items */
 async fn query_items(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
-    let mut key = "".to_string();
+    let mut key = String::new();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in Url::parse(&format!(
@@ -548,7 +560,7 @@ async fn query_items(config: Arc<Config>, req: Request<Body>) -> hyper::Result<R
 
 /* /lowestbin */
 async fn lowestbin(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
-    let mut key = "".to_string();
+    let mut key = String::new();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in Url::parse(&format!("http://{}{}", config.full_url, &req.uri()))
@@ -578,7 +590,7 @@ async fn lowestbin(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Res
 
 /* /underbin */
 async fn underbin(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
-    let mut key = "".to_string();
+    let mut key = String::new();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in Url::parse(&format!("http://{}{}", config.full_url, &req.uri()))
@@ -611,63 +623,48 @@ async fn base(config: Arc<Config>) -> hyper::Result<Response<Body>> {
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(format!(
-            "{{
-            \"success\":true,
-            \"enabled_features\":{{
-                \"query\":{},
-                \"pets\":{},
-                \"lowestbin\":{},
-                \"underbin\":{},
-                \"average_auction\":{}
-            }},\"statistics\":
-            {{
-                \"is_updating\":{},
-                \"total_updates\":{},
-                \"last_updated\":{}
-            }}
-        }}",
-            config.enabled_features.contains(&Feature::Query),
-            config.enabled_features.contains(&Feature::Pets),
-            config.enabled_features.contains(&Feature::Lowestbin),
-            config.enabled_features.contains(&Feature::Underbin),
-            config.enabled_features.contains(&Feature::AverageAuction),
-            *IS_UPDATING.lock().await,
-            *TOTAL_UPDATES.lock().await,
-            *LAST_UPDATED.lock().await
-        )))
+        .body(Body::from(
+            json!({
+                "success":true,
+                "enabled_features": {
+                    "query":config.is_enabled(Feature::Query),
+                    "pets":config.is_enabled(Feature::Pets),
+                    "lowestbin":config.is_enabled(Feature::Lowestbin),
+                    "underbin": config.is_enabled(Feature::Underbin),
+                    "average_auction":config.is_enabled(Feature::AverageAuction),
+                    "average_bin":config.is_enabled(Feature::AverageBin),
+                },
+                "statistics": {
+                    "is_updating":*IS_UPDATING.lock().await,
+                    "total_updates":*TOTAL_UPDATES.lock().await,
+                    "last_updated":*LAST_UPDATED.lock().await
+                }
+            })
+            .to_string(),
+        ))
         .unwrap())
 }
 
-/* 400 */
-pub fn bad_request(reason: &str) -> hyper::Result<Response<Body>> {
+fn http_err(status: StatusCode, reason: &str) -> hyper::Result<Response<Body>> {
     Ok(Response::builder()
-        .status(StatusCode::BAD_REQUEST)
+        .status(status)
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(format!(
-            "{{\"success\":false,\"reason\":\"{}\"}}",
-            reason
-        )))
+        .body(Body::from(
+            json!({"success": false, "reason": reason}
+            )
+            .to_string(),
+        ))
         .unwrap())
 }
 
-/* 404 */
-pub fn not_found() -> hyper::Result<Response<Body>> {
-    Ok(Response::builder()
-        .status(StatusCode::NOT_FOUND)
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from("{\"success\":false,\"reason\":\"Not found\"}"))
-        .unwrap())
+fn bad_request(reason: &str) -> hyper::Result<Response<Body>> {
+    http_err(StatusCode::BAD_REQUEST, reason)
 }
 
-/* 500 */
-pub fn internal_error(reason: &str) -> hyper::Result<Response<Body>> {
-    Ok(Response::builder()
-        .status(StatusCode::INTERNAL_SERVER_ERROR)
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(format!(
-            "{{\"success\":false,\"reason\":\"{}\"}}",
-            reason
-        )))
-        .unwrap())
+fn not_found() -> hyper::Result<Response<Body>> {
+    http_err(StatusCode::NOT_FOUND, "Not found")
+}
+
+fn internal_error(reason: &str) -> hyper::Result<Response<Body>> {
+    http_err(StatusCode::INTERNAL_SERVER_ERROR, reason)
 }
