@@ -273,15 +273,18 @@ pub async fn update_avg_ah_database(avg_ah_prices: Vec<AvgAh>, time_t: i64) -> R
     let database = get_client().await;
 
     // Delete auctions older than 5 days
-    let _ = database
-        .simple_query(
-            &format!(
-                "DELETE FROM average WHERE time_t < {}",
-                (get_timestamp_millis() - Duration::from_secs(432000).as_millis())
+    tokio::spawn(async {
+        let _ = get_client()
+            .await
+            .simple_query(
+                &format!(
+                    "DELETE FROM average WHERE time_t < {}",
+                    (get_timestamp_millis() - Duration::from_secs(432000).as_millis())
+                )
+                .to_string(),
             )
-            .to_string(),
-        )
-        .await;
+            .await;
+    });
 
     // Insert new average auctions
     database
@@ -296,8 +299,10 @@ pub async fn update_avg_bin_database(
     avg_bin_prices: Vec<AvgAh>,
     time_t: i64,
 ) -> Result<u64, Error> {
+    let database = get_client().await;
+
+    // Delete bins older than 5 days
     tokio::spawn(async {
-        // Delete bins older than 5 days
         let _ = get_client()
             .await
             .simple_query(
@@ -311,8 +316,7 @@ pub async fn update_avg_bin_database(
     });
 
     // Insert new bins auctions
-    get_client()
-        .await
+    database
         .execute(
             "INSERT INTO average_bin VALUES ($1, $2)",
             &[&time_t, &avg_bin_prices],

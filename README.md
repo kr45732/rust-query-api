@@ -58,3 +58,4 @@ For a free PostgreSQL database host, [Supabase](https://supabase.com/) is a real
 ## Todo
 - Better documentation & more examples
 - Improve underbin
+- Rework pets to averages and cap the price all levels at the price of a max pet

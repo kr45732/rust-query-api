@@ -14,7 +14,7 @@
 
 ## Pets
 - `key` - key to access the API
-- `query` - list of pet names seperated with a comma. Each pet name is formated as: '[LVL_#]_NAME_TIER'. For tier boosted pets, append '_TB'. Requires the admin key
+- `query` - list of pet names seperated with a comma. Each pet name is formated as: [LVL_#]_NAME_TIER. For tier boosted pets, append _TB
 
 ## Lowest bin
 - `key` - key to access the API
@@ -33,7 +33,7 @@
 - Meaning: find the cheapest 50 bins where the item id is POWER_WITHER_CHESTPLATE (Necron's chestplate), the tier is mythic, and has 5 stars. Sort by ascending bin price
 
 ### [example_2.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_2.json)
-- Request: /pets?key=KEY&query='[LVL_100]_WITHER_SKELETON_LEGENDARY','[LVL_80]_BAL_EPIC','[LVL_96]_ENDER_DRAGON_EPIC_TB'
+- Request: /pets?key=KEY&query=[LVL_100]_WITHER_SKELETON_LEGENDARY,[LVL_80]_BAL_EPIC,[LVL_96]_ENDER_DRAGON_EPIC_TB
 - Meaning: get the lowest/last pet prices for a level 100 legendary wither skeleton, a level 80 epic bal, and a level 96 epic ender dragon (tierboosted from epic to legendary)
 
 ### [example_3.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_3.json)
@@ -47,3 +47,7 @@
 ### [example_5.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_5.json)
 - Request /average_auction?key=KEY&time=1647830293999&step=60
 - Meaning: get average auction prices from the unix timestamp 1647830293999 to the present. Average sales by hour
+
+### [example_6.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_6.json)
+- Request /average_bin?key=KEY&time=1647830293999&step=60
+- Meaning: get average auction bin from the unix timestamp 1647830293999 to the present. Average sales by hour
