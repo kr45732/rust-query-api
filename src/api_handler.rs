@@ -20,7 +20,7 @@ use crate::config::{Config, Feature};
 use crate::{statics::*, structs::*, utils::*};
 use dashmap::{DashMap, DashSet};
 use futures::{stream::FuturesUnordered, StreamExt};
-use log::{debug, info};
+use log::{debug, error, info};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use std::{fs, time::Instant};
@@ -53,8 +53,10 @@ pub async fn update_auctions(config: Arc<Config>) {
     let update_average_auction = config.is_enabled(Feature::AverageAuction);
     let update_average_bin = config.is_enabled(Feature::AverageBin);
 
+    let mut num_failed = 0;
+
     // Only fetch auctions if any of APIs that need the auctions are enabled
-    if update_query || update_pets || update_lowestbin || update_underbin || update_average_bin {
+    if update_query || update_pets || update_lowestbin || update_underbin {
         // First page to get the total number of pages
         let json = get_auction_page(0).await;
         if json.is_null() || json.get("auctions").is_none() {
@@ -83,7 +85,6 @@ pub async fn update_auctions(config: Arc<Config>) {
         let mut futures = FuturesUnordered::new();
 
         let total_pages: i64 = json.get("totalPages").unwrap().as_i64().unwrap();
-        let mut num_failed = 0;
 
         debug!("Sending {} async requests", total_pages);
         // Skip page zero since it's already been parsed
@@ -99,10 +100,10 @@ pub async fn update_auctions(config: Arc<Config>) {
                 Some(page_request) => {
                     if page_request.is_null() {
                         num_failed += 1;
-                        error(format!(
+                        error!(
                             "Failed to fetch a page with a total of {} failed page(s)",
                             num_failed
-                        ));
+                        );
                         continue;
                     }
 
@@ -112,10 +113,10 @@ pub async fn update_auctions(config: Arc<Config>) {
                         }
                         None => {
                             num_failed += 1;
-                            error(format!(
+                            error!(
                                 "Failed to fetch a page with a total of {} failed page(s)",
                                 num_failed
-                            ));
+                            );
                             continue;
                         }
                     }
@@ -172,101 +173,108 @@ pub async fn update_auctions(config: Arc<Config>) {
 
     debug!("Inserting into database");
     let insert_started = Instant::now();
+    let mut ok_logs = String::new();
+    let mut err_logs = String::new();
 
-    // Lowest bin & under bin APIs
     if update_lowestbin {
-        // Lowest bin API
         let bins_started = Instant::now();
         match update_bins_local(&bin_prices).await {
             Ok(_) => {
-                info(format!(
+                ok_logs.push_str(&format!(
                     "Successfully updated bins file in {}ms",
                     bins_started.elapsed().as_millis()
                 ));
             }
-            Err(e) => error(format!("Error updating bins file: {}", e)),
+            Err(e) => err_logs.push_str(&format!("Error updating bins file: {}", e)),
         }
 
-        // Under bin API
         if update_underbin {
             let under_bins_started = Instant::now();
             match update_under_bins_local(&under_bin_prices).await {
                 Ok(_) => {
-                    info(format!(
-                        "Successfully updated under bins file in {}ms",
+                    ok_logs.push_str(&format!(
+                        "\nSuccessfully updated under bins file in {}ms",
                         under_bins_started.elapsed().as_millis()
                     ));
                 }
-                Err(e) => error(format!("Error updating under bins file: {}", e)),
+                Err(e) => err_logs.push_str(&format!("\nError updating under bins file: {}", e)),
             }
         }
     }
 
-    // Query API
     if update_query {
         let query_started = Instant::now();
         update_query_items_local(query_prices.iter().map(|o| o.item_name.clone()).collect()).await;
         match update_query_database(query_prices).await {
             Ok(rows) => {
-                info(format!(
-                    "Successfully inserted {} query auctions into database in {}ms",
+                ok_logs.push_str(&format!(
+                    "\nSuccessfully inserted {} query auctions into database in {}ms",
                     rows,
                     query_started.elapsed().as_millis()
                 ));
             }
-            Err(e) => error(format!("Error inserting query into database: {}", e)),
+            Err(e) => err_logs.push_str(&format!("\nError inserting query into database: {}", e)),
         }
     }
 
-    // Pets API
     if update_pets {
         let pets_started = Instant::now();
         match update_pets_database(&mut pet_prices).await {
             Ok(rows) => {
-                info(format!(
-                    "Successfully inserted {} pets into database in {}ms",
+                ok_logs.push_str(&format!(
+                    "\nSuccessfully inserted {} pets into database in {}ms",
                     rows,
                     pets_started.elapsed().as_millis()
                 ));
             }
-            Err(e) => error(format!("Error inserting pets into database: {}", e)),
+            Err(e) => err_logs.push_str(&format!("\nError inserting pets into database: {}", e)),
         }
     }
 
-    // Average auctions API
     if update_average_auction {
         let avg_ah_started = Instant::now();
         match update_avg_ah_database(avg_ah_prices, started_epoch).await {
             Ok(_) => {
-                info(format!(
-                    "Successfully inserted average auctions into database in {}ms",
+                ok_logs.push_str(&format!(
+                    "\nSuccessfully inserted average auctions into database in {}ms",
                     avg_ah_started.elapsed().as_millis()
                 ));
             }
-            Err(e) => error(format!(
-                "Error inserting average auctions into database: {}",
+            Err(e) => err_logs.push_str(&format!(
+                "\nError inserting average auctions into database: {}",
                 e
             )),
         }
     }
 
-    // Average bins API
     if update_average_bin {
         let avg_bin_started = Instant::now();
         match update_avg_bin_database(avg_bin_prices, started_epoch).await {
             Ok(_) => {
-                info(format!(
-                    "Successfully inserted average bins into database in {}ms",
+                ok_logs.push_str(&format!(
+                    "\nSuccessfully inserted average bins into database in {}ms",
                     avg_bin_started.elapsed().as_millis()
                 ));
             }
-            Err(e) => error(format!("Error inserting average bins into database: {}", e)),
+            Err(e) => err_logs.push_str(&format!(
+                "\nError inserting average bins into database: {}",
+                e
+            )),
         }
     }
 
+    if !ok_logs.is_empty() {
+        info(ok_logs);
+    }
+
+    if !err_logs.is_empty() {
+        error(err_logs);
+    }
+
     info(format!(
-        "Fetch time: {}s | Insert time: {}s | Total time: {}s",
+        "Fetch time: {}s ({} failed) | Insert time: {}s | Total time: {}s",
         fetch_sec,
+        num_failed,
         insert_started.elapsed().as_secs(),
         started.elapsed().as_secs()
     ));
