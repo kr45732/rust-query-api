@@ -258,7 +258,7 @@ pub async fn update_pets_database(pet_prices: &mut DashMap<String, AvgSum>) -> R
 
     let copy_statement = database.prepare("COPY pets FROM STDIN BINARY").await?;
     let copy_sink = database.copy_in(&copy_statement).await?;
-    let copy_writer = BinaryCopyInWriter::new(copy_sink, &[Type::TEXT, Type::FLOAT8, Type::INT4]);
+    let copy_writer = BinaryCopyInWriter::new(copy_sink, &[Type::TEXT, Type::INT8, Type::INT4]);
     pin_mut!(copy_writer);
 
     // Write to copy sink
