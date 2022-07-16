@@ -166,7 +166,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .simple_query(
                 "CREATE TABLE IF NOT EXISTS pets (
                     name TEXT NOT NULL PRIMARY KEY,
-                    price BIGINT
+                    price BIGINT,
+                    count INTEGER
                 )",
             )
             .await;

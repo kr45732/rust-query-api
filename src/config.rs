@@ -49,7 +49,7 @@ impl Config {
         let port = get_env("PORT").parse::<u32>().expect("PORT not valid");
         let api_key = get_env("API_KEY");
         let webhook_url = env::var("WEBHOOK_URL").unwrap_or(String::new());
-        let admin_api_key = env::var("ADMIN_API_KEY").unwrap_or_else(|_| api_key.clone());
+        let admin_api_key = env::var("ADMIN_API_KEY").unwrap_or(api_key.clone());
         let postgres_url = get_env("POSTGRES_URL");
         let features = get_env("FEATURES")
             .replace(",", "+")
