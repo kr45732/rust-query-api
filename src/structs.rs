@@ -134,7 +134,6 @@ impl AvgVec {
 pub struct PetsDatabaseItem {
     pub name: String,
     pub price: i64,
-    pub count: i32,
 }
 
 impl From<Row> for PetsDatabaseItem {
@@ -142,7 +141,6 @@ impl From<Row> for PetsDatabaseItem {
         Self {
             name: row.get("name"),
             price: row.get("price"),
-            count: row.get("count"),
         }
     }
 }
