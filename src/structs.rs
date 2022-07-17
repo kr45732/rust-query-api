@@ -134,7 +134,7 @@ impl AvgVec {
 pub struct PetsDatabaseItem {
     pub name: String,
     pub price: i64,
-    pub count: i64,
+    pub count: i32,
 }
 
 impl From<Row> for PetsDatabaseItem {
