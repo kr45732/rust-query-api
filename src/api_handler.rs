@@ -36,7 +36,7 @@ pub async fn update_auctions(config: Arc<Config>) {
     // Stores all auction uuids in auctions vector to prevent duplicates
     let mut inserted_uuids: DashSet<String> = DashSet::new();
     let mut query_prices: Vec<DatabaseItem> = Vec::new();
-    let mut pet_prices: DashMap<String, i64> = DashMap::new();
+    let mut pet_prices: DashMap<String, AvgSum> = DashMap::new();
     let mut bin_prices: DashMap<String, i64> = DashMap::new();
     let mut under_bin_prices: Vec<Value> = Vec::new();
     let mut avg_ah_prices: Vec<AvgAh> = Vec::new();
@@ -56,7 +56,7 @@ pub async fn update_auctions(config: Arc<Config>) {
     let mut num_failed = 0;
 
     // Only fetch auctions if any of APIs that need the auctions are enabled
-    if update_query || update_pets || update_lowestbin || update_underbin {
+    if update_query || update_lowestbin || update_underbin {
         // First page to get the total number of pages
         let json = get_auction_page(0).await;
         if json.is_null() || json.get("auctions").is_none() {
@@ -71,12 +71,10 @@ pub async fn update_auctions(config: Arc<Config>) {
             json.get("auctions").unwrap().as_array().unwrap(),
             &mut inserted_uuids,
             &mut query_prices,
-            &mut pet_prices,
             &mut bin_prices,
             &mut under_bin_prices,
             &past_bin_prices,
             update_query,
-            update_pets,
             update_lowestbin,
             update_underbin,
         );
@@ -132,12 +130,10 @@ pub async fn update_auctions(config: Arc<Config>) {
                         page_request.get("auctions").unwrap().as_array().unwrap(),
                         &mut inserted_uuids,
                         &mut query_prices,
-                        &mut pet_prices,
                         &mut bin_prices,
                         &mut under_bin_prices,
                         &past_bin_prices,
                         update_query,
-                        update_pets,
                         update_lowestbin,
                         update_underbin,
                     );
@@ -158,12 +154,14 @@ pub async fn update_auctions(config: Arc<Config>) {
     }
 
     // Update average auctions if the feature is enabled
-    if update_average_auction || update_average_bin {
+    if update_average_auction || update_average_bin || update_pets {
         parse_ended_auctions(
             &mut avg_ah_prices,
             &mut avg_bin_prices,
+            &mut pet_prices,
             update_average_auction,
             update_average_bin,
+            update_pets,
         )
         .await;
     }
@@ -289,18 +287,16 @@ fn parse_auctions(
     auctions: &[Value],
     inserted_uuids: &mut DashSet<String>,
     query_prices: &mut Vec<DatabaseItem>,
-    pet_prices: &mut DashMap<String, i64>,
     bin_prices: &mut DashMap<String, i64>,
     under_bin_prices: &mut Vec<Value>,
     past_bin_prices: &DashMap<String, i64>,
     update_query: bool,
-    update_pets: bool,
     update_lowestbin: bool,
     update_underbin: bool,
 ) {
     for auction in auctions.iter() {
         let uuid = auction.get("uuid").unwrap().as_str().unwrap();
-        // Prevent duplicate auctions
+        // Prevent duplicate auctions (returns false if already exists)
         if inserted_uuids.insert(uuid.to_string()) {
             let item_name = auction
                 .get("item_name")
@@ -317,8 +313,10 @@ fn parse_auctions(
             let item_lore = auction.get("item_lore").unwrap().as_str().unwrap();
             let mut tier = auction.get("tier").unwrap().as_str().unwrap();
             let starting_bid = auction.get("starting_bid").unwrap().as_i64().unwrap();
-            let bin =
-                auction.get("bin").is_some() && auction.get("bin").unwrap().as_bool().unwrap();
+            let bin = auction
+                .get("bin")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
             let pet_info;
 
             let nbt = &to_nbt(
@@ -355,31 +353,9 @@ fn parse_auctions(
                         .as_mut_str(),
                 )
                 .unwrap();
-                let mut tb_str = "";
 
-                if match pet_info.get("heldItem") {
-                    Some(held_item) => match held_item.as_str().unwrap() {
-                        "PET_ITEM_TIER_BOOST" | "PET_ITEM_VAMPIRE_FANG" | "PET_ITEM_TOY_JERRY" => {
-                            true
-                        }
-                        _ => false,
-                    },
-                    None => false,
-                } {
-                    // Hypixel API is weird and if the pet is tier boosted, the 'tier' field in the auction shows the rarity after boosting
-                    tier = pet_info.get("tier").unwrap().as_str().unwrap();
-                    tb_str = "_TB";
-                }
-
-                if bin && update_pets {
-                    update_lower_else_insert(
-                        &format!("{}_{}{}", item_name.replace("_✦", ""), tier, tb_str)
-                            .replace(' ', "_")
-                            .to_uppercase(),
-                        starting_bid,
-                        pet_prices,
-                    );
-                }
+                // If the pet is tier boosted, the tier field in the auction shows the rarity after boosting
+                tier = pet_info.get("tier").unwrap().as_str().unwrap();
 
                 if bin && update_lowestbin {
                     let mut split = item_name.split("] ");
@@ -411,6 +387,7 @@ fn parse_auctions(
                     && id != "ENCHANTED_BOOK"
                     && !item_lore.contains("Furniture")
                     && item_name != "null"
+                    && !item_name.contains("Minion Skin")
                 {
                     if let Some(past_bin_price) = past_bin_prices.get(&internal_id) {
                         let profit = calculate_with_taxes(*past_bin_price.value()) - starting_bid;
@@ -466,20 +443,23 @@ fn parse_auctions(
 async fn parse_ended_auctions(
     avg_ah_prices: &mut Vec<AvgAh>,
     avg_bin_prices: &mut Vec<AvgAh>,
+    pet_prices: &mut DashMap<String, AvgSum>,
     update_average_auction: bool,
     update_average_bin: bool,
+    update_pets: bool,
 ) {
     let page_request = get_ended_auctions().await;
     if page_request.is_null() {
         error(String::from("Failed to fetch ended auctions"));
     } else {
-        // Store the sum and count for each unique item id across all ended auctions
         let avg_ah_map: DashMap<String, AvgSum> = DashMap::new();
         let avg_bin_map: DashMap<String, AvgSum> = DashMap::new();
+
         for auction in page_request.get("auctions").unwrap().as_array().unwrap() {
             let bin = auction.get("bin").unwrap().as_bool().unwrap();
 
-            if !update_average_auction || !update_average_bin {
+            // Always update if pets is enabled, otherwise check if only auction or bin are enabled
+            if !update_pets || !(update_average_auction & update_average_bin) {
                 // Only update avg ah is enabled but is bin or only update avg bin is enabled but isn't bin
                 if (update_average_auction && bin) || (update_average_bin && !bin) {
                     continue;
@@ -492,6 +472,7 @@ async fn parse_ended_auctions(
             .unwrap()
             .i[0];
             let mut id = nbt.tag.extra_attributes.id.to_owned();
+            let price = auction.get("price").unwrap().as_i64().unwrap();
 
             if id == "ENCHANTED_BOOK" && nbt.tag.extra_attributes.enchantments.is_some() {
                 let enchants = nbt.tag.extra_attributes.enchantments.as_ref().unwrap();
@@ -519,6 +500,38 @@ async fn parse_ended_auctions(
                 let item_name = MC_CODE_REGEX
                     .replace_all(&nbt.tag.display.name, "")
                     .to_string();
+
+                if update_pets {
+                    let pet_id = format!(
+                        "{}_{}{}",
+                        item_name.replace(' ', "_").replace("_✦", ""),
+                        pet_info.get("tier").unwrap().as_str().unwrap(),
+                        if let Some(held_item) = pet_info.get("heldItem").and_then(|v| v.as_str()) {
+                            match held_item {
+                                "PET_ITEM_TIER_BOOST"
+                                | "PET_ITEM_VAMPIRE_FANG"
+                                | "PET_ITEM_TOY_JERRY" => "_TB",
+                                _ => "",
+                            }
+                        } else {
+                            ""
+                        }
+                    )
+                    .to_uppercase();
+
+                    if pet_prices.contains_key(&pet_id) {
+                        pet_prices.alter(&pet_id, |_, value| value.add(price));
+                    } else {
+                        pet_prices.insert(
+                            pet_id,
+                            AvgSum {
+                                sum: price,
+                                count: 1,
+                            },
+                        );
+                    }
+                }
+
                 let mut split = item_name.split("] ");
                 split.next();
 
@@ -542,9 +555,7 @@ async fn parse_ended_auctions(
                 );
             }
 
-            let price = auction.get("price").unwrap().as_i64().unwrap();
-
-            if bin {
+            if update_average_bin && bin {
                 // If the map already has this id, then add this bin to the existing bins, otherwise create a new entry
                 if avg_bin_map.contains_key(&id) {
                     avg_bin_map.alter(&id, |_, value| value.add(price));
@@ -557,7 +568,7 @@ async fn parse_ended_auctions(
                         },
                     );
                 }
-            } else {
+            } else if update_average_auction && !bin {
                 // If the map already has this id, then add this auction to the existing auctions, otherwise create a new entry
                 if avg_ah_map.contains_key(&id) {
                     avg_ah_map.alter(&id, |_, value| value.add(price));

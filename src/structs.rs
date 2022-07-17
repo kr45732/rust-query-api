@@ -90,10 +90,18 @@ pub struct AvgSum {
 }
 
 impl AvgSum {
-    pub fn add(mut self, new_amount: i64) -> Self {
-        self.sum += new_amount;
-        self.count += 1;
+    pub fn add(self, new_amount: i64) -> Self {
+        self.add_multiple(new_amount, 1)
+    }
+
+    pub fn add_multiple(mut self, sum: i64, count: i32) -> Self {
+        self.sum += sum;
+        self.count += count;
         self
+    }
+
+    pub fn get_average(&self) -> i64 {
+        self.sum / self.count as i64
     }
 }
 
@@ -126,6 +134,7 @@ impl AvgVec {
 pub struct PetsDatabaseItem {
     pub name: String,
     pub price: i64,
+    pub count: i64,
 }
 
 impl From<Row> for PetsDatabaseItem {
@@ -133,6 +142,7 @@ impl From<Row> for PetsDatabaseItem {
         Self {
             name: row.get("name"),
             price: row.get("price"),
+            count: row.get("count"),
         }
     }
 }

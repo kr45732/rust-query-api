@@ -229,22 +229,28 @@ pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, E
     copy_writer.finish().await
 }
 
-pub async fn update_pets_database(pet_prices: &mut DashMap<String, i64>) -> Result<u64, Error> {
+pub async fn update_pets_database(pet_prices: &mut DashMap<String, AvgSum>) -> Result<u64, Error> {
+    println!("{}", pet_prices.len());
     let database = get_client().await;
 
     // Add all old pet prices to the new prices if the new prices doesn't have that old pet name
     let old_pet_prices = database.query("SELECT * FROM pets", &[]).await?;
-    for old_price in old_pet_prices {
-        let old_price_name: String = old_price.get("name");
-        let mut new_has = false;
-        for new_price in pet_prices.iter_mut() {
-            if old_price_name == *new_price.key() {
-                new_has = true;
-                break;
-            }
-        }
-        if !new_has {
-            pet_prices.insert(old_price_name, old_price.get("price"));
+    for old_pet in old_pet_prices {
+        let old_name: String = old_pet.get("name");
+        let old_count: i32 = old_pet.get("count");
+        let old_price: i64 = old_pet.get("price");
+        let old_sum: i64 = old_price * (old_count as i64);
+
+        if pet_prices.contains_key(&old_name) {
+            pet_prices.alter(&old_name, |_, value| value.add_multiple(old_sum, old_count));
+        } else {
+            pet_prices.insert(
+                old_name,
+                AvgSum {
+                    sum: old_sum,
+                    count: old_count,
+                },
+            );
         }
     }
 
@@ -252,7 +258,7 @@ pub async fn update_pets_database(pet_prices: &mut DashMap<String, i64>) -> Resu
 
     let copy_statement = database.prepare("COPY pets FROM STDIN BINARY").await?;
     let copy_sink = database.copy_in(&copy_statement).await?;
-    let copy_writer = BinaryCopyInWriter::new(copy_sink, &[Type::TEXT, Type::INT8]);
+    let copy_writer = BinaryCopyInWriter::new(copy_sink, &[Type::TEXT, Type::INT8, Type::INT4]);
     pin_mut!(copy_writer);
 
     // Write to copy sink
@@ -261,7 +267,8 @@ pub async fn update_pets_database(pet_prices: &mut DashMap<String, i64>) -> Resu
             .as_mut()
             .write(&[
                 m.key() as &(dyn ToSql + Sync),
-                m.value() as &(dyn ToSql + Sync),
+                &m.value().get_average() as &(dyn ToSql + Sync),
+                &m.value().count as &(dyn ToSql + Sync),
             ])
             .await?;
     }

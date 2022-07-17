@@ -34,7 +34,7 @@
 
 ### [example_2.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_2.json)
 - Request: /pets?key=KEY&query=[LVL_100]_WITHER_SKELETON_LEGENDARY,[LVL_80]_BAL_EPIC,[LVL_96]_ENDER_DRAGON_EPIC_TB
-- Meaning: get the lowest/last pet prices for a level 100 legendary wither skeleton, a level 80 epic bal, and a level 96 epic ender dragon (tierboosted from epic to legendary)
+- Meaning: get the average pet prices for a level 100 legendary wither skeleton, a level 80 epic bal, and a level 96 epic ender dragon (tier boosted from epic to legendary)
 
 ### [example_3.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_3.json)
 - Request /lowestbin?key=KEY
