@@ -22,6 +22,7 @@ use dashmap::{DashMap, DashSet};
 use futures::{stream::FuturesUnordered, StreamExt};
 use log::{debug, error, info};
 use serde_json::{json, Value};
+use std::fmt::Write;
 use std::sync::Arc;
 use std::{fs, time::Instant};
 
@@ -41,9 +42,10 @@ pub async fn update_auctions(config: Arc<Config>) {
     let mut under_bin_prices: Vec<Value> = Vec::new();
     let mut avg_ah_prices: Vec<AvgAh> = Vec::new();
     let mut avg_bin_prices: Vec<AvgAh> = Vec::new();
-    let past_bin_prices: DashMap<String, i64> =
-        serde_json::from_str(&fs::read_to_string("lowestbin.json").unwrap_or(String::from("{}")))
-            .unwrap();
+    let past_bin_prices: DashMap<String, i64> = serde_json::from_str(
+        &fs::read_to_string("lowestbin.json").unwrap_or_else(|_| String::from("{}")),
+    )
+    .unwrap();
 
     // Get which APIs to update
     let update_query = config.is_enabled(Feature::Query);
@@ -176,89 +178,85 @@ pub async fn update_auctions(config: Arc<Config>) {
 
     if update_lowestbin {
         let bins_started = Instant::now();
-        match update_bins_local(&bin_prices).await {
-            Ok(_) => {
-                ok_logs.push_str(&format!(
-                    "Successfully updated bins file in {}ms",
-                    bins_started.elapsed().as_millis()
-                ));
-            }
-            Err(e) => err_logs.push_str(&format!("Error updating bins file: {}", e)),
-        }
+        let _ = match update_bins_local(&bin_prices).await {
+            Ok(_) => write!(
+                ok_logs,
+                "Successfully updated bins file in {}ms",
+                bins_started.elapsed().as_millis()
+            ),
+            Err(e) => write!(err_logs, "Error updating bins file: {}", e),
+        };
 
         if update_underbin {
             let under_bins_started = Instant::now();
-            match update_under_bins_local(&under_bin_prices).await {
-                Ok(_) => {
-                    ok_logs.push_str(&format!(
-                        "\nSuccessfully updated under bins file in {}ms",
-                        under_bins_started.elapsed().as_millis()
-                    ));
-                }
-                Err(e) => err_logs.push_str(&format!("\nError updating under bins file: {}", e)),
-            }
+            let _ = match update_under_bins_local(&under_bin_prices).await {
+                Ok(_) => write!(
+                    ok_logs,
+                    "\nSuccessfully updated under bins file in {}ms",
+                    under_bins_started.elapsed().as_millis()
+                ),
+                Err(e) => write!(err_logs, "\nError updating under bins file: {}", e),
+            };
         }
     }
 
     if update_query {
         let query_started = Instant::now();
         update_query_items_local(query_prices.iter().map(|o| o.item_name.clone()).collect()).await;
-        match update_query_database(query_prices).await {
-            Ok(rows) => {
-                ok_logs.push_str(&format!(
-                    "\nSuccessfully inserted {} query auctions into database in {}ms",
-                    rows,
-                    query_started.elapsed().as_millis()
-                ));
-            }
-            Err(e) => err_logs.push_str(&format!("\nError inserting query into database: {}", e)),
-        }
+        let _ = match update_query_database(query_prices).await {
+            Ok(rows) => write!(
+                ok_logs,
+                "\nSuccessfully inserted {} query auctions into database in {}ms",
+                rows,
+                query_started.elapsed().as_millis()
+            ),
+            Err(e) => write!(err_logs, "\nError inserting query into database: {}", e),
+        };
     }
 
     if update_pets {
         let pets_started = Instant::now();
-        match update_pets_database(&mut pet_prices).await {
-            Ok(rows) => {
-                ok_logs.push_str(&format!(
-                    "\nSuccessfully inserted {} pets into database in {}ms",
-                    rows,
-                    pets_started.elapsed().as_millis()
-                ));
-            }
-            Err(e) => err_logs.push_str(&format!("\nError inserting pets into database: {}", e)),
-        }
+        let _ = match update_pets_database(&mut pet_prices).await {
+            Ok(rows) => write!(
+                ok_logs,
+                "\nSuccessfully inserted {} pets into database in {}ms",
+                rows,
+                pets_started.elapsed().as_millis()
+            ),
+            Err(e) => write!(err_logs, "\nError inserting pets into database: {}", e),
+        };
     }
 
     if update_average_auction {
         let avg_ah_started = Instant::now();
-        match update_avg_ah_database(avg_ah_prices, started_epoch).await {
-            Ok(_) => {
-                ok_logs.push_str(&format!(
-                    "\nSuccessfully inserted average auctions into database in {}ms",
-                    avg_ah_started.elapsed().as_millis()
-                ));
-            }
-            Err(e) => err_logs.push_str(&format!(
+        let _ = match update_avg_ah_database(avg_ah_prices, started_epoch).await {
+            Ok(_) => write!(
+                ok_logs,
+                "\nSuccessfully inserted average auctions into database in {}ms",
+                avg_ah_started.elapsed().as_millis()
+            ),
+            Err(e) => write!(
+                err_logs,
                 "\nError inserting average auctions into database: {}",
-                e
-            )),
-        }
+                e,
+            ),
+        };
     }
 
     if update_average_bin {
         let avg_bin_started = Instant::now();
-        match update_avg_bin_database(avg_bin_prices, started_epoch).await {
-            Ok(_) => {
-                ok_logs.push_str(&format!(
-                    "\nSuccessfully inserted average bins into database in {}ms",
-                    avg_bin_started.elapsed().as_millis()
-                ));
-            }
-            Err(e) => err_logs.push_str(&format!(
+        let _ = match update_avg_bin_database(avg_bin_prices, started_epoch).await {
+            Ok(_) => write!(
+                ok_logs,
+                "\nSuccessfully inserted average bins into database in {}ms",
+                avg_bin_started.elapsed().as_millis()
+            ),
+            Err(e) => write!(
+                err_logs,
                 "\nError inserting average bins into database: {}",
                 e
-            )),
-        }
+            ),
+        };
     }
 
     if !ok_logs.is_empty() {

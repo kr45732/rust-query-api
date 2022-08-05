@@ -16,6 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#![warn(clippy::all, clippy::pedantic)]
+
 use std::sync::Arc;
 use std::{
     error::Error,
@@ -28,28 +30,17 @@ use simplelog::{CombinedLogger, LevelFilter, SimpleLogger, WriteLogger};
 use tokio_postgres::NoTls;
 
 use query_api::config::{Config, Feature};
-use query_api::{api_handler::*, server::start_server, statics::*, utils::*, webhook::Webhook};
+use query_api::{
+    api_handler::update_auctions,
+    server::start_server,
+    statics::{BID_ARRAY, DATABASE, WEBHOOK},
+    utils::{info, start_auction_loop},
+    webhook::Webhook,
+};
 
 /* Entry point to the program. Creates loggers, reads config, creates tables, starts auction loop and server */
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    // Create log files
-    CombinedLogger::init(vec![
-        SimpleLogger::new(LevelFilter::Info, Default::default()),
-        WriteLogger::new(
-            LevelFilter::Info,
-            Default::default(),
-            File::create("info.log").unwrap(),
-        ),
-        WriteLogger::new(
-            LevelFilter::Debug,
-            Default::default(),
-            File::create("debug.log").unwrap(),
-        ),
-    ])
-    .expect("Error when creating loggers");
-    println!("Loggers Created");
-
     // Read config
     println!("Reading config");
     if dotenv().is_err() {
@@ -57,6 +48,26 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let config = Arc::new(Config::load_or_panic());
+
+    if config.debug {
+        // Create log files
+        CombinedLogger::init(vec![
+            SimpleLogger::new(LevelFilter::Info, simplelog::Config::default()),
+            WriteLogger::new(
+                LevelFilter::Info,
+                simplelog::Config::default(),
+                File::create("info.log").unwrap(),
+            ),
+            WriteLogger::new(
+                LevelFilter::Debug,
+                simplelog::Config::default(),
+                File::create("debug.log").unwrap(),
+            ),
+        ])
+        .expect("Error when creating loggers");
+        println!("Loggers Created");
+    }
+
     if !config.webhook_url.is_empty() {
         let _ = WEBHOOK
             .lock()
