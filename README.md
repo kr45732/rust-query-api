@@ -32,6 +32,7 @@ A versatile API facade for the Hypixel Auction API written in Rust. The entire a
 - `POSTGRES_URL`: Full URL of a PostgreSQL database
 - `WEBHOOK_URL`: Discord webhook URL for logging
 - `FEATURES`: The features (QUERY, PETS, LOWESTBIN, UNDERBIN, AVERAGE_AUCTION, AVERAGE_BIN) you want to be enabled separated with a '+' 
+- `DEBUG`: If the API should log to files and stdout (true or false)
 
 ## Usage
 ### Endpoints

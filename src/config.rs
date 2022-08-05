@@ -37,6 +37,7 @@ pub struct Config {
     pub postgres_url: String,
     pub api_key: String,
     pub admin_api_key: String,
+    pub debug: bool,
 }
 
 fn get_env(name: &str) -> String {
@@ -48,11 +49,15 @@ impl Config {
         let base_url = get_env("BASE_URL");
         let port = get_env("PORT").parse::<u32>().expect("PORT not valid");
         let api_key = get_env("API_KEY");
-        let webhook_url = env::var("WEBHOOK_URL").unwrap_or(String::new());
-        let admin_api_key = env::var("ADMIN_API_KEY").unwrap_or(api_key.clone());
+        let webhook_url = env::var("WEBHOOK_URL").unwrap_or_default();
+        let admin_api_key = env::var("ADMIN_API_KEY").unwrap_or_else(|_| api_key.clone());
+        let debug = env::var("DEBUG")
+            .unwrap_or_else(|_| String::from("false"))
+            .parse()
+            .unwrap_or(false);
         let postgres_url = get_env("POSTGRES_URL");
         let features = get_env("FEATURES")
-            .replace(",", "+")
+            .replace(',', "+")
             .split('+')
             .map(|s| Feature::from_str(s).unwrap())
             .collect::<HashSet<Feature>>();
@@ -68,6 +73,7 @@ impl Config {
             api_key,
             admin_api_key,
             port,
+            debug,
         }
     }
 

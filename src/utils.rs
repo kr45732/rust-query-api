@@ -230,7 +230,6 @@ pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, E
 }
 
 pub async fn update_pets_database(pet_prices: &mut DashMap<String, AvgSum>) -> Result<u64, Error> {
-    println!("{}", pet_prices.len());
     let database = get_client().await;
 
     // Add all old pet prices to the new prices if the new prices doesn't have that old pet name

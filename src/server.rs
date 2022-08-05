@@ -104,9 +104,17 @@ async fn handle_response(config: Arc<Config>, req: Request<Body>) -> hyper::Resu
             bad_request("Average bin feature is not enabled")
         }
     } else if let (&Method::GET, "/debug") = (req.method(), req.uri().path()) {
-        debug_log(config, req).await
+        if config.debug {
+            debug_log(config, req).await
+        } else {
+            bad_request("Debug is not enabled")
+        }
     } else if let (&Method::GET, "/info") = (req.method(), req.uri().path()) {
-        info_log(config, req).await
+        if config.debug {
+            info_log(config, req).await
+        } else {
+            bad_request("Debug is not enabled")
+        }
     } else {
         not_found()
     }

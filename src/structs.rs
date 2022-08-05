@@ -188,21 +188,21 @@ pub enum ItemBytes {
     Data(String),
 }
 
-impl Into<String> for ItemBytes {
-    fn into(self) -> String {
-        match self {
-            Self::T0(ibt0) => {
+impl From<ItemBytes> for String {
+    fn from(s: ItemBytes) -> Self {
+        match s {
+            ItemBytes::T0(ibt0) => {
                 let ItemBytesT0::Data(x) = ibt0;
                 x
             }
-            Self::Data(x) => x,
+            ItemBytes::Data(x) => x,
         }
     }
 }
 
-impl Into<Result<Vec<u8>, Box<dyn std::error::Error>>> for ItemBytes {
-    fn into(self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        let b64: String = self.into();
+impl From<ItemBytes> for Result<Vec<u8>, Box<dyn std::error::Error>> {
+    fn from(s: ItemBytes) -> Self {
+        let b64: String = s.into();
         Ok(base64::decode(&b64)?)
     }
 }
