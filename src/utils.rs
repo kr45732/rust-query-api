@@ -26,7 +26,7 @@ use postgres_types::{ToSql, Type};
 use serde_json::Value;
 use std::sync::Arc;
 use std::time::UNIX_EPOCH;
-use std::{fs::OpenOptions, result::Result as StdResult, thread, time::SystemTime};
+use std::{fs::OpenOptions, thread, time::SystemTime};
 use tokio::time::{self, Duration};
 use tokio_postgres::{binary_copy::BinaryCopyInWriter, Error};
 
@@ -148,10 +148,10 @@ pub fn panic(desc: String) {
     });
 }
 
-pub fn to_nbt(item_bytes: ItemBytes) -> Result<PartialNbt, Box<dyn std::error::Error>> {
-    let bytes: StdResult<Vec<u8>, _> = item_bytes.into();
-    let nbt: PartialNbt = nbt::from_gzip_reader(std::io::Cursor::new(bytes?))?;
-    Ok(nbt)
+pub fn parse_nbt(data: &str) -> Option<PartialNbt> {
+    base64::decode(data)
+        .ok()
+        .and_then(|bytes| nbt::from_gzip_reader::<_, PartialNbt>(std::io::Cursor::new(bytes)).ok())
 }
 
 pub fn calculate_with_taxes(price: i64) -> i64 {

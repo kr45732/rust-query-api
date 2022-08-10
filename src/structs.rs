@@ -180,36 +180,3 @@ pub struct DisplayInfo {
     // #[serde(rename = "Lore")]
     // pub lore: Vec<String>,
 }
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-#[serde(untagged)]
-pub enum ItemBytes {
-    T0(ItemBytesT0),
-    Data(String),
-}
-
-impl From<ItemBytes> for String {
-    fn from(s: ItemBytes) -> Self {
-        match s {
-            ItemBytes::T0(ibt0) => {
-                let ItemBytesT0::Data(x) = ibt0;
-                x
-            }
-            ItemBytes::Data(x) => x,
-        }
-    }
-}
-
-impl From<ItemBytes> for Result<Vec<u8>, Box<dyn std::error::Error>> {
-    fn from(s: ItemBytes) -> Self {
-        let b64: String = s.into();
-        Ok(base64::decode(&b64)?)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-#[serde(tag = "type", content = "data")]
-pub enum ItemBytesT0 {
-    #[serde(rename = "0")]
-    Data(String),
-}

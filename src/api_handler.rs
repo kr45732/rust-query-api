@@ -317,11 +317,9 @@ fn parse_auctions(
                 .unwrap_or(false);
             let pet_info;
 
-            let nbt = &to_nbt(
-                serde_json::from_value(auction.get("item_bytes").unwrap().to_owned()).unwrap(),
-            )
-            .unwrap()
-            .i[0];
+            let nbt = &parse_nbt(auction.get("item_bytes").unwrap().as_str().unwrap())
+                .unwrap()
+                .i[0];
             let id = &nbt.tag.extra_attributes.id;
             let mut internal_id = id.to_owned();
 
@@ -464,11 +462,9 @@ async fn parse_ended_auctions(
                 }
             }
 
-            let nbt = &to_nbt(
-                serde_json::from_value(auction.get("item_bytes").unwrap().to_owned()).unwrap(),
-            )
-            .unwrap()
-            .i[0];
+            let nbt = &parse_nbt(auction.get("item_bytes").unwrap().as_str().unwrap())
+                .unwrap()
+                .i[0];
             let mut id = nbt.tag.extra_attributes.id.to_owned();
             let price = auction.get("price").unwrap().as_i64().unwrap();
 
