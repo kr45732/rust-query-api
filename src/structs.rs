@@ -153,8 +153,8 @@ pub struct PartialNbt {
 
 #[derive(Deserialize)]
 pub struct PartialNbtElement {
-    // #[serde(rename = "Count")]
-    // pub count: i64,
+    #[serde(rename = "Count")]
+    pub count: i64,
     pub tag: PartialTag,
 }
 
@@ -179,4 +179,39 @@ pub struct DisplayInfo {
     pub name: String,
     // #[serde(rename = "Lore")]
     // pub lore: Vec<String>,
+}
+
+#[derive(Deserialize)]
+pub struct Auctions {
+    pub page: i64,
+    #[serde(rename = "totalPages")]
+    pub total_pages: i64,
+    pub auctions: Vec<Auction>,
+}
+
+#[derive(Deserialize)]
+pub struct Auction {
+    pub uuid: String,
+    pub auctioneer: String,
+    pub end: i64,
+    pub item_name: String,
+    pub item_lore: String,
+    pub tier: String,
+    pub starting_bid: i64,
+    pub highest_bid_amount: i64,
+    pub item_bytes: String,
+    pub bin: bool,
+    pub bids: Vec<Bid>,
+}
+
+#[derive(Deserialize)]
+pub struct EndedAuctions {
+    pub auctions: Vec<EndedAuction>,
+}
+
+#[derive(Deserialize)]
+pub struct EndedAuction {
+    pub price: i64,
+    pub bin: bool,
+    pub item_bytes: String,
 }

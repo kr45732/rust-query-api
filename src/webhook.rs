@@ -19,42 +19,19 @@ use crate::statics::HTTP_CLIENT;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 
-type OString = Option<String>;
-type OInt32 = Option<i32>;
-
 pub struct Webhook {
     url: String,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct WebhookModel {
-    pub name: String,
-    #[serde(rename = "type")]
-    pub webhook_type: i8,
-    pub channel_id: String,
-    pub token: Option<String>,
-    pub avatar: Option<String>,
-    pub guild_id: Option<String>,
-    pub user: Option<WebhookUser>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct WebhookUser {
-    pub username: String,
-    pub discriminator: String,
-    pub id: String,
-    pub avatar: String,
-}
-
 #[derive(Debug, Serialize)]
 pub struct EmbedBuilder {
-    title: OString,
+    title: Option<String>,
     #[serde(rename = "type")]
-    type_: OString,
-    description: OString,
-    url: OString,
-    timestamp: OString,
-    color: OInt32,
+    type_: Option<String>,
+    description: Option<String>,
+    url: Option<String>,
+    timestamp: Option<String>,
+    color: Option<i32>,
     fields: Vec<EmbedField>,
     footer: Option<EmbedFooter>,
     image: Option<EmbedImage>,
@@ -65,13 +42,13 @@ pub struct EmbedBuilder {
 
 #[derive(Debug, Serialize)]
 pub struct Embed {
-    title: OString,
+    title: Option<String>,
     #[serde(rename = "type")]
-    type_: OString,
-    description: OString,
-    url: OString,
-    timestamp: OString,
-    color: OInt32,
+    type_: Option<String>,
+    description: Option<String>,
+    url: Option<String>,
+    timestamp: Option<String>,
+    color: Option<i32>,
     fields: Vec<EmbedField>,
     footer: Option<EmbedFooter>,
     image: Option<EmbedImage>,
@@ -133,7 +110,12 @@ impl EmbedBuilder {
         self
     }
 
-    pub fn footer(&mut self, text: &str, url: OString, proxy_url: OString) -> &mut EmbedBuilder {
+    pub fn footer(
+        &mut self,
+        text: &str,
+        url: Option<String>,
+        proxy_url: Option<String>,
+    ) -> &mut EmbedBuilder {
         self.footer = Some(EmbedFooter::new(text, url, proxy_url));
         self
     }
@@ -141,9 +123,9 @@ impl EmbedBuilder {
     pub fn image(
         &mut self,
         url: &str,
-        proxy_url: OString,
-        height: OInt32,
-        width: OInt32,
+        proxy_url: Option<String>,
+        height: Option<i32>,
+        width: Option<i32>,
     ) -> &mut EmbedBuilder {
         self.image = Some(EmbedImage::new(url, proxy_url, height, width));
         self
@@ -152,9 +134,9 @@ impl EmbedBuilder {
     pub fn thumbnail(
         &mut self,
         url: &str,
-        proxy_url: OString,
-        height: OInt32,
-        width: OInt32,
+        proxy_url: Option<String>,
+        height: Option<i32>,
+        width: Option<i32>,
     ) -> &mut EmbedBuilder {
         self.thumbnail = Some(EmbedThumbnail::new(url, proxy_url, height, width));
         self
@@ -164,14 +146,19 @@ impl EmbedBuilder {
         &mut self,
         name: &str,
         url: &str,
-        icon_url: OString,
-        proxy_icon_url: OString,
+        icon_url: Option<String>,
+        proxy_icon_url: Option<String>,
     ) -> &mut EmbedBuilder {
         self.author = Some(EmbedAuthor::new(name, url, icon_url, proxy_icon_url));
         self
     }
 
-    pub fn video(&mut self, url: &str, height: OInt32, width: OInt32) -> &mut EmbedBuilder {
+    pub fn video(
+        &mut self,
+        url: &str,
+        height: Option<i32>,
+        width: Option<i32>,
+    ) -> &mut EmbedBuilder {
         self.video = Some(EmbedVideo::new(url, height, width));
         self
     }
@@ -220,8 +207,8 @@ impl EmbedField {
 #[derive(Debug, Serialize, Clone)]
 pub struct EmbedFooter {
     text: String,
-    icon_url: OString,
-    proxy_icon_url: OString,
+    icon_url: Option<String>,
+    proxy_icon_url: Option<String>,
 }
 
 impl EmbedFooter {
@@ -236,14 +223,19 @@ impl EmbedFooter {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct EmbedImage {
-    url: OString,
-    proxy_url: OString,
-    height: OInt32,
-    width: OInt32,
+    url: Option<String>,
+    proxy_url: Option<String>,
+    height: Option<i32>,
+    width: Option<i32>,
 }
 
 impl EmbedImage {
-    pub fn new(url: &str, proxy_url: OString, height: OInt32, width: OInt32) -> Self {
+    pub fn new(
+        url: &str,
+        proxy_url: Option<String>,
+        height: Option<i32>,
+        width: Option<i32>,
+    ) -> Self {
         Self {
             url: Some(url.to_owned()),
             proxy_url,
@@ -255,14 +247,19 @@ impl EmbedImage {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct EmbedThumbnail {
-    url: OString,
-    proxy_url: OString,
-    height: OInt32,
-    width: OInt32,
+    url: Option<String>,
+    proxy_url: Option<String>,
+    height: Option<i32>,
+    width: Option<i32>,
 }
 
 impl EmbedThumbnail {
-    pub fn new(url: &str, proxy_url: OString, height: OInt32, width: OInt32) -> Self {
+    pub fn new(
+        url: &str,
+        proxy_url: Option<String>,
+        height: Option<i32>,
+        width: Option<i32>,
+    ) -> Self {
         Self {
             url: Some(url.to_owned()),
             proxy_url,
@@ -276,12 +273,17 @@ impl EmbedThumbnail {
 pub struct EmbedAuthor {
     name: String,
     url: String,
-    icon_url: OString,
-    proxy_icon_url: OString,
+    icon_url: Option<String>,
+    proxy_icon_url: Option<String>,
 }
 
 impl EmbedAuthor {
-    pub fn new(name: &str, url: &str, icon_url: OString, proxy_icon_url: OString) -> Self {
+    pub fn new(
+        name: &str,
+        url: &str,
+        icon_url: Option<String>,
+        proxy_icon_url: Option<String>,
+    ) -> Self {
         Self {
             name: name.to_owned(),
             url: url.to_owned(),
@@ -294,12 +296,12 @@ impl EmbedAuthor {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct EmbedVideo {
     url: String,
-    height: OInt32,
-    width: OInt32,
+    height: Option<i32>,
+    width: Option<i32>,
 }
 
 impl EmbedVideo {
-    pub fn new(url: &str, height: OInt32, width: OInt32) -> Self {
+    pub fn new(url: &str, height: Option<i32>, width: Option<i32>) -> Self {
         Self {
             url: url.to_owned(),
             height,
@@ -373,11 +375,6 @@ impl Webhook {
         Self {
             url: url.to_owned(),
         }
-    }
-
-    pub async fn get_info(&self) -> Result<WebhookModel, Box<dyn Error>> {
-        let mut request = HTTP_CLIENT.get(&self.url).send().await?;
-        Ok(serde_json::from_value(request.body_json().await?)?)
     }
 
     pub async fn send<F>(&self, t: F) -> Result<(), Box<dyn Error>>
