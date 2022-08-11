@@ -171,7 +171,7 @@ pub fn valid_api_key(config: Arc<Config>, key: String, admin_only: bool) -> bool
     config.api_key.is_empty() || (key == config.api_key)
 }
 
-pub fn update_lower_else_insert(id: &String, starting_bid: i64, prices: &mut DashMap<String, i64>) {
+pub fn update_lower_else_insert(id: &String, starting_bid: i64, prices: &DashMap<String, i64>) {
     if let Some(mut ele) = prices.get_mut(id) {
         if starting_bid < *ele {
             *ele = starting_bid;
@@ -181,7 +181,7 @@ pub fn update_lower_else_insert(id: &String, starting_bid: i64, prices: &mut Das
     }
 }
 
-pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, Error> {
+pub async fn update_query_database(auctions: DashSet<DatabaseItem>) -> Result<u64, Error> {
     let database = get_client().await;
 
     let _ = database.simple_query("TRUNCATE TABLE query").await;
@@ -208,7 +208,7 @@ pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, E
     pin_mut!(copy_writer);
 
     // Write to copy sink
-    for m in &auctions {
+    for m in auctions {
         let row: Vec<&'_ (dyn ToSql + Sync)> = vec![
             &m.uuid,
             &m.auctioneer,
@@ -339,14 +339,16 @@ pub async fn update_bins_local(bin_prices: &DashMap<String, i64>) -> Result<(), 
     serde_json::to_writer(file, bin_prices)
 }
 
-pub async fn update_under_bins_local(bin_prices: &Vec<Value>) -> Result<(), serde_json::Error> {
+pub async fn update_under_bins_local(
+    bin_prices: &DashMap<String, Value>,
+) -> Result<(), serde_json::Error> {
     let file = OpenOptions::new()
         .create(true)
         .write(true)
         .truncate(true)
         .open("underbin.json")
         .unwrap();
-    serde_json::to_writer(file, bin_prices)
+    serde_json::to_writer(file, &bin_prices)
 }
 
 pub async fn update_query_items_local(query_items: DashSet<&str>) {

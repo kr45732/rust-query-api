@@ -20,7 +20,7 @@ use crate::config::{Config, Feature};
 use crate::{statics::*, structs::*, utils::*};
 use dashmap::{DashMap, DashSet};
 use futures::{stream::FuturesUnordered, StreamExt};
-use log::{debug, error, info};
+use log::{debug, info};
 use serde_json::{json, Value};
 use std::fmt::Write;
 use std::sync::Arc;
@@ -35,11 +35,11 @@ pub async fn update_auctions(config: Arc<Config>) {
     *IS_UPDATING.lock().await = true;
 
     // Stores all auction uuids in auctions vector to prevent duplicates
-    let mut inserted_uuids: DashSet<String> = DashSet::new();
-    let mut query_prices: Vec<DatabaseItem> = Vec::new();
+    let inserted_uuids: DashSet<String> = DashSet::new();
+    let query_prices: DashSet<DatabaseItem> = DashSet::new();
     let mut pet_prices: DashMap<String, AvgSum> = DashMap::new();
-    let mut bin_prices: DashMap<String, i64> = DashMap::new();
-    let mut under_bin_prices: Vec<Value> = Vec::new();
+    let bin_prices: DashMap<String, i64> = DashMap::new();
+    let under_bin_prices: DashMap<String, Value> = DashMap::new();
     let mut avg_ah_prices: Vec<AvgAh> = Vec::new();
     let mut avg_bin_prices: Vec<AvgAh> = Vec::new();
     let past_bin_prices: DashMap<String, i64> = serde_json::from_str(
@@ -54,8 +54,6 @@ pub async fn update_auctions(config: Arc<Config>) {
     let update_underbin = config.is_enabled(Feature::Underbin);
     let update_average_auction = config.is_enabled(Feature::AverageAuction);
     let update_average_bin = config.is_enabled(Feature::AverageBin);
-
-    let mut num_failed = 0;
 
     // Only fetch auctions if any of APIs that need the auctions are enabled
     if update_query || update_lowestbin || update_underbin {
@@ -72,10 +70,10 @@ pub async fn update_auctions(config: Arc<Config>) {
         // Parse the first page's auctions and append them to the prices
         parse_auctions(
             json.auctions,
-            &mut inserted_uuids,
-            &mut query_prices,
-            &mut bin_prices,
-            &mut under_bin_prices,
+            &inserted_uuids,
+            &query_prices,
+            &bin_prices,
+            &under_bin_prices,
             &past_bin_prices,
             update_query,
             update_lowestbin,
@@ -89,56 +87,24 @@ pub async fn update_auctions(config: Arc<Config>) {
         debug!("Sending {} async requests", total_pages);
         // Skip page zero since it's already been parsed
         for page_number in 1..total_pages {
-            futures.push(get_auction_page(page_number));
+            futures.push(process_auction_page(
+                page_number,
+                &inserted_uuids,
+                &query_prices,
+                &bin_prices,
+                &under_bin_prices,
+                &past_bin_prices,
+                update_query,
+                update_lowestbin,
+                update_underbin,
+            ));
         }
         debug!("All async requests have been sent");
 
         loop {
-            let before_page_request = Instant::now();
-            // Get the page from the Hypixel API
-            match futures.next().await {
-                Some(page_request_opt) => {
-                    if page_request_opt.is_none() {
-                        num_failed += 1;
-                        error!(
-                            "Failed to fetch a page with a total of {} failed page(s)",
-                            num_failed
-                        );
-                        continue;
-                    }
-
-                    let page_request = page_request_opt.unwrap();
-                    debug!("---------------- Fetching page {}", page_request.page);
-                    debug!(
-                        "Request time: {}ms",
-                        before_page_request.elapsed().as_millis()
-                    );
-
-                    // Parse the auctions and append them to the prices
-                    let before_page_parse = Instant::now();
-                    parse_auctions(
-                        page_request.auctions,
-                        &mut inserted_uuids,
-                        &mut query_prices,
-                        &mut bin_prices,
-                        &mut under_bin_prices,
-                        &past_bin_prices,
-                        update_query,
-                        update_lowestbin,
-                        update_underbin,
-                    );
-                    debug!(
-                        "Parsing time: {}ms",
-                        before_page_parse.elapsed().as_millis()
-                    );
-
-                    debug!(
-                        "Total time: {}ms",
-                        before_page_request.elapsed().as_millis()
-                    );
-                }
-                // We have reached the last element in the vector
-                None => break,
+            // We have reached the last element in the vector
+            if futures.next().await.is_none() {
+                break;
             }
         }
     }
@@ -190,7 +156,7 @@ pub async fn update_auctions(config: Arc<Config>) {
 
     if update_query {
         let query_started = Instant::now();
-        update_query_items_local(query_prices.iter().map(|o| o.item_name.as_str()).collect()).await;
+        // update_query_items_local(query_prices.iter().map(|o| o.item_name.as_str()).collect()).await;
         let _ = match update_query_database(query_prices).await {
             Ok(rows) => write!(
                 ok_logs,
@@ -256,9 +222,8 @@ pub async fn update_auctions(config: Arc<Config>) {
     }
 
     info(format!(
-        "Fetch time: {:.2}s ({} failed) | Insert time: {:.2}s | Total time: {:.2}s",
+        "Fetch time: {:.2}s | Insert time: {:.2}s | Total time: {:.2}s",
         fetch_sec,
-        num_failed,
         insert_started.elapsed().as_secs_f32(),
         started.elapsed().as_secs_f32()
     ));
@@ -268,13 +233,58 @@ pub async fn update_auctions(config: Arc<Config>) {
     *LAST_UPDATED.lock().await = started_epoch;
 }
 
+async fn process_auction_page<'a>(
+    page_number: i64,
+    inserted_uuids: &DashSet<String>,
+    query_prices: &DashSet<DatabaseItem>,
+    bin_prices: &DashMap<String, i64>,
+    under_bin_prices: &DashMap<String, Value>,
+    past_bin_prices: &DashMap<String, i64>,
+    update_query: bool,
+    update_lowestbin: bool,
+    update_underbin: bool,
+) {
+    let before_page_request = Instant::now();
+    // Get the page from the Hypixel API
+    if let Some(page_request) = get_auction_page(page_number).await {
+        debug!(
+            "---------------- Fetching page {}\nRequest time: {}ms",
+            page_request.page,
+            before_page_request.elapsed().as_millis()
+        );
+
+        // Parse the auctions and append them to the prices
+        let before_page_parse = Instant::now();
+        parse_auctions(
+            page_request.auctions,
+            &inserted_uuids,
+            &query_prices,
+            &bin_prices,
+            &under_bin_prices,
+            &past_bin_prices,
+            update_query,
+            update_lowestbin,
+            update_underbin,
+        );
+        debug!(
+            "Parsing time: {}ms",
+            before_page_parse.elapsed().as_millis()
+        );
+
+        debug!(
+            "Total time: {}ms",
+            before_page_request.elapsed().as_millis()
+        );
+    }
+}
+
 /* Parses a page of auctions to a vector of documents  */
 fn parse_auctions(
     auctions: Vec<Auction>,
-    inserted_uuids: &mut DashSet<String>,
-    query_prices: &mut Vec<DatabaseItem>,
-    bin_prices: &mut DashMap<String, i64>,
-    under_bin_prices: &mut Vec<Value>,
+    inserted_uuids: &DashSet<String>,
+    query_prices: &DashSet<DatabaseItem>,
+    bin_prices: &DashMap<String, i64>,
+    under_bin_prices: &DashMap<String, Value>,
     past_bin_prices: &DashMap<String, i64>,
     update_query: bool,
     update_lowestbin: bool,
@@ -348,15 +358,18 @@ fn parse_auctions(
                         let profit =
                             calculate_with_taxes(*past_bin_price.value()) - auction.starting_bid;
                         if profit > 1000000 {
-                            under_bin_prices.push(json!({
-                                "uuid": auction.uuid,
-                                "name":  auction.item_name,
-                                "id" : internal_id,
-                                "auctioneer":  auction.auctioneer,
-                                "starting_bid" :  auction.starting_bid,
-                                "past_bin_price": *past_bin_price.value(),
-                                "profit": profit
-                            }));
+                            under_bin_prices.insert(
+                                auction.uuid.clone(),
+                                json!({
+                                    "uuid": auction.uuid,
+                                    "name":  auction.item_name,
+                                    "id" : internal_id,
+                                    "auctioneer":  auction.auctioneer,
+                                    "starting_bid" :  auction.starting_bid,
+                                    "past_bin_price": *past_bin_price.value(),
+                                    "profit": profit
+                                }),
+                            );
                         }
                     }
                 }
@@ -372,7 +385,7 @@ fn parse_auctions(
                     });
                 }
 
-                query_prices.push(DatabaseItem {
+                query_prices.insert(DatabaseItem {
                     uuid: auction.uuid,
                     auctioneer: auction.auctioneer,
                     end_t: auction.end,
