@@ -156,8 +156,8 @@ pub async fn update_auctions(config: Arc<Config>) {
         .await;
     }
 
-    let fetch_sec = started.elapsed().as_secs();
-    info!("Total fetch time: {}s", started.elapsed().as_secs());
+    let fetch_sec = started.elapsed().as_secs_f32();
+    info!("Total fetch time: {:.2}s", fetch_sec);
 
     debug!("Inserting into database");
     let insert_started = Instant::now();
@@ -190,7 +190,7 @@ pub async fn update_auctions(config: Arc<Config>) {
 
     if update_query {
         let query_started = Instant::now();
-        update_query_items_local(query_prices.iter().map(|o| o.item_name.clone()).collect()).await;
+        update_query_items_local(query_prices.iter().map(|o| o.item_name.as_str()).collect()).await;
         let _ = match update_query_database(query_prices).await {
             Ok(rows) => write!(
                 ok_logs,
@@ -256,11 +256,11 @@ pub async fn update_auctions(config: Arc<Config>) {
     }
 
     info(format!(
-        "Fetch time: {}s ({} failed) | Insert time: {}s | Total time: {}s",
+        "Fetch time: {:.2}s ({} failed) | Insert time: {:.2}s | Total time: {:.2}s",
         fetch_sec,
         num_failed,
-        insert_started.elapsed().as_secs(),
-        started.elapsed().as_secs()
+        insert_started.elapsed().as_secs_f32(),
+        started.elapsed().as_secs_f32()
     ));
 
     *IS_UPDATING.lock().await = false;
@@ -283,8 +283,7 @@ fn parse_auctions(
     for auction in auctions {
         // Prevent duplicate auctions (returns false if already exists)
         if inserted_uuids.insert(auction.uuid.to_string()) {
-            let mut tier = auction.tier.as_str();
-            let pet_info;
+            let mut tier = auction.tier;
 
             let nbt = &parse_nbt(&auction.item_bytes).unwrap().i[0];
             let item_id = nbt.tag.extra_attributes.id.to_owned();
@@ -301,17 +300,17 @@ fn parse_auctions(
                             bin_prices,
                         );
                     }
+
                     if update_query {
                         enchants.push(format!("{};{}", entry.key().to_uppercase(), entry.value()));
                     }
                 }
             } else if item_id == "PET" {
-                pet_info =
-                    serde_json::from_str::<Value>(nbt.tag.extra_attributes.pet.as_ref().unwrap())
-                        .unwrap();
-
                 // If the pet is tier boosted, the tier field in the auction shows the rarity after boosting
-                tier = pet_info.get("tier").unwrap().as_str().unwrap();
+                tier =
+                    serde_json::from_str::<PetInfo>(nbt.tag.extra_attributes.pet.as_ref().unwrap())
+                        .unwrap()
+                        .tier;
 
                 if auction.bin && update_lowestbin {
                     let mut split = auction.item_name.split("] ");
@@ -321,7 +320,7 @@ fn parse_auctions(
                         internal_id = format!(
                             "{};{}",
                             pet_name.replace(' ', "_").replace("_✦", "").to_uppercase(),
-                            match tier {
+                            match tier.as_str() {
                                 "COMMON" => 0,
                                 "UNCOMMON" => 1,
                                 "RARE" => 2,
@@ -440,7 +439,7 @@ async fn parse_ended_auctions(
                         _ => continue,
                     }
                 } else if id == "PET" {
-                    let pet_info = serde_json::from_str::<Value>(
+                    let pet_info = serde_json::from_str::<PetInfo>(
                         nbt.tag.extra_attributes.pet.as_ref().unwrap(),
                     )
                     .unwrap();
@@ -453,11 +452,9 @@ async fn parse_ended_auctions(
                         let pet_id = format!(
                             "{}_{}{}",
                             item_name.replace(' ', "_").replace("_✦", ""),
-                            pet_info.get("tier").unwrap().as_str().unwrap(),
-                            if let Some(held_item) =
-                                pet_info.get("heldItem").and_then(|v| v.as_str())
-                            {
-                                match held_item {
+                            pet_info.tier,
+                            if let Some(held_item) = pet_info.held_item {
+                                match held_item.as_str() {
                                     "PET_ITEM_TIER_BOOST"
                                     | "PET_ITEM_VAMPIRE_FANG"
                                     | "PET_ITEM_TOY_JERRY" => "_TB",
@@ -493,7 +490,7 @@ async fn parse_ended_auctions(
                             .replace(' ', "_")
                             .replace("_✦", "")
                             .to_uppercase(),
-                        match pet_info.get("tier").unwrap().as_str().unwrap() {
+                        match pet_info.tier.as_str() {
                             "COMMON" => 0,
                             "UNCOMMON" => 1,
                             "RARE" => 2,

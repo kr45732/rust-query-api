@@ -176,10 +176,9 @@ pub fn update_lower_else_insert(id: &String, starting_bid: i64, prices: &mut Das
         if starting_bid < *ele {
             *ele = starting_bid;
         }
-        return;
+    } else {
+        prices.insert(id.clone(), starting_bid);
     }
-
-    prices.insert(id.clone(), starting_bid);
 }
 
 pub async fn update_query_database(auctions: Vec<DatabaseItem>) -> Result<u64, Error> {
@@ -350,7 +349,7 @@ pub async fn update_under_bins_local(bin_prices: &Vec<Value>) -> Result<(), serd
     serde_json::to_writer(file, bin_prices)
 }
 
-pub async fn update_query_items_local(query_items: DashSet<String>) {
+pub async fn update_query_items_local(query_items: DashSet<&str>) {
     let file = OpenOptions::new()
         .create(true)
         .write(true)

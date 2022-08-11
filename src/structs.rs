@@ -182,6 +182,13 @@ pub struct DisplayInfo {
 }
 
 #[derive(Deserialize)]
+pub struct PetInfo {
+    pub tier: String,
+    #[serde(rename = "heldItem")]
+    pub held_item: Option<String>,
+}
+
+#[derive(Deserialize)]
 pub struct Auctions {
     pub page: i64,
     #[serde(rename = "totalPages")]

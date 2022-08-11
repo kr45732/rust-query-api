@@ -48,7 +48,7 @@ impl Config {
     pub fn load_or_panic() -> Self {
         let base_url = get_env("BASE_URL");
         let port = get_env("PORT").parse::<u32>().expect("PORT not valid");
-        let api_key = get_env("API_KEY");
+        let api_key = env::var("API_KEY").unwrap_or_default();
         let webhook_url = env::var("WEBHOOK_URL").unwrap_or_default();
         let admin_api_key = env::var("ADMIN_API_KEY").unwrap_or_else(|_| api_key.clone());
         let debug = env::var("DEBUG")
