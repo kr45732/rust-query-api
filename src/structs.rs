@@ -36,21 +36,6 @@ pub struct DatabaseItem {
     pub bids: Vec<Bid>,
 }
 
-// Don't mind this
-impl std::hash::Hash for DatabaseItem {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.uuid.hash(state);
-    }
-}
-
-impl Eq for DatabaseItem {}
-
-impl PartialEq for DatabaseItem {
-    fn eq(&self, _: &Self) -> bool {
-        false
-    }
-}
-
 impl From<Row> for DatabaseItem {
     fn from(row: Row) -> Self {
         Self {

@@ -24,7 +24,7 @@ use futures::{pin_mut, Future};
 use log::{error, info};
 use postgres_types::{ToSql, Type};
 use serde_json::Value;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::UNIX_EPOCH;
 use std::{fs::OpenOptions, thread, time::SystemTime};
 use tokio::time::{self, Duration};
@@ -181,7 +181,7 @@ pub fn update_lower_else_insert(id: &String, starting_bid: i64, prices: &DashMap
     }
 }
 
-pub async fn update_query_database(auctions: DashSet<DatabaseItem>) -> Result<u64, Error> {
+pub async fn update_query_database(mut auctions: Mutex<Vec<DatabaseItem>>) -> Result<u64, Error> {
     let database = get_client().await;
 
     let _ = database.simple_query("TRUNCATE TABLE query").await;
@@ -208,7 +208,7 @@ pub async fn update_query_database(auctions: DashSet<DatabaseItem>) -> Result<u6
     pin_mut!(copy_writer);
 
     // Write to copy sink
-    for m in auctions {
+    for m in auctions.get_mut().unwrap().iter() {
         let row: Vec<&'_ (dyn ToSql + Sync)> = vec![
             &m.uuid,
             &m.auctioneer,

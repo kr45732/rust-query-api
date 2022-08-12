@@ -23,7 +23,7 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use log::{debug, info};
 use serde_json::{json, Value};
 use std::fmt::Write;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::{fs, time::Instant};
 
 /// Update the enabled APIs
@@ -36,7 +36,7 @@ pub async fn update_auctions(config: Arc<Config>) {
 
     // Stores all auction uuids in auctions vector to prevent duplicates
     let inserted_uuids: DashSet<String> = DashSet::new();
-    let query_prices: DashSet<DatabaseItem> = DashSet::new();
+    let query_prices: Mutex<Vec<DatabaseItem>> = Mutex::new(Vec::new());
     let mut pet_prices: DashMap<String, AvgSum> = DashMap::new();
     let bin_prices: DashMap<String, i64> = DashMap::new();
     let under_bin_prices: DashMap<String, Value> = DashMap::new();
@@ -233,10 +233,10 @@ pub async fn update_auctions(config: Arc<Config>) {
     *LAST_UPDATED.lock().await = started_epoch;
 }
 
-async fn process_auction_page<'a>(
+async fn process_auction_page(
     page_number: i64,
     inserted_uuids: &DashSet<String>,
-    query_prices: &DashSet<DatabaseItem>,
+    query_prices: &Mutex<Vec<DatabaseItem>>,
     bin_prices: &DashMap<String, i64>,
     under_bin_prices: &DashMap<String, Value>,
     past_bin_prices: &DashMap<String, i64>,
@@ -247,9 +247,9 @@ async fn process_auction_page<'a>(
     let before_page_request = Instant::now();
     // Get the page from the Hypixel API
     if let Some(page_request) = get_auction_page(page_number).await {
+        debug!("---------------- Fetching page {}", page_request.page);
         debug!(
-            "---------------- Fetching page {}\nRequest time: {}ms",
-            page_request.page,
+            "Request time: {}ms",
             before_page_request.elapsed().as_millis()
         );
 
@@ -282,7 +282,7 @@ async fn process_auction_page<'a>(
 fn parse_auctions(
     auctions: Vec<Auction>,
     inserted_uuids: &DashSet<String>,
-    query_prices: &DashSet<DatabaseItem>,
+    query_prices: &Mutex<Vec<DatabaseItem>>,
     bin_prices: &DashMap<String, i64>,
     under_bin_prices: &DashMap<String, Value>,
     past_bin_prices: &DashMap<String, i64>,
@@ -385,7 +385,7 @@ fn parse_auctions(
                     });
                 }
 
-                query_prices.insert(DatabaseItem {
+                query_prices.lock().unwrap().push(DatabaseItem {
                     uuid: auction.uuid,
                     auctioneer: auction.auctioneer,
                     end_t: auction.end,

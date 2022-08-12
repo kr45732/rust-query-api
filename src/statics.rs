@@ -29,6 +29,7 @@ use crate::webhook::Webhook;
 lazy_static! {
     pub static ref HTTP_CLIENT: surf::Client = surf::Config::new()
         .set_timeout(Some(Duration::from_secs(15)))
+        .set_max_connections_per_host(70)
         .try_into()
         .unwrap();
     pub static ref MC_CODE_REGEX: Regex = Regex::new("(?i)\u{00A7}[0-9A-FK-OR]").unwrap();
