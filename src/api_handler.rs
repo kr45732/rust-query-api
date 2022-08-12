@@ -81,7 +81,7 @@ pub async fn update_auctions(config: Arc<Config>) {
         );
 
         // Stores the futures for all auction pages in order to utilize multithreading
-        let mut futures = FuturesUnordered::new();
+        let futures = FuturesUnordered::new();
 
         let total_pages = json.total_pages;
         debug!("Sending {} async requests", total_pages);
@@ -101,12 +101,7 @@ pub async fn update_auctions(config: Arc<Config>) {
         }
         debug!("All async requests have been sent");
 
-        loop {
-            // We have reached the last element in the vector
-            if futures.next().await.is_none() {
-                break;
-            }
-        }
+        let _: Vec<_> = futures.collect().await;
     }
 
     // Update average auctions if the feature is enabled
