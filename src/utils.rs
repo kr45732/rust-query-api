@@ -18,7 +18,7 @@
 
 use crate::config::Config;
 use crate::{statics::*, structs::*};
-use dashmap::{DashMap, DashSet};
+use dashmap::DashMap;
 use deadpool_postgres::Client;
 use futures::{pin_mut, Future};
 use log::{error, info};
@@ -277,14 +277,14 @@ pub async fn update_pets_database(pet_prices: &mut DashMap<String, AvgSum>) -> R
 pub async fn update_avg_ah_database(avg_ah_prices: Vec<AvgAh>, time_t: i64) -> Result<u64, Error> {
     let database = get_client().await;
 
-    // Delete auctions older than 5 days
+    // Delete auctions older than 7 days
     tokio::spawn(async {
         let _ = get_client()
             .await
             .simple_query(
                 &format!(
                     "DELETE FROM average WHERE time_t < {}",
-                    (get_timestamp_millis() - Duration::from_secs(432000).as_millis())
+                    (get_timestamp_millis() - Duration::from_secs(604800).as_millis())
                 )
                 .to_string(),
             )
@@ -306,14 +306,14 @@ pub async fn update_avg_bin_database(
 ) -> Result<u64, Error> {
     let database = get_client().await;
 
-    // Delete bins older than 5 days
+    // Delete bins older than 7 days
     tokio::spawn(async {
         let _ = get_client()
             .await
             .simple_query(
                 &format!(
                     "DELETE FROM average_bin WHERE time_t < {}",
-                    (get_timestamp_millis() - Duration::from_secs(432000).as_millis())
+                    (get_timestamp_millis() - Duration::from_secs(604800).as_millis())
                 )
                 .to_string(),
             )
@@ -351,14 +351,21 @@ pub async fn update_under_bins_local(
     serde_json::to_writer(file, &bin_prices)
 }
 
-pub async fn update_query_items_local(query_items: DashSet<&str>) {
+pub async fn update_query_items_local(query_prices: &Mutex<Vec<DatabaseItem>>) {
     let file = OpenOptions::new()
         .create(true)
         .write(true)
         .truncate(true)
         .open("query_items.json")
         .unwrap();
-    let _ = serde_json::to_writer(file, &query_items);
+    let lock = query_prices.lock().unwrap();
+    let _ = serde_json::to_writer(
+        file,
+        &lock
+            .iter()
+            .map(|o| o.item_name.as_str())
+            .collect::<Vec<&str>>(),
+    );
 }
 
 pub async fn get_client() -> Client {

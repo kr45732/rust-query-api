@@ -268,7 +268,7 @@ async fn average_ah_bin(
     table: &str,
 ) -> hyper::Result<Response<Body>> {
     let mut key = String::new();
-    let mut time = -1;
+    let mut time = 0;
     let mut step: usize = 1;
 
     // Reads the query parameters from the request and stores them in the corresponding variable
@@ -299,8 +299,8 @@ async fn average_ah_bin(
         return bad_request("Not authorized");
     }
 
-    if time <= 0 {
-        return bad_request("The time parameter must be provided and positive");
+    if time < 0 {
+        return bad_request("The time parameter cannot be negative");
     }
 
     // Find and sort using query JSON

@@ -151,7 +151,7 @@ pub async fn update_auctions(config: Arc<Config>) {
 
     if update_query {
         let query_started = Instant::now();
-        // update_query_items_local(query_prices.iter().map(|o| o.item_name.as_str()).collect()).await;
+        update_query_items_local(&query_prices).await;
         let _ = match update_query_database(query_prices).await {
             Ok(rows) => write!(
                 ok_logs,
