@@ -185,19 +185,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // Remove any files from previous runs
-    let _ = fs::remove_file("lowestbin.json");
+    // let _ = fs::remove_file("lowestbin.json");
     let _ = fs::remove_file("underbin.json");
     let _ = fs::remove_file("query_items.json");
 
     info(String::from("Starting auction loop..."));
     let auction_config = config.clone();
-    start_auction_loop(move || {
-        let auction_config = auction_config.clone();
-        async move {
-            update_auctions(auction_config).await;
-        }
-    })
-    .await;
+    // start_auction_loop(move || {
+    //    let auction_config = auction_config.clone();
+    //    async move {
+    //        update_auctions(auction_config).await;
+    //    }
+    // })
+    // .await;
 
     info(String::from("Starting server..."));
     start_server(config.clone()).await;
