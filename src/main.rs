@@ -118,7 +118,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         // Create query table if doesn't exist
         let _ = database
             .simple_query(
-                "CREATE TABLE IF NOT EXISTS query (
+                "CREATE UNLOGGED TABLE IF NOT EXISTS query (
                     uuid TEXT NOT NULL PRIMARY KEY,
                     auctioneer TEXT,
                     end_t BIGINT,
