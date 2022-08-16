@@ -296,9 +296,9 @@ fn parse_auctions(
 
             // Get enchants if the item is an enchanted book
             let mut enchants = Vec::new();
-            if item_id == "ENCHANTED_BOOK" && nbt.tag.extra_attributes.enchantments.is_some() {
+            if nbt.tag.extra_attributes.enchantments.is_some() {
                 for entry in nbt.tag.extra_attributes.enchantments.as_ref().unwrap() {
-                    if auction.bin && update_lowestbin {
+                    if item_id == "ENCHANTED_BOOK" && auction.bin && update_lowestbin {
                         update_lower_else_insert(
                             &format!("{};{}", entry.key().to_uppercase(), entry.value()),
                             auction.starting_bid,
