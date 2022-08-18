@@ -252,11 +252,11 @@ async fn process_auction_page(
         let before_page_parse = Instant::now();
         parse_auctions(
             page_request.auctions,
-            &inserted_uuids,
-            &query_prices,
-            &bin_prices,
-            &under_bin_prices,
-            &past_bin_prices,
+            inserted_uuids,
+            query_prices,
+            bin_prices,
+            under_bin_prices,
+            past_bin_prices,
             update_query,
             update_lowestbin,
             update_underbin,

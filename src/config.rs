@@ -38,6 +38,7 @@ pub struct Config {
     pub api_key: String,
     pub admin_api_key: String,
     pub debug: bool,
+    pub disable_updating: bool,
 }
 
 fn get_env(name: &str) -> String {
@@ -52,6 +53,10 @@ impl Config {
         let webhook_url = env::var("WEBHOOK_URL").unwrap_or_default();
         let admin_api_key = env::var("ADMIN_API_KEY").unwrap_or_else(|_| api_key.clone());
         let debug = env::var("DEBUG")
+            .unwrap_or_else(|_| String::from("false"))
+            .parse()
+            .unwrap_or(false);
+        let disable_updating = env::var("DISABLE_UPDATING")
             .unwrap_or_else(|_| String::from("false"))
             .parse()
             .unwrap_or(false);
@@ -74,6 +79,7 @@ impl Config {
             admin_api_key,
             port,
             debug,
+            disable_updating,
         }
     }
 
