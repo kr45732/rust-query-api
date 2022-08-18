@@ -9,7 +9,7 @@
   <img alt="license" src="https://img.shields.io/discord/796790757947867156?color=4166f5&label=discord&style=flat-square" />
 </a> 
 
-A versatile API facade for the Hypixel Auction API written in Rust. The entire auction house is fetched with NBT parsing and inserted into a PostgreSQL database in about 2-5 seconds every minute with low memory usage (varies depending on enabled features, network speed, hardware, and latency of the Hypixel API)! You can query by auction UUID, auctioneer, end time, item name, item tier, item id, price, enchants, bin and bids. You can sort by the item's bin / starting price. You can track the average price of each unique pet-level-rarity combination. You can track the lowest prices of all bins. It also can track new bins that are at least one million lower than previous bins. It can track the average auction prices and sales up to seven days with custom 'averaging methods'. Lastly, it can track the average bin prices up to seven days.
+A versatile API facade for the Hypixel Auction API written in Rust. The entire auction house is fetched with NBT parsing and inserted into a PostgreSQL database in about 1-5 seconds every minute with low memory usage (varies depending on enabled features, network speed, hardware, and latency of the Hypixel API)! You can query by auction UUID, auctioneer, end time, item name, item tier, item id, price, enchants, bin and bids. You can sort by the item's bin / starting price. You can track the average price of each unique pet-level-rarity combination. You can track the lowest prices of all bins. It also can track new bins that are at least one million lower than previous bins. It can track the average auction prices and sales for up to seven days with custom 'averaging methods'. Lastly, it can track the average bin prices for up to seven days.
 
 ## Set Up
 ### Prerequisites
@@ -21,17 +21,18 @@ A versatile API facade for the Hypixel Auction API written in Rust. The entire a
 ### Steps
 - Clone the repository
 - Rename the `.example_env` file to `.env` and fill out required fields **OR** set required fields using environment variables
-- Run `cargo run --release` (may take time to build)
-- Use it!
+- Run `cargo run --release` (may take some time to build)
+- Use the API!
 
 ### Configuration Fields or Environment Variables
-- `BASE_URL`: Base address of the host (e.g. 0.0.0.0)
-- `PORT`: The port such (e.g. 8000)
+- `BASE_URL`: Base address to bind to (e.g. 0.0.0.0)
+- `PORT`: Port to bind to (e.g. 8000)
+  - Online hosts such as Heroku and Railway will automatically set this
 - `API_KEY`: Optional key needed to access this API (NOT a Hypixel API key)
 - `ADMIN_API_KEY`: Optional admin key required to use raw SQL parameters (defaults to the API_KEY)
 - `POSTGRES_URL`: Full URL of a PostgreSQL database (should look like `postgres://[user]:[password]@[host]:[port]/[dbname]`)
 - `WEBHOOK_URL`: Optional Discord webhook URL for logging
-- `FEATURES`: Features (QUERY, PETS, LOWESTBIN, UNDERBIN, AVERAGE_AUCTION, AVERAGE_BIN) you want to enabled separated with a '+' 
+- `FEATURES`: Features (QUERY, PETS, LOWESTBIN, UNDERBIN, AVERAGE_AUCTION, AVERAGE_BIN) you want enabled separated with a '+' 
 - `DEBUG`: If the API should log to files and stdout (defaults to false)
 
 ## Usage

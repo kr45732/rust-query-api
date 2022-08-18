@@ -38,7 +38,7 @@ use crate::{statics::*, structs::*, utils::*};
 /// Starts the server listening on URL
 pub async fn start_server(config: Arc<Config>) {
     let server_address = config.full_url.parse().unwrap();
-    let make_service = make_service_fn(move |_| {
+    let make_service = make_service_fn(|_| {
         let captured_config = config.clone();
         async {
             Ok::<_, hyper::Error>(service_fn(move |req| {
