@@ -18,7 +18,7 @@
 
 use crate::config::Config;
 use crate::{statics::*, structs::*};
-use dashmap::DashMap;
+use dashmap::{DashMap, DashSet};
 use deadpool_postgres::Client;
 use futures::{pin_mut, Future};
 use log::{error, info};
@@ -364,7 +364,7 @@ pub async fn update_query_items_local(query_prices: &Mutex<Vec<DatabaseItem>>) {
         &lock
             .iter()
             .map(|o| o.item_name.as_str())
-            .collect::<Vec<&str>>(),
+            .collect::<DashSet<&str>>(),
     );
 }
 
