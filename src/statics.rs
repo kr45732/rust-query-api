@@ -1,6 +1,6 @@
 /*
  * Rust Query API - A versatile API facade for the Hypixel Auction API
- * Copyright (c) 2021 kr45732
+ * Copyright (c) 2022 kr45732
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as

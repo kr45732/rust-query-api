@@ -1,6 +1,6 @@
 /*
  * Rust Query API - A versatile API facade for the Hypixel Auction API
- * Copyright (c) 2021 kr45732
+ * Copyright (c) 2022 kr45732
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -46,7 +46,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if dotenv().is_err() {
         println!("Cannot find a .env file, will attempt to use environment variables");
     }
-
     let config = Arc::new(Config::load_or_panic());
 
     if config.debug {
@@ -74,114 +73,121 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .await
             .insert(Webhook::from_url(config.webhook_url.as_str()));
     }
-    // Connect to database
-    let database = DATABASE
-        .lock()
-        .await
-        .insert(
-            Pool::builder(Manager::from_config(
-                config
-                    .postgres_url
-                    .parse::<tokio_postgres::Config>()
-                    .unwrap(),
-                NoTls,
-                ManagerConfig {
-                    recycling_method: RecyclingMethod::Fast,
-                },
-            ))
-            .max_size(16)
-            .runtime(Runtime::Tokio1)
-            .build()
-            .unwrap(),
-        )
-        .get()
-        .await
-        .unwrap();
 
-    if config.is_enabled(Feature::Query) {
-        // Create bid custom type
-        let _ = database
-            .simple_query(
-                "CREATE TYPE bid AS (
-                    bidder TEXT,
-                    amount BIGINT
-                )",
-            )
-            .await;
-
-        // Get the bid array type and store for future use
-        let _ = BID_ARRAY
+    if config.is_enabled(Feature::Query)
+        || config.is_enabled(Feature::AverageAuction)
+        || config.is_enabled(Feature::AverageBin)
+        || config.is_enabled(Feature::Pets)
+    {
+        // Connect to database
+        let database = DATABASE
             .lock()
             .await
-            .insert(database.prepare("SELECT $1::_bid").await.unwrap().params()[0].clone());
-
-        // Create query table if doesn't exist
-        let _ = database
-            .simple_query(
-                "CREATE UNLOGGED TABLE IF NOT EXISTS query (
-                    uuid TEXT NOT NULL PRIMARY KEY,
-                    auctioneer TEXT,
-                    end_t BIGINT,
-                    item_name TEXT,
-                    tier TEXT,
-                    item_id TEXT,
-                    starting_bid BIGINT,
-                    enchants TEXT[],
-                    bin BOOLEAN,
-                    bids bid[]
-                )",
+            .insert(
+                Pool::builder(Manager::from_config(
+                    config
+                        .postgres_url
+                        .parse::<tokio_postgres::Config>()
+                        .unwrap(),
+                    NoTls,
+                    ManagerConfig {
+                        recycling_method: RecyclingMethod::Fast,
+                    },
+                ))
+                .max_size(16)
+                .runtime(Runtime::Tokio1)
+                .build()
+                .unwrap(),
             )
-            .await;
-    }
+            .get()
+            .await
+            .unwrap();
 
-    if config.is_enabled(Feature::AverageAuction) || config.is_enabled(Feature::AverageBin) {
-        // Create avg_ah custom type
-        let _ = database
-            .simple_query(
-                "CREATE TYPE avg_ah AS (
-                    item_id TEXT,
-                    price DOUBLE PRECISION,
-                    sales REAL
-                )",
-            )
-            .await;
-
-        if config.is_enabled(Feature::AverageAuction) {
-            // Create average auction table if doesn't exist
+        if config.is_enabled(Feature::Query) {
+            // Create bid custom type
             let _ = database
                 .simple_query(
-                    "CREATE TABLE IF NOT EXISTS average (
-                        time_t BIGINT NOT NULL PRIMARY KEY,
-                        prices avg_ah[]
-                    )",
+                    "CREATE TYPE bid AS (
+                            bidder TEXT,
+                            amount BIGINT
+                        )",
+                )
+                .await;
+
+            // Get the bid array type and store for future use
+            let _ = BID_ARRAY
+                .lock()
+                .await
+                .insert(database.prepare("SELECT $1::_bid").await.unwrap().params()[0].clone());
+
+            // Create query table if doesn't exist
+            let _ = database
+                .simple_query(
+                    "CREATE UNLOGGED TABLE IF NOT EXISTS query (
+                            uuid TEXT NOT NULL PRIMARY KEY,
+                            auctioneer TEXT,
+                            end_t BIGINT,
+                            item_name TEXT,
+                            tier TEXT,
+                            item_id TEXT,
+                            starting_bid BIGINT,
+                            enchants TEXT[],
+                            bin BOOLEAN,
+                            bids bid[]
+                        )",
                 )
                 .await;
         }
 
-        if config.is_enabled(Feature::AverageBin) {
-            // Create average bins table if doesn't exist
+        if config.is_enabled(Feature::AverageAuction) || config.is_enabled(Feature::AverageBin) {
+            // Create avg_ah custom type
             let _ = database
                 .simple_query(
-                    "CREATE TABLE IF NOT EXISTS average_bin (
-                        time_t BIGINT NOT NULL PRIMARY KEY,
-                        prices avg_ah[]
-                    )",
+                    "CREATE TYPE avg_ah AS (
+                            item_id TEXT,
+                            price DOUBLE PRECISION,
+                            sales REAL
+                        )",
+                )
+                .await;
+
+            if config.is_enabled(Feature::AverageAuction) {
+                // Create average auction table if doesn't exist
+                let _ = database
+                    .simple_query(
+                        "CREATE TABLE IF NOT EXISTS average (
+                                time_t BIGINT NOT NULL PRIMARY KEY,
+                                prices avg_ah[]
+                            )",
+                    )
+                    .await;
+            }
+
+            if config.is_enabled(Feature::AverageBin) {
+                // Create average bins table if doesn't exist
+                let _ = database
+                    .simple_query(
+                        "CREATE TABLE IF NOT EXISTS average_bin (
+                                time_t BIGINT NOT NULL PRIMARY KEY,
+                                prices avg_ah[]
+                            )",
+                    )
+                    .await;
+            }
+        }
+
+        if config.is_enabled(Feature::Pets) {
+            // Create pets table if doesn't exist
+            let _ = database
+                .simple_query(
+                    "CREATE TABLE IF NOT EXISTS pets (
+                            name TEXT NOT NULL PRIMARY KEY,
+                            price BIGINT,
+                            count INTEGER
+                        )",
                 )
                 .await;
         }
-    }
-
-    if config.is_enabled(Feature::Pets) {
-        // Create pets table if doesn't exist
-        let _ = database
-            .simple_query(
-                "CREATE TABLE IF NOT EXISTS pets (
-                    name TEXT NOT NULL PRIMARY KEY,
-                    price BIGINT,
-                    count INTEGER
-                )",
-            )
-            .await;
     }
 
     if !config.disable_updating {
