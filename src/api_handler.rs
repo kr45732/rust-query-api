@@ -1,6 +1,6 @@
 /*
  * Rust Query API - A versatile API facade for the Hypixel Auction API
- * Copyright (c) 2021 kr45732
+ * Copyright (c) 2022 kr45732
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -423,7 +423,7 @@ async fn parse_ended_auctions(
 
             for auction in page_request.auctions {
                 // Always update if pets is enabled, otherwise check if only auction or bin are enabled
-                if !update_pets || !(update_average_auction & update_average_bin) {
+                if !update_pets && !(update_average_auction && update_average_bin) {
                     // Only update avg ah is enabled but is bin or only update avg bin is enabled but isn't bin
                     if (update_average_auction && auction.bin)
                         || (update_average_bin && !auction.bin)
@@ -437,14 +437,11 @@ async fn parse_ended_auctions(
 
                 if id == "ENCHANTED_BOOK" && nbt.tag.extra_attributes.enchantments.is_some() {
                     let enchants = nbt.tag.extra_attributes.enchantments.as_ref().unwrap();
-                    match enchants.len() {
-                        1 => {
-                            for entry in enchants {
-                                id = format!("{};{}", entry.key().to_uppercase(), entry.value());
-                            }
+                    // If there is more than one enchant, the price might be higher, causing the average auction data to be incorrect
+                    if enchants.len() == 1 {
+                        for entry in enchants {
+                            id = format!("{};{}", entry.key().to_uppercase(), entry.value());
                         }
-                        // If there is more than one enchant, the price might be higher, causing the average auction data to be incorrect
-                        _ => continue,
                     }
                 } else if id == "PET" {
                     let pet_info = serde_json::from_str::<PetInfo>(
