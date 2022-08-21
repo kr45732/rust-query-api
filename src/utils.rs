@@ -228,7 +228,7 @@ pub async fn update_query_database(mut auctions: Mutex<Vec<DatabaseItem>>) -> Re
     copy_writer.finish().await
 }
 
-pub async fn update_pets_database(pet_prices: &mut DashMap<String, AvgSum>) -> Result<u64, Error> {
+pub async fn update_pets_database(pet_prices: DashMap<String, AvgSum>) -> Result<u64, Error> {
     let database = get_client().await;
 
     // Add all old pet prices to the new prices if the new prices doesn't have that old pet name
@@ -274,7 +274,10 @@ pub async fn update_pets_database(pet_prices: &mut DashMap<String, AvgSum>) -> R
     copy_writer.finish().await
 }
 
-pub async fn update_avg_ah_database(avg_ah_prices: Vec<AvgAh>, time_t: i64) -> Result<u64, Error> {
+pub async fn update_avg_ah_database(
+    mut avg_ah_prices: Mutex<Vec<AvgAh>>,
+    time_t: i64,
+) -> Result<u64, Error> {
     let database = get_client().await;
 
     // Delete auctions older than 7 days
@@ -295,13 +298,13 @@ pub async fn update_avg_ah_database(avg_ah_prices: Vec<AvgAh>, time_t: i64) -> R
     database
         .execute(
             "INSERT INTO average VALUES ($1, $2)",
-            &[&time_t, &avg_ah_prices],
+            &[&time_t, avg_ah_prices.get_mut().unwrap()],
         )
         .await
 }
 
 pub async fn update_avg_bin_database(
-    avg_bin_prices: Vec<AvgAh>,
+    mut avg_bin_prices: Mutex<Vec<AvgAh>>,
     time_t: i64,
 ) -> Result<u64, Error> {
     let database = get_client().await;
@@ -324,7 +327,7 @@ pub async fn update_avg_bin_database(
     database
         .execute(
             "INSERT INTO average_bin VALUES ($1, $2)",
-            &[&time_t, &avg_bin_prices],
+            &[&time_t, avg_bin_prices.get_mut().unwrap()],
         )
         .await
 }
