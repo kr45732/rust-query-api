@@ -19,6 +19,7 @@
 use crate::config::{Config, Feature};
 use crate::{statics::*, structs::*, utils::*};
 use dashmap::{DashMap, DashSet};
+use futures::FutureExt;
 use futures::{stream::FuturesUnordered, StreamExt};
 use log::{debug, info};
 use serde_json::{json, Value};
@@ -37,11 +38,11 @@ pub async fn update_auctions(config: Arc<Config>) {
     // Stores all auction uuids in auctions vector to prevent duplicates
     let inserted_uuids: DashSet<String> = DashSet::new();
     let query_prices: Mutex<Vec<DatabaseItem>> = Mutex::new(Vec::new());
-    let mut pet_prices: DashMap<String, AvgSum> = DashMap::new();
+    let pet_prices: DashMap<String, AvgSum> = DashMap::new();
     let bin_prices: DashMap<String, i64> = DashMap::new();
     let under_bin_prices: DashMap<String, Value> = DashMap::new();
-    let mut avg_ah_prices: Vec<AvgAh> = Vec::new();
-    let mut avg_bin_prices: Vec<AvgAh> = Vec::new();
+    let avg_ah_prices: Mutex<Vec<AvgAh>> = Mutex::new(Vec::new());
+    let avg_bin_prices: Mutex<Vec<AvgAh>> = Mutex::new(Vec::new());
     let past_bin_prices: DashMap<String, i64> = serde_json::from_str(
         &fs::read_to_string("lowestbin.json").unwrap_or_else(|_| String::from("{}")),
     )
@@ -54,6 +55,9 @@ pub async fn update_auctions(config: Arc<Config>) {
     let update_underbin = config.is_enabled(Feature::Underbin);
     let update_average_auction = config.is_enabled(Feature::AverageAuction);
     let update_average_bin = config.is_enabled(Feature::AverageBin);
+
+    // Stores the futures for all auction pages in order to utilize multithreading
+    let futures = FuturesUnordered::new();
 
     // Only fetch auctions if any of APIs that need the auctions are enabled
     if update_query || update_lowestbin || update_underbin {
@@ -80,42 +84,42 @@ pub async fn update_auctions(config: Arc<Config>) {
             update_underbin,
         );
 
-        // Stores the futures for all auction pages in order to utilize multithreading
-        let futures = FuturesUnordered::new();
-
-        let total_pages = json.total_pages;
-        debug!("Sending {} async requests", total_pages);
+        debug!("Sending {} async requests", json.total_pages);
         // Skip page zero since it's already been parsed
-        for page_number in 1..total_pages {
-            futures.push(process_auction_page(
-                page_number,
-                &inserted_uuids,
-                &query_prices,
-                &bin_prices,
-                &under_bin_prices,
-                &past_bin_prices,
-                update_query,
-                update_lowestbin,
-                update_underbin,
-            ));
+        for page_number in 1..json.total_pages {
+            futures.push(
+                process_auction_page(
+                    page_number,
+                    &inserted_uuids,
+                    &query_prices,
+                    &bin_prices,
+                    &under_bin_prices,
+                    &past_bin_prices,
+                    update_query,
+                    update_lowestbin,
+                    update_underbin,
+                )
+                .boxed(),
+            );
         }
-        debug!("All async requests have been sent");
-
-        let _: Vec<_> = futures.collect().await;
     }
 
     // Update average auctions if the feature is enabled
     if update_average_auction || update_average_bin || update_pets {
-        parse_ended_auctions(
-            &mut avg_ah_prices,
-            &mut avg_bin_prices,
-            &mut pet_prices,
-            update_average_auction,
-            update_average_bin,
-            update_pets,
-        )
-        .await;
+        futures.push(
+            parse_ended_auctions(
+                &avg_ah_prices,
+                &avg_bin_prices,
+                &pet_prices,
+                update_average_auction,
+                update_average_bin,
+                update_pets,
+            )
+            .boxed(),
+        );
     }
+
+    let _: Vec<_> = futures.collect().await;
 
     let fetch_sec = started.elapsed().as_secs_f32();
     info!("Total fetch time: {:.2}s", fetch_sec);
@@ -165,7 +169,7 @@ pub async fn update_auctions(config: Arc<Config>) {
 
     if update_pets {
         let pets_started = Instant::now();
-        let _ = match update_pets_database(&mut pet_prices).await {
+        let _ = match update_pets_database(pet_prices).await {
             Ok(rows) => write!(
                 ok_logs,
                 "\nSuccessfully inserted {} pets into database in {}ms",
@@ -409,9 +413,9 @@ fn parse_auctions(
 
 /* Parse ended auctions into Vec<AvgAh> */
 async fn parse_ended_auctions(
-    avg_ah_prices: &mut Vec<AvgAh>,
-    avg_bin_prices: &mut Vec<AvgAh>,
-    pet_prices: &mut DashMap<String, AvgSum>,
+    avg_ah_prices: &Mutex<Vec<AvgAh>>,
+    avg_bin_prices: &Mutex<Vec<AvgAh>>,
+    pet_prices: &DashMap<String, AvgSum>,
     update_average_auction: bool,
     update_average_bin: bool,
     update_pets: bool,
@@ -538,7 +542,7 @@ async fn parse_ended_auctions(
 
             // Average all the averaged auctions and store them in the avg_ah_prices vector
             for ele in avg_ah_map {
-                avg_ah_prices.push(AvgAh {
+                avg_ah_prices.lock().unwrap().push(AvgAh {
                     item_id: ele.0,
                     price: (ele.1.sum as f64) / (ele.1.count as f64),
                     sales: ele.1.count as f32,
@@ -547,7 +551,7 @@ async fn parse_ended_auctions(
 
             // Average all the averaged bins and store them in the avg_bin_prices vector
             for ele in avg_bin_map {
-                avg_bin_prices.push(AvgAh {
+                avg_bin_prices.lock().unwrap().push(AvgAh {
                     item_id: ele.0,
                     price: (ele.1.sum as f64) / (ele.1.count as f64),
                     sales: ele.1.count as f32,
