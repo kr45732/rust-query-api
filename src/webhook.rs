@@ -338,6 +338,13 @@ impl Message {
         self
     }
 
+    pub fn mention(&mut self, mention: bool) -> &mut Message {
+        if mention {
+            self.content("<@796791167366594592>");
+        }
+        self
+    }
+
     pub fn username(&mut self, name: &str) -> &mut Message {
         self.username = Some(name.to_owned());
         self

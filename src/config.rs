@@ -57,6 +57,8 @@ pub struct Config {
     pub admin_api_key: String,
     pub debug: bool,
     pub disable_updating: bool,
+    // Shh, don't tell anyone!
+    pub super_secret_config_option: bool,
 }
 
 fn get_env(name: &str) -> String {
@@ -75,6 +77,10 @@ impl Config {
             .parse()
             .unwrap_or(false);
         let disable_updating = env::var("DISABLE_UPDATING")
+            .unwrap_or_else(|_| String::from("false"))
+            .parse()
+            .unwrap_or(false);
+        let super_secret_config_option = env::var("SUPER_SECRET_CONFIG_OPTION")
             .unwrap_or_else(|_| String::from("false"))
             .parse()
             .unwrap_or(false);
@@ -98,6 +104,7 @@ impl Config {
             port,
             debug,
             disable_updating,
+            super_secret_config_option,
         }
     }
 

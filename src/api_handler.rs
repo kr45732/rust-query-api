@@ -213,7 +213,7 @@ pub async fn update_auctions(config: Arc<Config>) {
     }
 
     if !ok_logs.is_empty() {
-        info(ok_logs);
+        info_mention(ok_logs, config.super_secret_config_option);
     }
 
     if !err_logs.is_empty() {
