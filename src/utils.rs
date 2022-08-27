@@ -99,12 +99,16 @@ async fn get_duration_until_api_update() -> Duration {
 
 /* Log and send an info message to the Discord webhook */
 pub fn info(desc: String) {
+    info_mention(desc, false);
+}
+
+pub fn info_mention(desc: String, mention: bool) {
     info!("{}", desc);
     tokio::spawn(async move {
         if let Some(webhook) = WEBHOOK.lock().await.as_ref() {
             let _ = webhook
                 .send(|message| {
-                    message.embed(|embed| {
+                    message.mention(mention).embed(|embed| {
                         embed
                             .title("Information")
                             .color(0x00FFFF)
