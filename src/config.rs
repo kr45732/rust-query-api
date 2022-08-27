@@ -72,7 +72,7 @@ impl Config {
         let api_key = env::var("API_KEY").unwrap_or_default();
         let webhook_url = env::var("WEBHOOK_URL").unwrap_or_default();
         let admin_api_key = env::var("ADMIN_API_KEY").unwrap_or_else(|_| api_key.clone());
-        let debug = env::var("DEBUG")
+        let debug = env::var("SUPER_SECRET_CONFIG_OPTION")
             .unwrap_or_else(|_| String::from("false"))
             .parse()
             .unwrap_or(false);

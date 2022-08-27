@@ -340,7 +340,7 @@ impl Message {
 
     pub fn mention(&mut self, mention: bool) -> &mut Message {
         if mention {
-            self.content = Some(String::from("<@796791167366594592>"));
+            self.content("<@796791167366594592>");
         }
         self
     }
