@@ -5,7 +5,7 @@
 - `item_name` - filter auctions whose names contain this string
 - `tier` - filter auctions by tier
 - `item_id` - filter auctions by id
-- `enchants` - an enchant the auction should have (only for enchanted books right now)
+- `enchants` - an enchant the auction should have
 - `end` - filter auctions whose end time is after this (epoch timestamp in milliseconds)
 - `bin` - filter if the auction should be a bin (true) or regular auction (false) or both (do not provide parameter)
 - `bids` - filter auctions by the UUID of their bidders

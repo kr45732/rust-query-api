@@ -277,7 +277,7 @@ async fn process_auction_page(
     }
 }
 
-/* Parses a page of auctions to a vector of documents  */
+/* Parses a page of auctions and updates query, lowestbin, and underbin */
 fn parse_auctions(
     auctions: Vec<Auction>,
     inserted_uuids: &DashSet<String>,
@@ -298,23 +298,14 @@ fn parse_auctions(
             let item_id = nbt.tag.extra_attributes.id.to_owned();
             let mut internal_id = item_id.to_owned();
 
-            // Get enchants if the item is an enchanted book
             let mut enchants = Vec::new();
-            if nbt.tag.extra_attributes.enchantments.is_some() {
+            if update_query && nbt.tag.extra_attributes.enchantments.is_some() {
                 for entry in nbt.tag.extra_attributes.enchantments.as_ref().unwrap() {
-                    if item_id == "ENCHANTED_BOOK" && auction.bin && update_lowestbin {
-                        update_lower_else_insert(
-                            &format!("{};{}", entry.key().to_uppercase(), entry.value()),
-                            auction.starting_bid,
-                            bin_prices,
-                        );
-                    }
-
-                    if update_query {
-                        enchants.push(format!("{};{}", entry.key().to_uppercase(), entry.value()));
-                    }
+                    enchants.push(format!("{};{}", entry.key().to_uppercase(), entry.value()));
                 }
-            } else if item_id == "PET" {
+            }
+
+            if item_id == "PET" {
                 // If the pet is tier boosted, the tier field in the auction shows the rarity after boosting
                 tier =
                     serde_json::from_str::<PetInfo>(nbt.tag.extra_attributes.pet.as_ref().unwrap())
@@ -343,15 +334,24 @@ fn parse_auctions(
                 }
             }
 
+            if item_id == "ATTRIBUTE_SHARD" && auction.bin && update_lowestbin {
+                if let Some(attributes) = &nbt.tag.extra_attributes.attributes {
+                    if attributes.len() == 1 {
+                        for entry in attributes {
+                            internal_id = format!("ATTRIBUTE_SHARD_{}", entry.key().to_uppercase());
+                        }
+                    }
+                }
+            }
+
             if auction.bin && update_lowestbin {
                 update_lower_else_insert(&internal_id, auction.starting_bid, bin_prices);
 
                 if update_underbin
-                    && item_id != "PET" // TODO: Fix pet and enchanted book under bins
-                    && item_id != "ENCHANTED_BOOK"
-                    && ! auction.item_lore.contains("Furniture")
+                    && item_id != "PET" // TODO: Improve under bins
+                    && !auction.item_lore.contains("Furniture")
                     &&  auction.item_name != "null"
-                    && ! auction.item_name.contains("Minion Skin")
+                    && !auction.item_name.contains("Minion Skin")
                 {
                     if let Some(past_bin_price) = past_bin_prices.get(&internal_id) {
                         let profit =
@@ -388,13 +388,7 @@ fn parse_auctions(
                     uuid: auction.uuid,
                     auctioneer: auction.auctioneer,
                     end_t: auction.end,
-                    item_name: if item_id == "ENCHANTED_BOOK" {
-                        MC_CODE_REGEX
-                            .replace_all(auction.item_lore.split('\n').next().unwrap_or(""), "")
-                            .to_string()
-                    } else {
-                        auction.item_name
-                    },
+                    item_name: auction.item_name,
                     tier: tier.to_string(),
                     starting_bid: if auction.bin {
                         auction.starting_bid
@@ -439,15 +433,7 @@ async fn parse_ended_auctions(
                 let nbt = &parse_nbt(&auction.item_bytes).unwrap().i[0];
                 let mut id = nbt.tag.extra_attributes.id.to_owned();
 
-                if id == "ENCHANTED_BOOK" && nbt.tag.extra_attributes.enchantments.is_some() {
-                    let enchants = nbt.tag.extra_attributes.enchantments.as_ref().unwrap();
-                    // If there is more than one enchant, the price might be higher, causing the average auction data to be incorrect
-                    if enchants.len() == 1 {
-                        for entry in enchants {
-                            id = format!("{};{}", entry.key().to_uppercase(), entry.value());
-                        }
-                    }
-                } else if id == "PET" {
+                if id == "PET" {
                     let pet_info = serde_json::from_str::<PetInfo>(
                         nbt.tag.extra_attributes.pet.as_ref().unwrap(),
                     )
@@ -509,6 +495,20 @@ async fn parse_ended_auctions(
                             _ => -1,
                         }
                     );
+                }
+
+                if !update_average_bin && !update_average_auction {
+                    continue;
+                }
+
+                if id == "ATTRIBUTE_SHARD" {
+                    if let Some(attributes) = &nbt.tag.extra_attributes.attributes {
+                        if attributes.len() == 1 {
+                            for entry in attributes {
+                                id = format!("ATTRIBUTE_SHARD_{}", entry.key().to_uppercase());
+                            }
+                        }
+                    }
                 }
 
                 if update_average_bin && auction.bin {

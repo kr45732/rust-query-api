@@ -1,11 +1,20 @@
-[
-    {
-        "auctioneer": "352fc938c1b14fea8a017eecb6aba4d2",
-        "end": 1638744036731,
-        "name": "Livid Dagger",
-        "past_bin_price": 7100000,
-        "profit": 6599777,
-        "starting_bid": 500223,
-        "uuid": "f7ab338b7f28423199f6e4763ef857b2"
+{
+    "f189ee8f89fe4003a23022bd94f053a2": {
+        "auctioneer": "41ea357f1d924aeba40abe13762b506f",
+        "id": "MAGMA_LORD_LEGGINGS",
+        "name": "Magma Lord Leggings",
+        "past_bin_price": 13500000,
+        "profit": 1030000,
+        "starting_bid": 12200000,
+        "uuid": "f189ee8f89fe4003a23022bd94f053a2"
+    },
+    "be1242943bee4655b64d58b37a890749": {
+        "auctioneer": "cc8afebd5c044637bcb474dd6208a7c3",
+        "id": "ATOMSPLIT_KATANA",
+        "name": "Atomsplit Katana",
+        "past_bin_price": 56000000,
+        "profit": 1380000,
+        "starting_bid": 53500000,
+        "uuid": "be1242943bee4655b64d58b37a890749"
     }
-]
+}

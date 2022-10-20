@@ -1,14 +1,14 @@
 [
     {
-        "name": "[LVL_100]_WITHER_SKELETON_LEGENDARY",
-        "price": 11499990
-    },
-    {
         "name": "[LVL_96]_ENDER_DRAGON_EPIC_TB",
-        "price": 490000000
+        "price": 318832070
     },
     {
         "name": "[LVL_80]_BAL_EPIC",
-        "price": 9200000
+        "price": 8489854
+    },
+    {
+        "name": "[LVL_100]_WITHER_SKELETON_LEGENDARY",
+        "price": 9379439
     }
 ]
