@@ -51,3 +51,7 @@
 ### [example_6.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_6.json)
 - Request /average_bin?key=KEY&time=1647830293999&step=60
 - Meaning: get average auction bin from the unix timestamp 1647830293999 to the present. Average sales by hour
+
+### [example_6.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_7.json)
+- Request /average?key=KEY&time=1647830293999&step=60
+- Meaning: get the combined average auctions and average bins from the unix timestamp 1647830293999 to the present. Average sales by hour

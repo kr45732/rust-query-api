@@ -93,15 +93,21 @@ async fn handle_response(config: Arc<Config>, req: Request<Body>) -> hyper::Resu
         }
     } else if let (&Method::GET, "/average_auction") = (req.method(), req.uri().path()) {
         if config.is_enabled(Feature::AverageAuction) {
-            average_ah_bin(config, req, "average").await
+            averages(config, req, vec!["average"]).await
         } else {
             bad_request("Average auction feature is not enabled")
         }
     } else if let (&Method::GET, "/average_bin") = (req.method(), req.uri().path()) {
         if config.is_enabled(Feature::AverageBin) {
-            average_ah_bin(config, req, "average_bin").await
+            averages(config, req, vec!["average_bin"]).await
         } else {
             bad_request("Average bin feature is not enabled")
+        }
+    } else if let (&Method::GET, "/average") = (req.method(), req.uri().path()) {
+        if config.is_enabled(Feature::AverageAuction) && config.is_enabled(Feature::AverageBin) {
+            averages(config, req, vec!["average", "average_bin"]).await
+        } else {
+            bad_request("Both average auction and average bin feature are not enabled")
         }
     } else if let (&Method::GET, "/debug") = (req.method(), req.uri().path()) {
         if config.debug {
@@ -261,11 +267,11 @@ async fn pets(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response
         .unwrap())
 }
 
-/* /average_auction or /average_bin */
-async fn average_ah_bin(
+/* /average_auction or /average_bin or /average */
+async fn averages(
     config: Arc<Config>,
     req: Request<Body>,
-    table: &str,
+    tables: Vec<&str>,
 ) -> hyper::Result<Response<Body>> {
     let mut key = String::new();
     let mut time = 0;
@@ -303,31 +309,34 @@ async fn average_ah_bin(
         return bad_request("The time parameter cannot be negative");
     }
 
-    // Find and sort using query JSON
-    let results_cursor = get_client()
-        .await
-        .query(
-            format!("SELECT * FROM {} WHERE time_t > $1 ORDER BY time_t", table).as_str(),
-            &[&time],
-        )
-        .await;
-
-    if let Err(e) = results_cursor {
-        return internal_error(&format!("Error when querying database: {}", e));
-    }
-
     // Map each item id to its prices and sales
     let avg_map: DashMap<String, AvgVec> = DashMap::new();
-    results_cursor.unwrap().into_iter().for_each(|ele_row| {
-        for ele in AverageDatabaseItem::from(ele_row).prices {
-            // If the id already exists in the map, append the new values, otherwise create a new entry
-            if avg_map.contains_key(&ele.item_id) {
-                avg_map.alter(&ele.item_id, |_, value| value.add(&ele));
-            } else {
-                avg_map.insert(ele.item_id.to_owned(), AvgVec::from(&ele));
-            }
+
+    for table in tables {
+        // Find and sort using query JSON
+        let results_cursor = get_client()
+            .await
+            .query(
+                format!("SELECT * FROM {} WHERE time_t > $1 ORDER BY time_t", table).as_str(),
+                &[&time],
+            )
+            .await;
+
+        if let Err(e) = results_cursor {
+            return internal_error(&format!("Error when querying database: {}", e));
         }
-    });
+
+        results_cursor.unwrap().into_iter().for_each(|ele_row| {
+            for ele in AverageDatabaseItem::from(ele_row).prices {
+                // If the id already exists in the map, append the new values, otherwise create a new entry
+                if avg_map.contains_key(&ele.item_id) {
+                    avg_map.alter(&ele.item_id, |_, value| value.add(&ele));
+                } else {
+                    avg_map.insert(ele.item_id.to_owned(), AvgVec::from(&ele));
+                }
+            }
+        });
+    }
 
     // Stores the values after averaging by 'step'
     let avg_map_final: DashMap<String, AvgAh> = DashMap::new();
