@@ -667,9 +667,7 @@ fn http_err(status: StatusCode, reason: &str) -> hyper::Result<Response<Body>> {
         .status(status)
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
-            json!({"success": false, "reason": reason}
-            )
-            .to_string(),
+            json!({"success": false, "reason": reason}).to_string(),
         ))
         .unwrap())
 }

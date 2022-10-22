@@ -334,18 +334,22 @@ fn parse_auctions(
                 }
             }
 
-            if item_id == "ATTRIBUTE_SHARD" && auction.bin && update_lowestbin {
-                if let Some(attributes) = &nbt.tag.extra_attributes.attributes {
-                    if attributes.len() == 1 {
-                        for entry in attributes {
-                            internal_id = format!("ATTRIBUTE_SHARD_{}", entry.key().to_uppercase());
+            if auction.bin && update_lowestbin {
+                let mut lowestbin_price = auction.starting_bid;
+                if item_id == "ATTRIBUTE_SHARD" {
+                    if let Some(attributes) = &nbt.tag.extra_attributes.attributes {
+                        if attributes.len() == 1 {
+                            for entry in attributes {
+                                internal_id =
+                                    format!("ATTRIBUTE_SHARD_{}", entry.key().to_uppercase());
+                                lowestbin_price =
+                                    auction.starting_bid / 2_i64.pow((entry.value() - 1) as u32);
+                            }
                         }
                     }
                 }
-            }
 
-            if auction.bin && update_lowestbin {
-                update_lower_else_insert(&internal_id, auction.starting_bid, bin_prices);
+                update_lower_else_insert(&internal_id, lowestbin_price, bin_prices);
 
                 if update_underbin
                     && item_id != "PET" // TODO: Improve under bins
@@ -419,7 +423,7 @@ async fn parse_ended_auctions(
             let avg_ah_map: DashMap<String, AvgSum> = DashMap::new();
             let avg_bin_map: DashMap<String, AvgSum> = DashMap::new();
 
-            for auction in page_request.auctions {
+            for mut auction in page_request.auctions {
                 // Always update if pets is enabled, otherwise check if only auction or bin are enabled
                 if !update_pets && !(update_average_auction && update_average_bin) {
                     // Only update avg ah is enabled but is bin or only update avg bin is enabled but isn't bin
@@ -506,6 +510,7 @@ async fn parse_ended_auctions(
                         if attributes.len() == 1 {
                             for entry in attributes {
                                 id = format!("ATTRIBUTE_SHARD_{}", entry.key().to_uppercase());
+                                auction.price /= 2_i64.pow((entry.value() - 1) as u32);
                             }
                         }
                     }
