@@ -172,6 +172,7 @@ pub struct PartialExtraAttr {
     pub pet: Option<String>,
     pub enchantments: Option<DashMap<String, i32>>,
     pub attributes: Option<DashMap<String, i32>>,
+    pub party_hat_color: Option<String>,
 }
 
 #[derive(Deserialize)]

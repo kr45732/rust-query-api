@@ -342,10 +342,13 @@ fn parse_auctions(
                             for entry in attributes {
                                 internal_id =
                                     format!("ATTRIBUTE_SHARD_{}", entry.key().to_uppercase());
-                                lowestbin_price =
-                                    auction.starting_bid / 2_i64.pow((entry.value() - 1) as u32);
+                                lowestbin_price /= 2_i64.pow((entry.value() - 1) as u32);
                             }
                         }
+                    }
+                } else if item_id == "PARTY_HAT_CRAB" || item_id == "PARTY_HAT_CRAB_ANIMATED" {
+                    if let Some(party_hat_color) = &nbt.tag.extra_attributes.party_hat_color {
+                        internal_id = format!("{}_{}", item_id, party_hat_color);
                     }
                 }
 
@@ -513,6 +516,10 @@ async fn parse_ended_auctions(
                                 auction.price /= 2_i64.pow((entry.value() - 1) as u32);
                             }
                         }
+                    }
+                } else if id == "PARTY_HAT_CRAB" || id == "PARTY_HAT_CRAB_ANIMATED" {
+                    if let Some(party_hat_color) = &nbt.tag.extra_attributes.party_hat_color {
+                        id = format!("{}_{}", id, party_hat_color);
                     }
                 }
 
