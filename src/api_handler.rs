@@ -37,7 +37,7 @@ pub async fn update_auctions(config: Arc<Config>) {
 
     // Stores all auction uuids in auctions vector to prevent duplicates
     let inserted_uuids: DashSet<String> = DashSet::new();
-    let query_prices: Mutex<Vec<DatabaseItem>> = Mutex::new(Vec::new());
+    let query_prices: Mutex<Vec<QueryDatabaseItem>> = Mutex::new(Vec::new());
     let pet_prices: DashMap<String, AvgSum> = DashMap::new();
     let bin_prices: DashMap<String, i64> = DashMap::new();
     let under_bin_prices: DashMap<String, Value> = DashMap::new();
@@ -235,7 +235,7 @@ pub async fn update_auctions(config: Arc<Config>) {
 async fn process_auction_page(
     page_number: i64,
     inserted_uuids: &DashSet<String>,
-    query_prices: &Mutex<Vec<DatabaseItem>>,
+    query_prices: &Mutex<Vec<QueryDatabaseItem>>,
     bin_prices: &DashMap<String, i64>,
     under_bin_prices: &DashMap<String, Value>,
     past_bin_prices: &DashMap<String, i64>,
@@ -281,7 +281,7 @@ async fn process_auction_page(
 fn parse_auctions(
     auctions: Vec<Auction>,
     inserted_uuids: &DashSet<String>,
-    query_prices: &Mutex<Vec<DatabaseItem>>,
+    query_prices: &Mutex<Vec<QueryDatabaseItem>>,
     bin_prices: &DashMap<String, i64>,
     under_bin_prices: &DashMap<String, Value>,
     past_bin_prices: &DashMap<String, i64>,
@@ -348,7 +348,7 @@ fn parse_auctions(
                     }
                 } else if item_id == "PARTY_HAT_CRAB" || item_id == "PARTY_HAT_CRAB_ANIMATED" {
                     if let Some(party_hat_color) = &nbt.tag.extra_attributes.party_hat_color {
-                        internal_id = format!("{}_{}", item_id, party_hat_color);
+                        internal_id = format!("{}_{}", item_id, party_hat_color.to_uppercase());
                     }
                 }
 
@@ -391,7 +391,7 @@ fn parse_auctions(
                     });
                 }
 
-                query_prices.lock().unwrap().push(DatabaseItem {
+                query_prices.lock().unwrap().push(QueryDatabaseItem {
                     uuid: auction.uuid,
                     auctioneer: auction.auctioneer,
                     end_t: auction.end,
@@ -519,7 +519,7 @@ async fn parse_ended_auctions(
                     }
                 } else if id == "PARTY_HAT_CRAB" || id == "PARTY_HAT_CRAB_ANIMATED" {
                     if let Some(party_hat_color) = &nbt.tag.extra_attributes.party_hat_color {
-                        id = format!("{}_{}", id, party_hat_color);
+                        id = format!("{}_{}", id, party_hat_color.to_uppercase());
                     }
                 }
 

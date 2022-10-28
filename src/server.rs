@@ -339,7 +339,7 @@ async fn averages(
     }
 
     // Stores the values after averaging by 'step'
-    let avg_map_final: DashMap<String, AvgAh> = DashMap::new();
+    let avg_map_final: DashMap<String, PartialAvgAh> = DashMap::new();
     for ele in avg_map {
         let mut count: i64 = 0;
         let mut sales: f32 = 0.0;
@@ -357,9 +357,8 @@ async fn averages(
         }
 
         avg_map_final.insert(
-            ele.0.to_owned(),
-            AvgAh {
-                item_id: ele.0,
+            ele.0,
+            PartialAvgAh {
                 price: ele.1.get_average(),
                 sales: sales / (count as f32),
             },
@@ -528,10 +527,11 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
     }
 
     // Convert the cursor iterator to a vector
-    let mut results_vec = vec![];
-    results_cursor.unwrap().into_iter().for_each(|ele| {
-        results_vec.push(DatabaseItem::from(ele));
-    });
+    let results_vec = results_cursor
+        .unwrap()
+        .into_iter()
+        .map(|ele| QueryDatabaseItem::from(ele))
+        .collect::<Vec<QueryDatabaseItem>>();
 
     // Return the vector of auctions serialized into JSON
     Ok(Response::builder()

@@ -23,7 +23,7 @@ use tokio_postgres::Row;
 
 /* Query API */
 #[derive(Debug, Deserialize, Serialize, ToSql, FromSql)]
-pub struct DatabaseItem {
+pub struct QueryDatabaseItem {
     pub uuid: String,
     pub auctioneer: String,
     pub end_t: i64,
@@ -36,7 +36,7 @@ pub struct DatabaseItem {
     pub bids: Vec<Bid>,
 }
 
-impl From<Row> for DatabaseItem {
+impl From<Row> for QueryDatabaseItem {
     fn from(row: Row) -> Self {
         Self {
             uuid: row.get("uuid"),
@@ -80,6 +80,13 @@ impl From<Row> for AverageDatabaseItem {
 #[postgres(name = "avg_ah")]
 pub struct AvgAh {
     pub item_id: String,
+    pub price: f64,
+    pub sales: f32,
+}
+
+#[derive(Serialize)]
+
+pub struct PartialAvgAh {
     pub price: f64,
     pub sales: f32,
 }
@@ -179,8 +186,6 @@ pub struct PartialExtraAttr {
 pub struct DisplayInfo {
     #[serde(rename = "Name")]
     pub name: String,
-    // #[serde(rename = "Lore")]
-    // pub lore: Vec<String>,
 }
 
 #[derive(Deserialize)]

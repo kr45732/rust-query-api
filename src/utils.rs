@@ -185,7 +185,9 @@ pub fn update_lower_else_insert(id: &String, starting_bid: i64, prices: &DashMap
     }
 }
 
-pub async fn update_query_database(mut auctions: Mutex<Vec<DatabaseItem>>) -> Result<u64, Error> {
+pub async fn update_query_database(
+    mut auctions: Mutex<Vec<QueryDatabaseItem>>,
+) -> Result<u64, Error> {
     let database = get_client().await;
 
     let _ = database.simple_query("TRUNCATE TABLE query").await;
@@ -358,7 +360,7 @@ pub async fn update_under_bins_local(
     serde_json::to_writer(file, &bin_prices)
 }
 
-pub async fn update_query_items_local(query_prices: &Mutex<Vec<DatabaseItem>>) {
+pub async fn update_query_items_local(query_prices: &Mutex<Vec<QueryDatabaseItem>>) {
     let file = OpenOptions::new()
         .create(true)
         .write(true)
