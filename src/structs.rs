@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 
 /* Query API */
-#[derive(Debug, Deserialize, Serialize, ToSql, FromSql)]
+#[derive(Serialize)]
 pub struct QueryDatabaseItem {
     pub uuid: String,
     pub auctioneer: String,
@@ -61,7 +61,6 @@ pub struct Bid {
 }
 
 /* Average Auction API */
-#[derive(Debug, Deserialize, Serialize, ToSql, FromSql)]
 pub struct AverageDatabaseItem {
     pub time_t: i64,
     pub prices: Vec<AvgAh>,
@@ -76,7 +75,7 @@ impl From<Row> for AverageDatabaseItem {
     }
 }
 
-#[derive(Debug, ToSql, FromSql, Deserialize, Serialize)]
+#[derive(Debug, ToSql, FromSql)]
 #[postgres(name = "avg_ah")]
 pub struct AvgAh {
     pub item_id: String,
@@ -137,7 +136,7 @@ impl AvgVec {
 }
 
 /* Pets API */
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Serialize)]
 pub struct PetsDatabaseItem {
     pub name: String,
     pub price: i64,
