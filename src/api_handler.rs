@@ -523,29 +523,32 @@ async fn parse_ended_auctions(
                     }
                 }
 
+                // If the map already has this id, then add to the existing elements, otherwise create a new entry
                 if update_average_bin && auction.bin {
-                    // If the map already has this id, then add this bin to the existing bins, otherwise create a new entry
                     if avg_bin_map.contains_key(&id) {
-                        avg_bin_map.alter(&id, |_, value| value.add(auction.price));
+                        avg_bin_map.alter(&id, |_, value| {
+                            value.add_multiple(auction.price, nbt.count as i32)
+                        });
                     } else {
                         avg_bin_map.insert(
                             id,
                             AvgSum {
                                 sum: auction.price,
-                                count: 1,
+                                count: nbt.count as i32,
                             },
                         );
                     }
                 } else if update_average_auction && !auction.bin {
-                    // If the map already has this id, then add this auction to the existing auctions, otherwise create a new entry
                     if avg_ah_map.contains_key(&id) {
-                        avg_ah_map.alter(&id, |_, value| value.add(auction.price));
+                        avg_ah_map.alter(&id, |_, value| {
+                            value.add_multiple(auction.price, nbt.count as i32)
+                        });
                     } else {
                         avg_ah_map.insert(
                             id,
                             AvgSum {
                                 sum: auction.price,
-                                count: 1,
+                                count: nbt.count as i32,
                             },
                         );
                     }
