@@ -530,7 +530,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
     let results_vec = results_cursor
         .unwrap()
         .into_iter()
-        .map(|ele| QueryDatabaseItem::from(ele))
+        .map(QueryDatabaseItem::from)
         .collect::<Vec<QueryDatabaseItem>>();
 
     // Return the vector of auctions serialized into JSON
