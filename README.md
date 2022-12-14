@@ -27,7 +27,7 @@ A versatile API facade for the Hypixel Auction API written in Rust. The entire a
 ### Configuration Fields or Environment Variables
 - `BASE_URL`: Base address to bind to (e.g. 0.0.0.0)
 - `PORT`: Port to bind to (e.g. 8000)
-  - Online hosts such as Heroku and Railway will automatically set this
+  - Online hosts will automatically set this
 - `API_KEY`: Optional key needed to access this API (NOT a Hypixel API key)
 - `ADMIN_API_KEY`: Optional admin key required to use raw SQL parameters (defaults to the API_KEY)
 - `POSTGRES_URL`: Full URL of a PostgreSQL database (should look like `postgres://[user]:[password]@[host]:[port]/[dbname]`)
@@ -49,14 +49,14 @@ A versatile API facade for the Hypixel Auction API written in Rust. The entire a
 - See docs and examples [here](https://github.com/kr45732/rust-query-api/blob/main/examples/examples.md)
 
 ## Free Hosting
-### Deploy To Heroku (Recommended)
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
+### Deploy On Railway
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https://github.com/kr45732/rust-query-api&plugins=postgresql&envs=BASE_URL,API_KEY,ADMIN_API_KEY,POSTGRES_URL,WEBHOOK_URL,FEATURES&optionalEnvs=WEBHOOK_URL,ADMIN_API_KEY&BASE_URLDesc=The+base+URL+of+the+domain.+Do+not+modify+this&API_KEYDesc=Key+needed+to+access+this+API+(NOT+a+Hypixel+API+key)&ADMIN_API_KEYDesc=Admin+key+required+to+use+raw+SQL+parameters.+Will+default+to+the+API_KEY+if+not+provided&POSTGRES_URLDesc=Full+URL+of+a+PostgreSQL+database.+No+need+to+modify+this+unless+you+are+using+your+own+database+since+Railway+already+provides+this+for+you.&WEBHOOK_URLDesc=Discord+webhook+URL+for+logging&FEATURESDesc=The+features+(QUERY,+PETS,+LOWESTBIN,+UNDERBIN,+AVERAGE_AUCTION,+AVERAGE_BIN)+you+want+enabled+separated+with+commas&BASE_URLDefault=0.0.0.0&POSTGRES_URLDefault=$%7B%7BDATABASE_URL%7D%7D&FEATURESDefault=QUERY,LOWESTBIN,AVERAGE_AUCTION,AVERAGE_BIN&referralCode=WrEybV)
+
+### Deploy On Gigalixir
+[Website](https://gigalixir.com/)
 
 ### Free PostgreSQL Datbase
-For a free cloud PostgreSQL database, the free tier of [Supabase](https://supabase.com/) is a great option with with plenty of storage and good performance.
-
-### Deploy To Railway
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https://github.com/kr45732/rust-query-api&plugins=postgresql&envs=BASE_URL,API_KEY,ADMIN_API_KEY,POSTGRES_URL,WEBHOOK_URL,FEATURES&optionalEnvs=WEBHOOK_URL,ADMIN_API_KEY&BASE_URLDesc=The+base+URL+of+the+domain.+Do+not+modify+this&API_KEYDesc=Key+needed+to+access+this+API+(NOT+a+Hypixel+API+key)&ADMIN_API_KEYDesc=Admin+key+required+to+use+raw+SQL+parameters.+Will+default+to+the+API_KEY+if+not+provided&POSTGRES_URLDesc=Full+URL+of+a+PostgreSQL+database.+No+need+to+modify+this+unless+you+are+using+your+own+database+since+Railway+already+provides+this+for+you.&WEBHOOK_URLDesc=Discord+webhook+URL+for+logging&FEATURESDesc=The+features+(QUERY,+PETS,+LOWESTBIN,+UNDERBIN,+AVERAGE_AUCTION,+AVERAGE_BIN)+you+want+enabled+separated+with+commas&BASE_URLDefault=0.0.0.0&POSTGRES_URLDefault=$%7B%7BDATABASE_URL%7D%7D&FEATURESDefault=QUERY,LOWESTBIN,AVERAGE_AUCTION,AVERAGE_BIN&referralCode=WrEybV)
+The free tier of [Supabase](https://supabase.com/) is a great option with with plenty of storage and good performance.
 
 ## Todo
 - Better documentation & more examples
