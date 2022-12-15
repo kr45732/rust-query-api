@@ -53,7 +53,14 @@ A versatile API facade for the Hypixel Auction API written in Rust. The entire a
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https://github.com/kr45732/rust-query-api&plugins=postgresql&envs=BASE_URL,API_KEY,ADMIN_API_KEY,POSTGRES_URL,WEBHOOK_URL,FEATURES&optionalEnvs=WEBHOOK_URL,ADMIN_API_KEY&BASE_URLDesc=The+base+URL+of+the+domain.+Do+not+modify+this&API_KEYDesc=Key+needed+to+access+this+API+(NOT+a+Hypixel+API+key)&ADMIN_API_KEYDesc=Admin+key+required+to+use+raw+SQL+parameters.+Will+default+to+the+API_KEY+if+not+provided&POSTGRES_URLDesc=Full+URL+of+a+PostgreSQL+database.+No+need+to+modify+this+unless+you+are+using+your+own+database+since+Railway+already+provides+this+for+you.&WEBHOOK_URLDesc=Discord+webhook+URL+for+logging&FEATURESDesc=The+features+(QUERY,+PETS,+LOWESTBIN,+UNDERBIN,+AVERAGE_AUCTION,+AVERAGE_BIN)+you+want+enabled+separated+with+commas&BASE_URLDefault=0.0.0.0&POSTGRES_URLDefault=$%7B%7BDATABASE_URL%7D%7D&FEATURESDefault=QUERY,LOWESTBIN,AVERAGE_AUCTION,AVERAGE_BIN&referralCode=WrEybV)
 
 ### Deploy On Gigalixir
-[Website](https://gigalixir.com/)
+Steps to deploy on [Gigalixir](https://gigalixir.com/):
+1. Clone repository
+2. Install gigalixir CLI: `pip3 install gigalixir`
+3. Sign up: `gigalixir signup`
+4. Create app: `gigalixir create -n NAME`
+5. Set environment variables: `gigalixir config:set key=value`
+6. Deploy app: `git push gigalixir`
+7. Acess at [https://NAME.gigalixirapp.com/](https://NAME.gigalixirapp.com/)
 
 ### Free PostgreSQL Datbase
 The free tier of [Supabase](https://supabase.com/) is a great option with with plenty of storage and good performance.
