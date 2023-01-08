@@ -30,7 +30,7 @@ lazy_static = "1.4.0"
 dotenv = "0.15.0"
 futures = "0.3.25"
 hematite-nbt = "0.5.2"
-base64 = "0.20.0"
+base64 = "0.21.0"
 regex = "1.7.0"
 
 [profile.release]
