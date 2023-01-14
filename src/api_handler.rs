@@ -350,6 +350,10 @@ fn parse_auctions(
                     if let Some(party_hat_color) = &nbt.tag.extra_attributes.party_hat_color {
                         internal_id = format!("{}_{}", item_id, party_hat_color.to_uppercase());
                     }
+                } else if item_id == "NEW_YEAR_CAKE" {
+                    if let Some(new_years_cake) = &nbt.tag.extra_attributes.new_years_cake {
+                        internal_id = format!("{}_{}", item_id, new_years_cake);
+                    }
                 }
 
                 update_lower_else_insert(&internal_id, lowestbin_price, bin_prices);
@@ -520,6 +524,10 @@ async fn parse_ended_auctions(
                 } else if id == "PARTY_HAT_CRAB" || id == "PARTY_HAT_CRAB_ANIMATED" {
                     if let Some(party_hat_color) = &nbt.tag.extra_attributes.party_hat_color {
                         id = format!("{}_{}", id, party_hat_color.to_uppercase());
+                    }
+                } else if id == "NEW_YEAR_CAKE" {
+                    if let Some(new_years_cake) = &nbt.tag.extra_attributes.new_years_cake {
+                        id = format!("{}_{}", id, new_years_cake);
                     }
                 }
 
