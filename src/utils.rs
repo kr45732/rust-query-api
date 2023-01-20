@@ -18,6 +18,8 @@
 
 use crate::config::Config;
 use crate::{statics::*, structs::*};
+use base64::engine::general_purpose;
+use base64::Engine;
 use dashmap::{DashMap, DashSet};
 use deadpool_postgres::Client;
 use futures::{pin_mut, Future};
@@ -153,7 +155,8 @@ pub fn panic(desc: String) {
 }
 
 pub fn parse_nbt(data: &str) -> Option<PartialNbt> {
-    base64::decode(data)
+    general_purpose::STANDARD
+        .decode(data)
         .ok()
         .and_then(|bytes| nbt::from_gzip_reader::<_, PartialNbt>(std::io::Cursor::new(bytes)).ok())
 }
