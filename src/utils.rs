@@ -127,9 +127,11 @@ pub fn error(desc: String) {
     error!("{}", desc);
     tokio::spawn(async move {
         if let Some(webhook) = WEBHOOK.lock().await.as_ref() {
-            let _ = webhook.send(|message| {
-                message.embed(|embed| embed.title("Error").color(0xFF0000).description(&desc))
-            });
+            let _ = webhook
+                .send(|message| {
+                    message.embed(|embed| embed.title("Error").color(0xFF0000).description(&desc))
+                })
+                .await;
         }
     });
 }
