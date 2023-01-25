@@ -39,11 +39,11 @@ pub async fn update_auctions(config: Arc<Config>) {
     let inserted_uuids: DashSet<String> = DashSet::new();
     let query_prices: Mutex<Vec<QueryDatabaseItem>> = Mutex::new(Vec::new());
     let pet_prices: DashMap<String, AvgSum> = DashMap::new();
-    let bin_prices: DashMap<String, i64> = DashMap::new();
+    let bin_prices: DashMap<String, f64> = DashMap::new();
     let under_bin_prices: DashMap<String, Value> = DashMap::new();
     let avg_ah_prices: Mutex<Vec<AvgAh>> = Mutex::new(Vec::new());
     let avg_bin_prices: Mutex<Vec<AvgAh>> = Mutex::new(Vec::new());
-    let past_bin_prices: DashMap<String, i64> = serde_json::from_str(
+    let past_bin_prices: DashMap<String, f64> = serde_json::from_str(
         &fs::read_to_string("lowestbin.json").unwrap_or_else(|_| String::from("{}")),
     )
     .unwrap();
@@ -236,9 +236,9 @@ async fn process_auction_page(
     page_number: i64,
     inserted_uuids: &DashSet<String>,
     query_prices: &Mutex<Vec<QueryDatabaseItem>>,
-    bin_prices: &DashMap<String, i64>,
+    bin_prices: &DashMap<String, f64>,
     under_bin_prices: &DashMap<String, Value>,
-    past_bin_prices: &DashMap<String, i64>,
+    past_bin_prices: &DashMap<String, f64>,
     update_query: bool,
     update_lowestbin: bool,
     update_underbin: bool,
@@ -282,9 +282,9 @@ fn parse_auctions(
     auctions: Vec<Auction>,
     inserted_uuids: &DashSet<String>,
     query_prices: &Mutex<Vec<QueryDatabaseItem>>,
-    bin_prices: &DashMap<String, i64>,
+    bin_prices: &DashMap<String, f64>,
     under_bin_prices: &DashMap<String, Value>,
-    past_bin_prices: &DashMap<String, i64>,
+    past_bin_prices: &DashMap<String, f64>,
     update_query: bool,
     update_lowestbin: bool,
     update_underbin: bool,
@@ -335,14 +335,14 @@ fn parse_auctions(
             }
 
             if auction.bin && update_lowestbin {
-                let mut lowestbin_price = auction.starting_bid;
+                let mut lowestbin_price = auction.starting_bid as f64 / nbt.count as f64;
                 if item_id == "ATTRIBUTE_SHARD" {
                     if let Some(attributes) = &nbt.tag.extra_attributes.attributes {
                         if attributes.len() == 1 {
                             for entry in attributes {
                                 internal_id =
                                     format!("ATTRIBUTE_SHARD_{}", entry.key().to_uppercase());
-                                lowestbin_price /= 2_i64.pow((entry.value() - 1) as u32);
+                                lowestbin_price /= 2_i64.pow((entry.value() - 1) as u32) as f64;
                             }
                         }
                     }
@@ -365,9 +365,9 @@ fn parse_auctions(
                     && !auction.item_name.contains("Minion Skin")
                 {
                     if let Some(past_bin_price) = past_bin_prices.get(&internal_id) {
-                        let profit =
-                            calculate_with_taxes(*past_bin_price.value()) - auction.starting_bid;
-                        if profit > 1000000 {
+                        let profit = calculate_with_taxes(*past_bin_price.value())
+                            - auction.starting_bid as f64;
+                        if profit > 1000000.0 {
                             under_bin_prices.insert(
                                 auction.uuid.clone(),
                                 json!({
@@ -410,6 +410,7 @@ fn parse_auctions(
                     enchants,
                     bin: auction.bin,
                     bids,
+                    count: nbt.count,
                 });
             }
         }
@@ -534,29 +535,27 @@ async fn parse_ended_auctions(
                 // If the map already has this id, then add to the existing elements, otherwise create a new entry
                 if update_average_bin && auction.bin {
                     if avg_bin_map.contains_key(&id) {
-                        avg_bin_map.alter(&id, |_, value| {
-                            value.add_multiple(auction.price, nbt.count as i32)
-                        });
+                        avg_bin_map
+                            .alter(&id, |_, value| value.add_multiple(auction.price, nbt.count));
                     } else {
                         avg_bin_map.insert(
                             id,
                             AvgSum {
                                 sum: auction.price,
-                                count: nbt.count as i32,
+                                count: nbt.count,
                             },
                         );
                     }
                 } else if update_average_auction && !auction.bin {
                     if avg_ah_map.contains_key(&id) {
-                        avg_ah_map.alter(&id, |_, value| {
-                            value.add_multiple(auction.price, nbt.count as i32)
-                        });
+                        avg_ah_map
+                            .alter(&id, |_, value| value.add_multiple(auction.price, nbt.count));
                     } else {
                         avg_ah_map.insert(
                             id,
                             AvgSum {
                                 sum: auction.price,
-                                count: nbt.count as i32,
+                                count: nbt.count,
                             },
                         );
                     }

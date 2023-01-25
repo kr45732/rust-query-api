@@ -34,6 +34,7 @@ pub struct QueryDatabaseItem {
     pub enchants: Vec<String>,
     pub bin: bool,
     pub bids: Vec<Bid>,
+    pub count: i32,
 }
 
 impl From<Row> for QueryDatabaseItem {
@@ -49,6 +50,7 @@ impl From<Row> for QueryDatabaseItem {
             enchants: row.get("enchants"),
             bin: row.get("bin"),
             bids: row.get("bids"),
+            count: row.get("count"),
         }
     }
 }
@@ -160,7 +162,7 @@ pub struct PartialNbt {
 #[derive(Deserialize)]
 pub struct PartialNbtElement {
     #[serde(rename = "Count")]
-    pub count: i64,
+    pub count: i32,
     pub tag: PartialTag,
 }
 

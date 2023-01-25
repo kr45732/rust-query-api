@@ -161,11 +161,11 @@ pub fn parse_nbt(data: &str) -> Option<PartialNbt> {
         .and_then(|bytes| nbt::from_gzip_reader::<_, PartialNbt>(std::io::Cursor::new(bytes)).ok())
 }
 
-pub fn calculate_with_taxes(price: i64) -> i64 {
+pub fn calculate_with_taxes(price: f64) -> f64 {
     let price_float = price as f64;
-    let tax_rate = if price >= 1000000 { 0.98 } else { 0.99 };
+    let tax_rate = if price >= 1000000.0 { 0.98 } else { 0.99 };
 
-    (price_float * tax_rate) as i64
+    price_float * tax_rate
 }
 
 pub fn valid_api_key(config: Arc<Config>, key: String, admin_only: bool) -> bool {
@@ -178,7 +178,7 @@ pub fn valid_api_key(config: Arc<Config>, key: String, admin_only: bool) -> bool
     config.api_key.is_empty() || (key == config.api_key)
 }
 
-pub fn update_lower_else_insert(id: &String, starting_bid: i64, prices: &DashMap<String, i64>) {
+pub fn update_lower_else_insert(id: &String, starting_bid: f64, prices: &DashMap<String, f64>) {
     if let Some(mut ele) = prices.get_mut(id) {
         if starting_bid < *ele {
             *ele = starting_bid;
@@ -211,6 +211,7 @@ pub async fn update_query_database(
             Type::TEXT_ARRAY,
             Type::BOOL,
             BID_ARRAY.lock().await.to_owned().unwrap(),
+            Type::INT4,
         ],
     );
 
@@ -229,6 +230,7 @@ pub async fn update_query_database(
             &m.enchants,
             &m.bin,
             &m.bids,
+            &m.count,
         ];
 
         copy_writer.as_mut().write(&row).await?;
@@ -341,7 +343,7 @@ pub async fn update_avg_bin_database(
         .await
 }
 
-pub async fn update_bins_local(bin_prices: &DashMap<String, i64>) -> Result<(), serde_json::Error> {
+pub async fn update_bins_local(bin_prices: &DashMap<String, f64>) -> Result<(), serde_json::Error> {
     let file = OpenOptions::new()
         .create(true)
         .write(true)
