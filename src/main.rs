@@ -133,7 +133,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             starting_bid BIGINT,
                             enchants TEXT[],
                             bin BOOLEAN,
-                            bids bid[]
+                            bids bid[],
+                            count INTEGER
                         )",
                 )
                 .await;
