@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 # Runtime
-tokio = { version = "1.24.2", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.25.0", features = ["macros", "rt-multi-thread"] }
 
 # Serde
 serde = { version = "1.0.152", features = ["derive"] }
