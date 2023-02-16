@@ -27,6 +27,16 @@
 - `time` - unix timestamp, in milliseconds, for how far back the average auction prices should be calculated. The most is 5 days back
 - `step` - how the auction sales should be averaged. For example, 1 would average it by minute, 60 would average it by hour, 1440 would average it by day, and so on
 
+## Average bins
+- `key` - key to access the API
+- `time` - unix timestamp, in milliseconds, for how far back the average bin prices should be calculated. The most is 5 days back
+- `step` - how the bin sales should be averaged. For example, 1 would average it by minute, 60 would average it by hour, 1440 would average it by day, and so on
+
+## Average auctions & bins
+- `key` - key to access the API
+- `time` - unix timestamp, in milliseconds, for how far back the average auction and bin prices should be calculated. The most is 5 days back
+- `step` - how the auction & bin sales should be averaged. For example, 1 would average it by minute, 60 would average it by hour, 1440 would average it by day, and so on
+
 # Examples
 ### [example_1.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_1.json)
 - Request: /query?key=KEY&bin=true&item_id=POWER_WITHER_CHESTPLATE&tier=MYTHIC&item_name=%✪✪✪✪✪%&sort=ASC&limit=50

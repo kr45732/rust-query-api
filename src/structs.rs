@@ -30,7 +30,9 @@ pub struct QueryDatabaseItem {
     pub item_name: String,
     pub tier: String,
     pub item_id: String,
+    pub internal_id: String,
     pub starting_bid: i64,
+    pub lowestbin_price: f64,
     pub enchants: Vec<String>,
     pub bin: bool,
     pub bids: Vec<Bid>,
@@ -46,7 +48,9 @@ impl From<Row> for QueryDatabaseItem {
             item_name: row.get("item_name"),
             tier: row.get("tier"),
             item_id: row.get("item_id"),
+            internal_id: row.get("internal_id"),
             starting_bid: row.get("starting_bid"),
+            lowestbin_price: row.get("lowestbin_price"),
             enchants: row.get("enchants"),
             bin: row.get("bin"),
             bids: row.get("bids"),
@@ -218,6 +222,7 @@ pub struct Auction {
     pub item_bytes: String,
     pub bin: bool,
     pub bids: Vec<Bid>,
+    pub last_updated: i64,
 }
 
 #[derive(Deserialize)]
@@ -230,4 +235,5 @@ pub struct EndedAuction {
     pub price: i64,
     pub bin: bool,
     pub item_bytes: String,
+    pub auction_id: String,
 }

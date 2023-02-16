@@ -33,6 +33,8 @@ pub async fn update_auctions(config: Arc<Config>) {
 
     let started = Instant::now();
     let started_epoch = get_timestamp_millis() as i64;
+    let last_updated = *LAST_UPDATED.lock().await;
+    let is_first_update = last_updated == 0;
     *IS_UPDATING.lock().await = true;
 
     // Stores all auction uuids in auctions vector to prevent duplicates
@@ -47,6 +49,7 @@ pub async fn update_auctions(config: Arc<Config>) {
         &fs::read_to_string("lowestbin.json").unwrap_or_else(|_| String::from("{}")),
     )
     .unwrap();
+    let ended_auction_uuids: DashSet<String> = DashSet::new();
 
     // Get which APIs to update
     let update_query = config.is_enabled(Feature::Query);
@@ -72,7 +75,7 @@ pub async fn update_auctions(config: Arc<Config>) {
 
         let json = json_opt.unwrap();
         // Parse the first page's auctions and append them to the prices
-        parse_auctions(
+        let finished = parse_auctions(
             json.auctions,
             &inserted_uuids,
             &query_prices,
@@ -82,13 +85,32 @@ pub async fn update_auctions(config: Arc<Config>) {
             update_query,
             update_lowestbin,
             update_underbin,
+            last_updated,
         );
 
-        debug!("Sending {} async requests", json.total_pages);
-        // Skip page zero since it's already been parsed
-        for page_number in 1..json.total_pages {
-            futures.push(
-                process_auction_page(
+        if is_first_update {
+            debug!("Sending {} async requests", json.total_pages);
+            // Skip page zero since it's already been parsed
+            for page_number in 1..json.total_pages {
+                futures.push(
+                    process_auction_page(
+                        page_number,
+                        &inserted_uuids,
+                        &query_prices,
+                        &bin_prices,
+                        &under_bin_prices,
+                        &past_bin_prices,
+                        update_query,
+                        update_lowestbin,
+                        update_underbin,
+                        last_updated,
+                    )
+                    .boxed(),
+                );
+            }
+        } else if !finished {
+            for page_number in 1..json.total_pages {
+                if process_auction_page(
                     page_number,
                     &inserted_uuids,
                     &query_prices,
@@ -98,14 +120,18 @@ pub async fn update_auctions(config: Arc<Config>) {
                     update_query,
                     update_lowestbin,
                     update_underbin,
+                    last_updated,
                 )
-                .boxed(),
-            );
+                .await
+                {
+                    break;
+                }
+            }
         }
     }
 
     // Update average auctions if the feature is enabled
-    if update_average_auction || update_average_bin || update_pets {
+    if update_average_auction || update_average_bin || update_pets || !is_first_update {
         futures.push(
             parse_ended_auctions(
                 &avg_ah_prices,
@@ -114,6 +140,8 @@ pub async fn update_auctions(config: Arc<Config>) {
                 update_average_auction,
                 update_average_bin,
                 update_pets,
+                &ended_auction_uuids,
+                !is_first_update,
             )
             .boxed(),
         );
@@ -129,42 +157,49 @@ pub async fn update_auctions(config: Arc<Config>) {
     let mut ok_logs = String::new();
     let mut err_logs = String::new();
 
-    if update_lowestbin {
-        let bins_started = Instant::now();
-        let _ = match update_bins_local(&bin_prices).await {
-            Ok(_) => write!(
-                ok_logs,
-                "Successfully updated bins file in {}ms",
-                bins_started.elapsed().as_millis()
-            ),
-            Err(e) => write!(err_logs, "Error updating bins file: {}", e),
-        };
-
-        if update_underbin {
-            let under_bins_started = Instant::now();
-            let _ = match update_under_bins_local(&under_bin_prices).await {
-                Ok(_) => write!(
-                    ok_logs,
-                    "\nSuccessfully updated under bins file in {}ms",
-                    under_bins_started.elapsed().as_millis()
-                ),
-                Err(e) => write!(err_logs, "\nError updating under bins file: {}", e),
-            };
-        }
-    }
-
     if update_query {
         let query_started = Instant::now();
-        update_query_items_local(&query_prices).await;
-        let _ = match update_query_database(query_prices).await {
+        let _ = match update_query_database(
+            query_prices,
+            ended_auction_uuids,
+            is_first_update,
+            &bin_prices,
+            update_lowestbin,
+        )
+        .await
+        {
             Ok(rows) => write!(
                 ok_logs,
-                "\nSuccessfully inserted {} query auctions into database in {}ms",
+                "Successfully inserted {} query auctions into database in {}ms",
                 rows,
                 query_started.elapsed().as_millis()
             ),
-            Err(e) => write!(err_logs, "\nError inserting query into database: {}", e),
+            Err(e) => write!(err_logs, "Error inserting query into database: {}", e),
         };
+
+        if update_lowestbin {
+            let bins_started = Instant::now();
+            let _ = match update_bins_local(&bin_prices).await {
+                Ok(_) => write!(
+                    ok_logs,
+                    "\nSuccessfully updated bins file in {}ms",
+                    bins_started.elapsed().as_millis()
+                ),
+                Err(e) => write!(err_logs, "\nError updating bins file: {}", e),
+            };
+
+            if update_underbin {
+                let under_bins_started = Instant::now();
+                let _ = match update_under_bins_local(&under_bin_prices).await {
+                    Ok(_) => write!(
+                        ok_logs,
+                        "\nSuccessfully updated under bins file in {}ms",
+                        under_bins_started.elapsed().as_millis()
+                    ),
+                    Err(e) => write!(err_logs, "\nError updating under bins file: {}", e),
+                };
+            }
+        }
     }
 
     if update_pets {
@@ -213,11 +248,14 @@ pub async fn update_auctions(config: Arc<Config>) {
     }
 
     if !ok_logs.is_empty() {
-        info_mention(ok_logs, config.super_secret_config_option);
+        info_mention(
+            ok_logs.trim().to_string(),
+            config.super_secret_config_option,
+        );
     }
 
     if !err_logs.is_empty() {
-        error(err_logs);
+        error(err_logs.trim().to_string());
     }
 
     info(format!(
@@ -242,7 +280,8 @@ async fn process_auction_page(
     update_query: bool,
     update_lowestbin: bool,
     update_underbin: bool,
-) {
+    last_updated: i64,
+) -> bool {
     let before_page_request = Instant::now();
     // Get the page from the Hypixel API
     if let Some(page_request) = get_auction_page(page_number).await {
@@ -254,7 +293,7 @@ async fn process_auction_page(
 
         // Parse the auctions and append them to the prices
         let before_page_parse = Instant::now();
-        parse_auctions(
+        let is_finished = parse_auctions(
             page_request.auctions,
             inserted_uuids,
             query_prices,
@@ -264,6 +303,7 @@ async fn process_auction_page(
             update_query,
             update_lowestbin,
             update_underbin,
+            last_updated,
         );
         debug!(
             "Parsing time: {}ms",
@@ -274,7 +314,11 @@ async fn process_auction_page(
             "Total time: {}ms",
             before_page_request.elapsed().as_millis()
         );
+
+        return is_finished;
     }
+
+    false
 }
 
 /* Parses a page of auctions and updates query, lowestbin, and underbin */
@@ -288,8 +332,15 @@ fn parse_auctions(
     update_query: bool,
     update_lowestbin: bool,
     update_underbin: bool,
-) {
+    last_updated: i64,
+) -> bool {
+    let is_first_update = last_updated == 0;
+
     for auction in auctions {
+        if !is_first_update && last_updated >= auction.last_updated {
+            return true;
+        }
+
         // Prevent duplicate auctions (returns false if already exists)
         if inserted_uuids.insert(auction.uuid.to_string()) {
             let mut tier = auction.tier;
@@ -297,6 +348,7 @@ fn parse_auctions(
             let nbt = &parse_nbt(&auction.item_bytes).unwrap().i[0];
             let item_id = nbt.tag.extra_attributes.id.to_owned();
             let mut internal_id = item_id.to_owned();
+            let mut lowestbin_price = auction.starting_bid as f64 / nbt.count as f64;
 
             let mut enchants = Vec::new();
             if update_query && nbt.tag.extra_attributes.enchantments.is_some() {
@@ -335,13 +387,11 @@ fn parse_auctions(
             }
 
             if auction.bin && update_lowestbin {
-                let mut lowestbin_price = auction.starting_bid as f64 / nbt.count as f64;
                 if item_id == "ATTRIBUTE_SHARD" {
                     if let Some(attributes) = &nbt.tag.extra_attributes.attributes {
                         if attributes.len() == 1 {
                             for entry in attributes {
-                                internal_id =
-                                    format!("ATTRIBUTE_SHARD_{}", entry.key().to_uppercase());
+                                internal_id = format!("{}_{}", item_id, entry.key().to_uppercase());
                                 lowestbin_price /= 2_i64.pow((entry.value() - 1) as u32) as f64;
                             }
                         }
@@ -356,7 +406,9 @@ fn parse_auctions(
                     }
                 }
 
-                update_lower_else_insert(&internal_id, lowestbin_price, bin_prices);
+                if is_first_update {
+                    update_lower_else_insert(&internal_id, lowestbin_price, bin_prices);
+                }
 
                 if update_underbin
                     && item_id != "PET" // TODO: Improve under bins
@@ -406,7 +458,9 @@ fn parse_auctions(
                     } else {
                         auction.highest_bid_amount
                     },
+                    lowestbin_price,
                     item_id,
+                    internal_id,
                     enchants,
                     bin: auction.bin,
                     bids,
@@ -415,6 +469,8 @@ fn parse_auctions(
             }
         }
     }
+
+    false
 }
 
 /* Parse ended auctions into Vec<AvgAh> */
@@ -425,13 +481,19 @@ async fn parse_ended_auctions(
     update_average_auction: bool,
     update_average_bin: bool,
     update_pets: bool,
-) {
+    ended_auction_uuids: &DashSet<String>,
+    update_ended_auction_uuids: bool,
+) -> bool {
     match get_ended_auctions().await {
         Some(page_request) => {
             let avg_ah_map: DashMap<String, AvgSum> = DashMap::new();
             let avg_bin_map: DashMap<String, AvgSum> = DashMap::new();
 
             for mut auction in page_request.auctions {
+                if update_ended_auction_uuids {
+                    ended_auction_uuids.insert(auction.auction_id);
+                }
+
                 // Always update if pets is enabled, otherwise check if only auction or bin are enabled
                 if !update_pets && !(update_average_auction && update_average_bin) {
                     // Only update avg ah is enabled but is bin or only update avg bin is enabled but isn't bin
@@ -584,6 +646,8 @@ async fn parse_ended_auctions(
             error(String::from("Failed to fetch ended auctions"));
         }
     }
+
+    true
 }
 
 /* Gets an auction page from the Hypixel API */
