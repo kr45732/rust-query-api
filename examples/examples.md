@@ -5,6 +5,7 @@
 - `item_name` - filter auctions whose names contain this string
 - `tier` - filter auctions by tier
 - `item_id` - filter auctions by id
+- `internal_id` - filter auctions by internal id
 - `enchants` - an enchant the auction should have
 - `end` - filter auctions whose end time is after this (epoch timestamp in milliseconds)
 - `bin` - filter if the auction should be a bin (true) or regular auction (false) or both (do not provide parameter)
@@ -14,28 +15,31 @@
 
 ## Pets
 - `key` - key to access the API
-- `query` - list of pet names seperated with a comma. Each pet name is formated as: [LVL_#]_NAME_TIER. For tier boosted pets, append _TB
+- `query` - comma seperated list of pet names. Each pet name is formated as: [LVL_#]_NAME_TIER. For tier boosted pets, append _TB
 
-## Lowest bin
+## Lowest Bin
 - `key` - key to access the API
 
-## Under bin
+## Under Bin
 - `key` - key to access the API
 
-## Average auctions
+## Average Auctions
 - `key` - key to access the API
 - `time` - unix timestamp, in milliseconds, for how far back the average auction prices should be calculated. The most is 5 days back
 - `step` - how the auction sales should be averaged. For example, 1 would average it by minute, 60 would average it by hour, 1440 would average it by day, and so on
 
-## Average bins
+## Average Bins
 - `key` - key to access the API
 - `time` - unix timestamp, in milliseconds, for how far back the average bin prices should be calculated. The most is 5 days back
 - `step` - how the bin sales should be averaged. For example, 1 would average it by minute, 60 would average it by hour, 1440 would average it by day, and so on
 
-## Average auctions & bins
+## Average Auctions & Bins
 - `key` - key to access the API
-- `time` - unix timestamp, in milliseconds, for how far back the average auction and bin prices should be calculated. The most is 5 days back
+- `time` - unix timestamp, in milliseconds, for how far back the average auction & bin prices should be calculated. The most is 5 days back
 - `step` - how the auction & bin sales should be averaged. For example, 1 would average it by minute, 60 would average it by hour, 1440 would average it by day, and so on
+
+## Query Items
+- `key` - key to access the API
 
 # Examples
 ### [example_1.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_1.json)
@@ -65,3 +69,7 @@
 ### [example_7.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_7.json)
 - Request /average?key=KEY&time=1647830293999&step=60
 - Meaning: get the combined average auctions and average bins from the unix timestamp 1647830293999 to the present. Average sales by hour
+
+### [example_8.json](https://github.com/kr45732/rust-query-api/blob/main/examples/example_8.json)
+- Request /query_items?key=KEY
+- Meaning: get a list of all current unique auction names

@@ -1,882 +1,978 @@
 [
     {
-        "uuid": "c99be680d8214ece94d90081bbbae00b",
-        "auctioneer": "e8331a09152149d5b59be996aea18813",
-        "end_t": 1666317760923,
+        "uuid": "020049b2c05e4057ba2d94b7d5db49f1",
+        "auctioneer": "406f238066b34f51aae4a14d55b9e6cd",
+        "end_t": 1676612031422,
         "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
         "tier": "MYTHIC",
         "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 31000000,
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 27800000,
         "enchants": [
-            "GROWTH;5",
-            "PROTECTION;5",
-            "THORNS;3"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "0cc09259c5e8447c9c7ee6b589105a47",
-        "auctioneer": "79b1cfedfdaa4e409fc3fd17cf99db2b",
-        "end_t": 1666316517608,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 31800000,
-        "enchants": [
-            "GROWTH;5",
-            "PROTECTION;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "f86b797c0f524b1ba40f07caf8dfa581",
-        "auctioneer": "c035bd408f5a45a2b1ea21cb79d1faf1",
-        "end_t": 1666314948271,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 32000000,
-        "enchants": [
-            "GROWTH;5",
-            "PROTECTION;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "996b4c9593b54fb9a0dd7a2119ff8a62",
-        "auctioneer": "ce9ef44d6bb44014b25ddb132e8cbc7c",
-        "end_t": 1666317786212,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 32000000,
-        "enchants": [
-            "THORNS;3",
-            "GROWTH;5",
-            "REJUVENATE;5",
-            "PROTECTION;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "b265a0aa051a4504aeae80ba8057c221",
-        "auctioneer": "65705943b9764503b821fc233a03eb3a",
-        "end_t": 1666314931434,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 32000000,
-        "enchants": [
-            "REJUVENATE;5",
-            "GROWTH;5",
-            "PROTECTION;5",
-            "THORNS;3"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "d94f03176a424d7eb02f46833da60a43",
-        "auctioneer": "446e8c193bd24387807062ed42211788",
-        "end_t": 1666312185876,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 32199999,
-        "enchants": [
-            "GROWTH;5",
-            "PROTECTION;5",
-            "REJUVENATE;5",
-            "ULTIMATE_LAST_STAND;2"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "0d03c9c54b684f02a57dd46d8c05dd73",
-        "auctioneer": "7d241396d1e74bf6b9c0bc592fc4d62e",
-        "end_t": 1666463309137,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 32200000,
-        "enchants": [
-            "PROTECTION;5",
-            "THORNS;3",
-            "GROWTH;5",
-            "REJUVENATE;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "efaa46cb64274bedaa4b5f82472edcd4",
-        "auctioneer": "e007ef0b6bdf4d6f8f008a1bc57bf6ee",
-        "end_t": 1666444794213,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 32200000,
-        "enchants": [
-            "ULTIMATE_LAST_STAND;1",
-            "REJUVENATE;5",
-            "GROWTH;5",
-            "PROTECTION;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "e856033a483b415ba0e8666c25b93377",
-        "auctioneer": "90ea810dffaf41ecbd2b902f495ed4ff",
-        "end_t": 1666461504199,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 32999999,
-        "enchants": [
-            "REJUVENATE;5",
-            "GROWTH;5",
-            "PROTECTION;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "ce55ebe15888465fad4a96b04470333e",
-        "auctioneer": "6b559a0cc45c423ca8984bb6606280fd",
-        "end_t": 1667485751602,
-        "item_name": "Fierce Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 33000000,
-        "enchants": [
-            "PROTECTION;5",
-            "GROWTH;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "7c13392a44fe4b2bad18375dd4300532",
-        "auctioneer": "2e8ffa00c0b440c7834cf6e565aded90",
-        "end_t": 1666458788350,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 33250000,
-        "enchants": [
-            "ULTIMATE_WISDOM;2",
-            "GROWTH;5",
-            "STRONG_MANA;5",
             "REJUVENATE;2",
-            "THORNS;3",
-            "PROTECTION;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "b1c0c3a7d6714849b24686bb349dd676",
-        "auctioneer": "503f4f2626d346048bf73feb11888e97",
-        "end_t": 1667488304105,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 33500000,
-        "enchants": [
-            "TRUE_PROTECTION;1",
-            "PROTECTION;5",
-            "GROWTH;5",
-            "REJUVENATE;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "489b22819dee483f9b812d7a84adc632",
-        "auctioneer": "c692511cbcc243f8ad50f401150eb5d9",
-        "end_t": 1666463487320,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 34199999,
-        "enchants": [
-            "PROTECTION;5",
-            "REJUVENATE;5",
-            "GROWTH;5",
-            "ULTIMATE_WISDOM;3",
-            "TRUE_PROTECTION;1"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "00183e062f7348cb845d8c45d4a02dc2",
-        "auctioneer": "665fbb38b6d242eb8a06c2e0c3ab98a7",
-        "end_t": 1667472717507,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 34200000,
-        "enchants": [
-            "GROWTH;5",
-            "REJUVENATE;5",
-            "ULTIMATE_WISDOM;3",
-            "PROTECTION;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "9ef0c5ea25f04d14aa4b2eb85a1eb21b",
-        "auctioneer": "5c422ede681045d39895109fda220505",
-        "end_t": 1667497144811,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 34650000,
-        "enchants": [
-            "GROWTH;5",
-            "REJUVENATE;5",
-            "PROTECTION;5",
-            "ULTIMATE_WISDOM;2",
-            "THORNS;3"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "511fd8c38cde4bb2871e79484b0f2a4d",
-        "auctioneer": "9748113f2e4c4e27817acdb468e26f91",
-        "end_t": 1666315962054,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 34999900,
-        "enchants": [
-            "ULTIMATE_LAST_STAND;3",
-            "REJUVENATE;5",
             "GROWTH;5",
             "THORNS;3",
             "PROTECTION;5"
         ],
         "bin": true,
-        "bids": []
+        "bids": [],
+        "count": 1
     },
     {
-        "uuid": "eec943eb611e485c8f4c533c3e501ce3",
-        "auctioneer": "88ecb730486647418dc9868a3536ef94",
-        "end_t": 1666391311743,
+        "uuid": "552ffa844cef4768a4593d7deff3b585",
+        "auctioneer": "a0bb975c4f5f4e0dba56e72c81506a5b",
+        "end_t": 1676762805497,
         "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
         "tier": "MYTHIC",
         "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 35000000,
-        "enchants": [
-            "ULTIMATE_WISDOM;4",
-            "PROTECTION;5",
-            "REJUVENATE;5",
-            "GROWTH;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "80e9e71dfb354aab8e013017b088a834",
-        "auctioneer": "831e0c970ec0424e8cb4e942d2ddee97",
-        "end_t": 1666318046014,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 35000000,
-        "enchants": [
-            "REJUVENATE;5",
-            "GROWTH;5",
-            "PROTECTION;5",
-            "THORNS;3",
-            "ULTIMATE_LEGION;2"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "4f9446304ccd4faeac85ef3512965369",
-        "auctioneer": "0d9ddb83bd7149739f399d0a850a75f8",
-        "end_t": 1666466435535,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 35000000,
-        "enchants": [
-            "THORNS;3",
-            "PROTECTION;5",
-            "GROWTH;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "dd2014b940cf49658b4d585c09e9527c",
-        "auctioneer": "1a198e5437f34b7aab7d09aca9eeaa5b",
-        "end_t": 1666315590218,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 35000000,
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 28000000,
         "enchants": [
             "PROTECTION;5",
-            "ULTIMATE_LAST_STAND;4",
-            "FEROCIOUS_MANA;3",
-            "REJUVENATE;5",
-            "GROWTH;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "5922b67b9bae4582b19fd661130f5f1c",
-        "auctioneer": "f5081525bcc649f08f15f70f61a47a90",
-        "end_t": 1666389424928,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 35000000,
-        "enchants": [
-            "THORNS;3",
-            "GROWTH;5",
-            "PROTECTION;5",
-            "REJUVENATE;5",
-            "STRONG_MANA;1"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "b538f54b12f14e1db85ee7d631697d78",
-        "auctioneer": "55fc7550ecfb4e1e9471a2b707032512",
-        "end_t": 1666427445723,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 35500000,
-        "enchants": [
-            "GROWTH;5",
-            "PROTECTION;5",
-            "ULTIMATE_LEGION;2",
-            "THORNS;3",
-            "REJUVENATE;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "527510d023534a12a40d05ccfc2a18ab",
-        "auctioneer": "9706912d7d424afd974fff841184e01e",
-        "end_t": 1666462868227,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 35990000,
-        "enchants": [
-            "GROWTH;5",
-            "ULTIMATE_LEGION;3",
-            "REJUVENATE;5",
-            "TRUE_PROTECTION;1",
-            "PROTECTION;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "7110e406b3d04218be438c055771c7c5",
-        "auctioneer": "155036f3934d4a80886b1951981cfff7",
-        "end_t": 1666465685883,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 35990000,
-        "enchants": [
             "GROWTH;5",
             "THORNS;3",
-            "PROTECTION;5",
-            "REJUVENATE;5",
-            "TRUE_PROTECTION;1"
+            "ULTIMATE_BANK;5"
         ],
         "bin": true,
-        "bids": []
+        "bids": [],
+        "count": 1
     },
     {
-        "uuid": "715317b09bb7478e843aee07863cd18b",
-        "auctioneer": "12e19302ee304b62ba1f55da3eb600fe",
-        "end_t": 1666400571391,
+        "uuid": "2b05d5087d154427a9eb1763ae4a9e22",
+        "auctioneer": "3463aacbe2d442f3b8f3780b6992ff5a",
+        "end_t": 1676758159944,
         "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
         "tier": "MYTHIC",
         "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 35999999,
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 28000000,
         "enchants": [
-            "THORNS;3",
-            "GROWTH;5",
-            "REJUVENATE;5",
-            "PROTECTION;5",
             "ULTIMATE_LAST_STAND;3"
         ],
         "bin": true,
-        "bids": []
+        "bids": [],
+        "count": 1
     },
     {
-        "uuid": "687252004f744338b4feab4fce13b856",
-        "auctioneer": "282096b56e6040c080ffc34d24c625aa",
-        "end_t": 1666356832914,
+        "uuid": "816ec19a61cc4626aef7f8902e5965de",
+        "auctioneer": "30d2caa93ef54916866c41d8e193a678",
+        "end_t": 1676608779673,
         "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
         "tier": "MYTHIC",
         "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 36000000,
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 28200000,
         "enchants": [
-            "REJUVENATE;5",
-            "GROWTH;5",
-            "ULTIMATE_LAST_STAND;5",
-            "PROTECTION;5",
-            "THORNS;3"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "574e035853c14700b0899ffa1acac209",
-        "auctioneer": "797bb5a4e669478d97909901a8b0bd74",
-        "end_t": 1666463111217,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 36000000,
-        "enchants": [
-            "THORNS;3",
             "REJUVENATE;5",
             "GROWTH;5",
             "PROTECTION;5"
         ],
         "bin": true,
-        "bids": []
+        "bids": [],
+        "count": 1
     },
     {
-        "uuid": "4dc73e6089f34eb78dfaa6db86f04222",
-        "auctioneer": "94a94459ec904ae3a36921740a7a68ae",
-        "end_t": 1666386733993,
+        "uuid": "fd2d874318d0481781501a60a9b95f5b",
+        "auctioneer": "3658d9ec67a847c4b8ab599ace191c2b",
+        "end_t": 1676759827415,
         "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
         "tier": "MYTHIC",
         "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 36000000,
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 28400000,
         "enchants": [
+            "TRUE_PROTECTION;1",
+            "GROWTH;5",
+            "THORNS;3",
+            "REJUVENATE;5",
+            "PROTECTION;5",
+            "ULTIMATE_WISDOM;2"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "a52b9d58bd6c4fbbb1cca19cefa6f866",
+        "auctioneer": "51b3a8d4e5f44111af0c23267ae49d80",
+        "end_t": 1676759565760,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 28500000,
+        "enchants": [
+            "REJUVENATE;5",
+            "GROWTH;5",
+            "ULTIMATE_LAST_STAND;4",
+            "PROTECTION;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "9f772ad5666a4981aff883d693b7b9fe",
+        "auctioneer": "9fe8af30ad944b2585702a0b2df254c9",
+        "end_t": 1676628923082,
+        "item_name": "Giant Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 28598898,
+        "enchants": [
+            "REJUVENATE;5",
+            "THORNS;3",
+            "PROTECTION;5",
+            "ULTIMATE_LAST_STAND;2",
+            "GROWTH;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "a1450e942c0643d49451c38748c3e515",
+        "auctioneer": "3deb716470ed4e2099554dc49845f234",
+        "end_t": 1676734248297,
+        "item_name": "Giant Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 28731373,
+        "enchants": [
+            "REJUVENATE;5",
+            "THORNS;3",
+            "PROTECTION;5",
+            "GROWTH;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "7b313ae273aa489f942b5ed03a979d78",
+        "auctioneer": "d7f0e75c86714ae48379310d8770f19a",
+        "end_t": 1676750338656,
+        "item_name": "Loving Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 29000000,
+        "enchants": [
+            "GROWTH;5",
+            "MANA_VAMPIRE;1",
+            "THORNS;3",
+            "PROTECTION;5",
+            "REJUVENATE;5",
+            "ULTIMATE_LEGION;1"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "fdcdd01093c64f8c9caff010803bd432",
+        "auctioneer": "c54f115a8679447481a4e18a51f2c34e",
+        "end_t": 1676725303885,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 29490000,
+        "enchants": [
+            "GROWTH;5",
+            "PROTECTION;5",
+            "FEROCIOUS_MANA;1",
+            "THORNS;3",
+            "ULTIMATE_BANK;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "e972e4a249884efab241b8581f491fe6",
+        "auctioneer": "0424d1d8037f4999a7c57475731995fc",
+        "end_t": 1676715262941,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 29500000,
+        "enchants": [
+            "PROTECTION;5",
+            "REJUVENATE;5",
+            "THORNS;3",
+            "GROWTH;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "46f119be3f2948d8ac56a0cc86f33a5b",
+        "auctioneer": "4b44b1fe5068459b917abd9a8a863eee",
+        "end_t": 1676759218925,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 29900000,
+        "enchants": [
+            "PROTECTION;5",
+            "GROWTH;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "cde0cfb38c1f46b1b6791d98f6bdb3b2",
+        "auctioneer": "0bb1d0d5108c4a7c80f1eaffac63f698",
+        "end_t": 1676604162342,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 29900000,
+        "enchants": [
+            "REJUVENATE;5",
+            "PROTECTION;5",
+            "GROWTH;5",
+            "ULTIMATE_LAST_STAND;4",
+            "TRUE_PROTECTION;1"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "5c7a5c9795654f3cba6df654c5f0fc47",
+        "auctioneer": "935b362c94f04a54b8faea59fe1a2879",
+        "end_t": 1676752325876,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 30000000,
+        "enchants": [
+            "ULTIMATE_BANK;5",
             "PROTECTION;5",
             "GROWTH;5",
             "REJUVENATE;5",
             "THORNS;3"
         ],
         "bin": true,
-        "bids": []
+        "bids": [],
+        "count": 1
     },
     {
-        "uuid": "465badf6db74490e8a7c10941c02aae2",
-        "auctioneer": "a82e2478a78e4af0bd66cab509da6baa",
-        "end_t": 1666467818565,
+        "uuid": "b435078db0bc4a9ebe4fff39e1abcae7",
+        "auctioneer": "19d5bb0a348e4a6e84e69b376637863e",
+        "end_t": 1676599740372,
         "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
         "tier": "MYTHIC",
         "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 36250000,
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 30000000,
+        "enchants": [
+            "GROWTH;5",
+            "PROTECTION;5",
+            "ULTIMATE_WISDOM;1",
+            "REJUVENATE;4"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "f6741806a9804e1697688c2bb61b6156",
+        "auctioneer": "d36a0061bf294b22b698d18371d08620",
+        "end_t": 1677791022318,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 30000000,
+        "enchants": [
+            "GROWTH;5",
+            "TRUE_PROTECTION;1",
+            "ULTIMATE_LAST_STAND;3",
+            "REJUVENATE;5",
+            "PROTECTION;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "6d24ee7909b145dca746cdb5020ffb63",
+        "auctioneer": "be0789caa89344c189e77d79ce024086",
+        "end_t": 1677706242848,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 30000000,
         "enchants": [
             "TRUE_PROTECTION;1",
-            "ULTIMATE_WISDOM;5",
+            "GROWTH;5",
+            "REJUVENATE;5",
+            "PROTECTION;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "275463ab8b7d4711925693647128bf32",
+        "auctioneer": "f4c0a94b7ac14c169b237a0eefc83e79",
+        "end_t": 1676651469655,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 30000000,
+        "enchants": [
             "PROTECTION;5",
-            "FEROCIOUS_MANA;3",
+            "REJUVENATE;1",
+            "GROWTH;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "ae8da1d38ee14e66943d4a20f5eb9b99",
+        "auctioneer": "d80902bcbb3a4c2d846161dc5eed26d4",
+        "end_t": 1676705332050,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 30000000,
+        "enchants": [
+            "REJUVENATE;5",
+            "GROWTH;5",
             "THORNS;3",
+            "PROTECTION;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "0418f8a97a04475d866f7f6d5aa0c0bc",
+        "auctioneer": "58a22ca3f15a419e87913fe9b22de355",
+        "end_t": 1677773006469,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 30000000,
+        "enchants": [
+            "GROWTH;5",
+            "PROTECTION;5",
+            "REJUVENATE;5",
+            "ULTIMATE_WISDOM;4"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "0b28e5d0fb5447cb98e1d22ffa45fc17",
+        "auctioneer": "cd2a2d2e212e411593d3e4f945d3249c",
+        "end_t": 1676742618841,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 30000000,
+        "enchants": [
+            "PROTECTION;5",
+            "ULTIMATE_WISDOM;5",
             "GROWTH;5",
             "REJUVENATE;5"
         ],
         "bin": true,
-        "bids": []
+        "bids": [],
+        "count": 1
     },
     {
-        "uuid": "0fbd587528ab4e40bb617515f728a2d7",
-        "auctioneer": "55fc7550ecfb4e1e9471a2b707032512",
-        "end_t": 1666427559370,
-        "item_name": "Fierce Necron's Chestplate ✪✪✪✪✪",
+        "uuid": "687fc0dc8fc3401f80a4b21d1b0378a7",
+        "auctioneer": "aa26bd7786a941988faef4af9b45ca77",
+        "end_t": 1676667525705,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
         "tier": "MYTHIC",
         "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 36300000,
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 30000000,
         "enchants": [
-            "PROTECTION;6",
+            "PROTECTION;5",
+            "ULTIMATE_BANK;5",
             "THORNS;3",
-            "TRUE_PROTECTION;1",
+            "GROWTH;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "a05c3f2654c943ff909b27c9b6ad90f2",
+        "auctioneer": "a2eb391be5524def9190f0d65a849b82",
+        "end_t": 1676759529401,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 30400000,
+        "enchants": [
+            "ULTIMATE_LAST_STAND;5",
             "REJUVENATE;5",
             "GROWTH;5",
+            "THORNS;3",
+            "PROTECTION;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "8d48ead3504c403f8b5de1c3ad7d2c2c",
+        "auctioneer": "5473b43e6f8f450a8d1d24e306d7919e",
+        "end_t": 1676675046558,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 30500000,
+        "enchants": [
+            "GROWTH;5",
+            "ULTIMATE_WISDOM;5",
+            "REJUVENATE;5",
+            "PROTECTION;5",
+            "THORNS;3"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "d8124bb549b94397950754bf83ed50c0",
+        "auctioneer": "02e10bc979354b5f913ae37b42401e0e",
+        "end_t": 1676736095048,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 30777700,
+        "enchants": [
+            "FEROCIOUS_MANA;3",
+            "TRUE_PROTECTION;1",
+            "PROTECTION;5",
+            "REJUVENATE;5",
+            "GROWTH;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "d4b6effdb5a6416e80d52dfa6a308087",
+        "auctioneer": "2d5239d4cad244eca7411cabe5791c9c",
+        "end_t": 1676600616062,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 30850973,
+        "enchants": [
+            "GROWTH;5",
+            "ULTIMATE_LAST_STAND;4",
+            "PROTECTION;5",
+            "THORNS;3"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "f0b25ffad0f5453db2402147f05ba3c0",
+        "auctioneer": "a7f83b5803b34d5995c4e98db1226aac",
+        "end_t": 1676758520087,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 30999000,
+        "enchants": [
+            "GROWTH;5",
+            "REJUVENATE;5",
+            "PROTECTION;5",
+            "THORNS;3",
+            "ULTIMATE_WISDOM;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "1e623a3890394d23bd19ef77bba185be",
+        "auctioneer": "c9f1096ae7e84e26ba9ff5877b23a581",
+        "end_t": 1677195002935,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31000000,
+        "enchants": [
+            "REJUVENATE;5",
+            "GROWTH;5",
+            "ULTIMATE_LEGION;3",
+            "PROTECTION;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "9d6ad99cba76467a922248988a12d133",
+        "auctioneer": "8f331c1fe1ab455592a4f95dcf471c17",
+        "end_t": 1676760350487,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31000000,
+        "enchants": [
+            "TRUE_PROTECTION;1",
+            "PROTECTION;5",
+            "REJUVENATE;5",
+            "ULTIMATE_WISDOM;5",
+            "GROWTH;5",
+            "FEROCIOUS_MANA;2"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "8fed1d44517346d585102d8255b9c262",
+        "auctioneer": "9d84a14bc998476882af32073158fe79",
+        "end_t": 1676753368064,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31000000,
+        "enchants": [
+            "REJUVENATE;5",
+            "GROWTH;5",
+            "THORNS;3",
+            "ULTIMATE_WISDOM;5",
+            "PROTECTION;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "934ba21a4efd4cd0a063e054577cffe9",
+        "auctioneer": "34e8ac9671194cc594f0cf68b9c3966c",
+        "end_t": 1676754460127,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31000000,
+        "enchants": [
+            "PROTECTION;5",
+            "TRUE_PROTECTION;1",
+            "GROWTH;5",
+            "ULTIMATE_WISDOM;4",
+            "THORNS;3",
+            "REJUVENATE;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "99904778b44048e39179dd6212e0d9d9",
+        "auctioneer": "3463aacbe2d442f3b8f3780b6992ff5a",
+        "end_t": 1676755001924,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31000000,
+        "enchants": [
+            "GROWTH;5",
+            "ULTIMATE_WISDOM;5",
+            "REJUVENATE;5",
+            "THORNS;3",
+            "PROTECTION;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "d98de57f2e134ac8819787af266eb4ad",
+        "auctioneer": "21b34956cfd749b28df6df631c019c34",
+        "end_t": 1676610834690,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31000000,
+        "enchants": [
+            "REJUVENATE;5",
+            "PROTECTION;5",
+            "ULTIMATE_LAST_STAND;5",
+            "GROWTH;5",
+            "THORNS;3"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "3b4579cb1eb047babbd21fb0a4f091a0",
+        "auctioneer": "57e967f271c44016b5ad914863903574",
+        "end_t": 1676726742753,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31000000,
+        "enchants": [
+            "THORNS;3",
+            "GROWTH;5",
+            "PROTECTION;5",
+            "REJUVENATE;5",
             "ULTIMATE_LAST_STAND;5"
         ],
         "bin": true,
-        "bids": []
+        "bids": [],
+        "count": 1
     },
     {
-        "uuid": "e4d96c90e8e640d2bcfa9e086c390bd9",
-        "auctioneer": "c5790679c45b4fc59b58204d584a3fc8",
-        "end_t": 1666441312104,
+        "uuid": "f4e46444974a4d67a820eab4c1e7efd2",
+        "auctioneer": "010f92a9c2574ec79b7d5d079a358edc",
+        "end_t": 1676721968222,
         "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
         "tier": "MYTHIC",
         "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 36500000,
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31200000,
         "enchants": [
-            "ULTIMATE_LAST_STAND;5",
-            "GROWTH;5",
-            "REJUVENATE;5",
-            "PROTECTION;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "3a16fed4c261473dbabf1e264d4cbaa4",
-        "auctioneer": "797bb5a4e669478d97909901a8b0bd74",
-        "end_t": 1666463132265,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 36900000,
-        "enchants": [
-            "GROWTH;5",
             "PROTECTION;5",
             "REJUVENATE;5",
-            "ULTIMATE_LAST_STAND;2",
-            "THORNS;3"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "5391a9cd917b4b4cbf597149c09e9d70",
-        "auctioneer": "f267f4a9073547c99b15b47c1f37c6a9",
-        "end_t": 1666458444012,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 37000000,
-        "enchants": [
-            "TRUE_PROTECTION;1",
+            "ULTIMATE_LEGION;2",
             "THORNS;3",
-            "REJUVENATE;5",
-            "STRONG_MANA;5",
             "GROWTH;5",
-            "ULTIMATE_LAST_STAND;5",
-            "PROTECTION;5"
+            "TRUE_PROTECTION;1"
         ],
         "bin": true,
-        "bids": []
+        "bids": [],
+        "count": 1
     },
     {
-        "uuid": "9de5ad28dc4f4b43b80eefdb352ca502",
-        "auctioneer": "7e60d6ceff3c440fa11b6b0c2612f93d",
-        "end_t": 1666386182950,
+        "uuid": "d3cb8eb45e4b448f9753cd7aa18d02e4",
+        "auctioneer": "097316c5e7bc4cbdafd2c97fc35366d2",
+        "end_t": 1676762211048,
         "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
         "tier": "MYTHIC",
         "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 37000000,
-        "enchants": [
-            "GROWTH;5",
-            "REJUVENATE;5",
-            "THORNS;3",
-            "PROTECTION;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "5c3302afccf14272a28c150930918eba",
-        "auctioneer": "5efd0e5098834b25941d9dd112f1aeda",
-        "end_t": 1666354606705,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 37000000,
-        "enchants": [
-            "ULTIMATE_LAST_STAND;5",
-            "GROWTH;5",
-            "THORNS;3",
-            "RESPITE;5",
-            "PROTECTION;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "821755f212a14c8ba45b0aa4062804ae",
-        "auctioneer": "a934c6300b084f08904953f43d9db2f6",
-        "end_t": 1666673384780,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 37000000,
-        "enchants": [
-            "THORNS;3",
-            "REJUVENATE;5",
-            "ULTIMATE_WISDOM;5",
-            "PROTECTION;5",
-            "GROWTH;6"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "4ed27e04d2d540bab1c2f34f4801af57",
-        "auctioneer": "dcbf979c22df4aa79801c5c707749e73",
-        "end_t": 1666448647932,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 37000000,
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31200000,
         "enchants": [
             "THORNS;3",
             "PROTECTION;5",
-            "GROWTH;5",
-            "REJUVENATE;5"
+            "ULTIMATE_LEGION;3",
+            "REJUVENATE;5",
+            "GROWTH;5"
         ],
         "bin": true,
-        "bids": []
+        "bids": [],
+        "count": 1
     },
     {
-        "uuid": "5851b58336784f9491839b4cd5c3b95c",
-        "auctioneer": "483beb7eb2bc4560a4503d772efa3ea7",
-        "end_t": 1666450792788,
+        "uuid": "67c876fb4f4e4838a4b33c9ab23390cc",
+        "auctioneer": "19879f66a07947e7a1967ee7104a7cae",
+        "end_t": 1676705100418,
         "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
         "tier": "MYTHIC",
         "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 37200000,
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31250000,
         "enchants": [
+            "REJUVENATE;5",
             "GROWTH;5",
-            "TRUE_PROTECTION;1",
+            "THORNS;3",
             "PROTECTION;5",
             "ULTIMATE_WISDOM;5"
         ],
         "bin": true,
-        "bids": []
+        "bids": [],
+        "count": 1
     },
     {
-        "uuid": "0204af0ce47d434686335dec7128415a",
-        "auctioneer": "73ca876ac80246ef96d429a750ba4e57",
-        "end_t": 1666399903816,
+        "uuid": "584bfdbd8de5480dbd633651af3eef94",
+        "auctioneer": "43b1d99ae8c64d4d82d83965d3d0e61a",
+        "end_t": 1676601694117,
         "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
         "tier": "MYTHIC",
         "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 37500000,
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31254072,
         "enchants": [
-            "PROTECTION;5",
             "THORNS;3",
-            "REJUVENATE;5",
-            "GROWTH;5",
-            "TRUE_PROTECTION;1",
-            "ULTIMATE_LEGION;3"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "e6adc67d0f99461080706971ffcefe12",
-        "auctioneer": "c4c108db47a74c08bb3d4a4830c20dc2",
-        "end_t": 1666399115089,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 37500000,
-        "enchants": [
-            "GROWTH;5",
-            "RESPITE;2",
-            "THORNS;3",
-            "PROTECTION;5",
-            "ULTIMATE_LEGION;3"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "8d34e4663f06497697161f12addee5fa",
-        "auctioneer": "733f0850904b4818aeca9ee2f18db3c1",
-        "end_t": 1667457814087,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 37500000,
-        "enchants": [
-            "PROTECTION;5",
             "ULTIMATE_WISDOM;5",
-            "GROWTH;5",
-            "REJUVENATE;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "53f2591b56674cc9b18b972485d813a2",
-        "auctioneer": "73ca876ac80246ef96d429a750ba4e57",
-        "end_t": 1666399937581,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 37500000,
-        "enchants": [
-            "GROWTH;5",
-            "REJUVENATE;5",
-            "ULTIMATE_LEGION;3",
-            "PROTECTION;5",
-            "FEROCIOUS_MANA;2"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "609fe408bc194cf7b5262ae861b4a40a",
-        "auctioneer": "3e61daa8033f4cfd985c73150e571283",
-        "end_t": 1666307563337,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 37960000,
-        "enchants": [
-            "GROWTH;5",
-            "REJUVENATE;5",
-            "PROTECTION;5",
-            "ULTIMATE_LAST_STAND;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "34ea7a423b15484eb9ef19c950221de3",
-        "auctioneer": "97d6f3c7d34745be976d27cc88fc7015",
-        "end_t": 1666382215553,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 38000000,
-        "enchants": [
-            "ULTIMATE_LAST_STAND;5",
-            "REJUVENATE;5",
-            "PROTECTION;5",
-            "TRUE_PROTECTION;1",
-            "GROWTH;5",
-            "FEROCIOUS_MANA;1"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "9afbaaeaf75d4099b30cb8970788caf7",
-        "auctioneer": "2a5ea17cfa054dd5b60630613a6eeea7",
-        "end_t": 1666453207692,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 38000000,
-        "enchants": [
-            "GROWTH;5",
-            "REJUVENATE;5",
-            "PROTECTION;5",
-            "TRUE_PROTECTION;1",
-            "FEROCIOUS_MANA;1"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "c4aadaaedebe4a5998b920a243d0201e",
-        "auctioneer": "97d6f3c7d34745be976d27cc88fc7015",
-        "end_t": 1666310214212,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 38000000,
-        "enchants": [
-            "ULTIMATE_LAST_STAND;5",
-            "GROWTH;5",
-            "REJUVENATE;5",
-            "PROTECTION;5",
-            "TRUE_PROTECTION;1"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "0dd39c0b039e4a94a6b774b4c648680d",
-        "auctioneer": "ca7692cf916d4b07bfb53982e9cc1747",
-        "end_t": 1666707956656,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 38500000,
-        "enchants": [
-            "ULTIMATE_LAST_STAND;3",
-            "REJUVENATE;5",
-            "PROTECTION;5",
-            "GROWTH;6"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "338947ab1c25468fac64e111959c1e15",
-        "auctioneer": "f1566b9fdc2e4ade9f8dd0cc115a9d3d",
-        "end_t": 1666393888533,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 38999999,
-        "enchants": [
-            "THORNS;3",
-            "ULTIMATE_WISDOM;4",
-            "GROWTH;5",
-            "PROTECTION;5",
-            "TRUE_PROTECTION;1",
-            "FEROCIOUS_MANA;3",
-            "REJUVENATE;5"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "a9ce199c3c8144b8aebf7a640e699764",
-        "auctioneer": "25f0ae8fced1429cab487ff60bd121d7",
-        "end_t": 1666375450237,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 39000000,
-        "enchants": [
-            "TRUE_PROTECTION;1",
-            "PROTECTION;5",
-            "ULTIMATE_LEGION;3",
-            "REJUVENATE;5",
-            "GROWTH;5",
-            "THORNS;3"
-        ],
-        "bin": true,
-        "bids": []
-    },
-    {
-        "uuid": "52da988e3a7541088599c14741b18cfc",
-        "auctioneer": "1c0b3243ec7540bd8427f3491c800350",
-        "end_t": 1666445198652,
-        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
-        "tier": "MYTHIC",
-        "item_id": "POWER_WITHER_CHESTPLATE",
-        "starting_bid": 39000000,
-        "enchants": [
-            "THORNS;3",
-            "STRONG_MANA;2",
-            "REJUVENATE;5",
-            "ULTIMATE_LEGION;2",
             "GROWTH;5",
             "PROTECTION;5"
         ],
         "bin": true,
-        "bids": []
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "20bcc60416cf44d4bc14a5ec0324f48c",
+        "auctioneer": "78fc200f7278434c8e62909bc98c58f9",
+        "end_t": 1676721835743,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31300000,
+        "enchants": [
+            "PROTECTION;5",
+            "THORNS;3",
+            "REJUVENATE;5",
+            "GROWTH;5",
+            "TRUE_PROTECTION;1",
+            "FEROCIOUS_MANA;3",
+            "ULTIMATE_LEGION;2"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "112664ea52174987ab69901b123fbaee",
+        "auctioneer": "06df52e8f34644beadc326e116bf4f3e",
+        "end_t": 1676673083164,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31301576,
+        "enchants": [
+            "GROWTH;5",
+            "ULTIMATE_LAST_STAND;5",
+            "REJUVENATE;5",
+            "PROTECTION;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "d8d9843402c94b338961c226130b9112",
+        "auctioneer": "360e484e8b4548cba7b1fb2961250692",
+        "end_t": 1676598442162,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31304071,
+        "enchants": [
+            "ULTIMATE_WISDOM;5",
+            "GROWTH;5",
+            "REJUVENATE;5",
+            "PROTECTION;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "380676d6213945bca188baf3cf1baa8e",
+        "auctioneer": "7e4ae5ae3b5142a9beb4b6b6738d39a0",
+        "end_t": 1676605821543,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31304072,
+        "enchants": [
+            "PROTECTION;5",
+            "REJUVENATE;5",
+            "GROWTH;5",
+            "ULTIMATE_WISDOM;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "0373d205a82f4629a258001b8c801b2a",
+        "auctioneer": "22ec38c19ed4401aae9a55a924f24a2c",
+        "end_t": 1676755390532,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31350000,
+        "enchants": [
+            "GROWTH;5",
+            "ULTIMATE_LEGION;2",
+            "PROTECTION;5",
+            "REJUVENATE;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "664830f6f63744d4b2018ce7383bb107",
+        "auctioneer": "cfcc1e9476594acc96dad4902d3cfa2c",
+        "end_t": 1676595801572,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31354072,
+        "enchants": [
+            "PROTECTION;5",
+            "REJUVENATE;5",
+            "THORNS;3",
+            "ULTIMATE_WISDOM;5",
+            "GROWTH;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "c3f8195d73b443aea20f1916420d6547",
+        "auctioneer": "1e8ad36bf0384c0c9f318d9dad954c04",
+        "end_t": 1676651603058,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31354072,
+        "enchants": [
+            "REJUVENATE;5",
+            "ULTIMATE_WISDOM;5",
+            "PROTECTION;5",
+            "MANA_VAMPIRE;2",
+            "GROWTH;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "f64c5c896d6c4302bc636047f94823a7",
+        "auctioneer": "a6565f6c613f4fe98a94bc29844fb45a",
+        "end_t": 1676622598613,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31400000,
+        "enchants": [
+            "PROTECTION;5",
+            "GROWTH;5",
+            "REJUVENATE;5",
+            "ULTIMATE_LEGION;1"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "8f4b9e1f00f74d009938c2d70681cf2b",
+        "auctioneer": "6b1ada2dfc5d44bdb23ce07d63023b2a",
+        "end_t": 1676759642910,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31498000,
+        "enchants": [
+            "PROTECTION;5",
+            "TRUE_PROTECTION;1",
+            "REJUVENATE;5",
+            "ULTIMATE_LEGION;3",
+            "GROWTH;5",
+            "THORNS;3"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "37a973e2c7014107a99bf2974633997e",
+        "auctioneer": "a351850324914a20b0a9b30f43597e89",
+        "end_t": 1677773955396,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31500000,
+        "enchants": [
+            "GROWTH;5",
+            "REJUVENATE;5",
+            "PROTECTION;5",
+            "ULTIMATE_LEGION;3"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "2e6578a518784b2e9c91d75a874e8cf9",
+        "auctioneer": "59f66e059beb4b97b7291ad88ef29a33",
+        "end_t": 1676595129206,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31500000,
+        "enchants": [
+            "REJUVENATE;5",
+            "TRUE_PROTECTION;1",
+            "PROTECTION;5",
+            "ULTIMATE_WISDOM;5",
+            "GROWTH;5"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
+    },
+    {
+        "uuid": "bb71aa9063104d24919aade2229290f1",
+        "auctioneer": "59f66e059beb4b97b7291ad88ef29a33",
+        "end_t": 1676595134422,
+        "item_name": "Ancient Necron's Chestplate ✪✪✪✪✪",
+        "tier": "MYTHIC",
+        "item_id": "POWER_WITHER_CHESTPLATE",
+        "internal_id": "POWER_WITHER_CHESTPLATE",
+        "starting_bid": 31500000,
+        "enchants": [
+            "GROWTH;5",
+            "ULTIMATE_BANK;5",
+            "PROTECTION;5",
+            "THORNS;3"
+        ],
+        "bin": true,
+        "bids": [],
+        "count": 1
     }
 ]

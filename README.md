@@ -9,7 +9,7 @@
   <img alt="license" src="https://img.shields.io/discord/796790757947867156?color=4166f5&label=discord&style=flat-square" />
 </a> 
 
-A versatile API facade for the Hypixel Auction API written in Rust. The entire auction house is fetched with NBT parsing and inserted into a PostgreSQL database in about 1-5 seconds every minute with low memory usage (varies depending on enabled features, network speed, hardware, and latency of the Hypixel API)! You can query by auction UUID, auctioneer, end time, item name, item tier, item id, price, enchants, bin and bids. You can sort by the item's bin / starting price. You can track the average price of each unique pet-level-rarity combination. You can track the lowest prices of all bins. It also can track new bins that are at least one million lower than previous bins. It can track the average auction and average bin prices and sales for up to seven days with custom 'averaging methods'.
+A versatile API facade for the Hypixel Auction API written in Rust. The entire auction house is fetched with NBT parsing and inserted into a PostgreSQL database in **less than a second** every minute with low memory usage (varies depending on enabled features, network speed, hardware, and latency of the Hypixel API)! You can query by auction UUID, auctioneer, end time, item name, item tier, item id, price, enchants, bin and bids. You can sort by the item's bin / starting price. You can track the average price of each unique pet-level-rarity combination. You can track the lowest prices of all bins. It also can track new bins that are at least one million lower than previous bins. It can track the average auction and average bin prices and sales for up to seven days with custom 'averaging methods'.
 
 ## Set Up
 ### Prerequisites
@@ -44,6 +44,7 @@ A versatile API facade for the Hypixel Auction API written in Rust. The entire a
 - `/average_auction`
 - `/average_bin`
 - `/average`
+- `/query_items`
 
 ### Docs & Examples
 - See docs and examples [here](https://github.com/kr45732/rust-query-api/blob/main/examples/examples.md)
