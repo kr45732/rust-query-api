@@ -170,11 +170,11 @@ pub async fn update_auctions(config: Arc<Config>) {
         {
             Ok(rows) => write!(
                 ok_logs,
-                "\nSuccessfully inserted {} query auctions into database in {}ms",
+                "Successfully inserted {} query auctions into database in {}ms",
                 rows,
                 query_started.elapsed().as_millis()
             ),
-            Err(e) => write!(err_logs, "\nError inserting query into database: {}", e),
+            Err(e) => write!(err_logs, "Error inserting query into database: {}", e),
         };
 
         if update_lowestbin {
@@ -182,10 +182,10 @@ pub async fn update_auctions(config: Arc<Config>) {
             let _ = match update_bins_local(&bin_prices).await {
                 Ok(_) => write!(
                     ok_logs,
-                    "Successfully updated bins file in {}ms",
+                    "\nSuccessfully updated bins file in {}ms",
                     bins_started.elapsed().as_millis()
                 ),
-                Err(e) => write!(err_logs, "Error updating bins file: {}", e),
+                Err(e) => write!(err_logs, "\nError updating bins file: {}", e),
             };
 
             if update_underbin {

@@ -267,7 +267,7 @@ pub async fn update_query_database(
     if !is_first_update {
         let mut sql = String::from("SELECT item_name");
         if update_lowestbin {
-            sql.push_str(", uuid, internal_id");
+            sql.push_str(", internal_id, lowestbin_price");
         }
         sql.push_str(" FROM query");
         let query_db_current = database.query(&sql, &[]).await?;
