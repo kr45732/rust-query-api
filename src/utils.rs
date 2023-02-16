@@ -192,10 +192,32 @@ pub fn update_lower_else_insert(id: &String, starting_bid: f64, prices: &DashMap
 
 pub async fn update_query_database(
     mut auctions: Mutex<Vec<QueryDatabaseItem>>,
+    ended_auction_uuids: DashSet<String>,
+    is_first_update: bool,
+    bin_prices: &DashMap<String, f64>,
+    update_lowestbin: bool,
 ) -> Result<u64, Error> {
     let database = get_client().await;
 
-    let _ = database.simple_query("TRUNCATE TABLE query").await;
+    if is_first_update {
+        let _ = database.simple_query("TRUNCATE TABLE query").await;
+
+        let lock = auctions.lock().unwrap();
+        let query_names = lock
+            .iter()
+            .map(|o| o.item_name.to_string())
+            .collect::<DashSet<String>>();
+        update_query_items_local(query_names);
+    } else {
+        let to_delete = ended_auction_uuids
+            .iter()
+            .map(|u| format!("'{}'", *u))
+            .collect::<Vec<String>>()
+            .join(",");
+        let _ = database
+            .simple_query(&format!("DELETE FROM query WHERE uuid in ({})", to_delete))
+            .await;
+    }
 
     let copy_statement = database.prepare("COPY query FROM STDIN BINARY").await?;
     let copy_sink = database.copy_in(&copy_statement).await?;
@@ -209,7 +231,9 @@ pub async fn update_query_database(
             Type::TEXT,
             Type::TEXT,
             Type::TEXT,
+            Type::TEXT,
             Type::INT8,
+            Type::FLOAT8,
             Type::TEXT_ARRAY,
             Type::BOOL,
             BID_ARRAY.lock().await.to_owned().unwrap(),
@@ -228,7 +252,9 @@ pub async fn update_query_database(
             &m.item_name,
             &m.tier,
             &m.item_id,
+            &m.internal_id,
             &m.starting_bid,
+            &m.lowestbin_price,
             &m.enchants,
             &m.bin,
             &m.bids,
@@ -236,6 +262,25 @@ pub async fn update_query_database(
         ];
 
         copy_writer.as_mut().write(&row).await?;
+    }
+
+    if !is_first_update {
+        let mut sql = String::from("SELECT item_name");
+        if update_lowestbin {
+            sql.push_str(", uuid, internal_id");
+        }
+        sql.push_str(" FROM query");
+        let query_db_current = database.query(&sql, &[]).await?;
+        let query_names: DashSet<String> = DashSet::new();
+        for ele in query_db_current {
+            query_names.insert(ele.get("item_name"));
+            if update_lowestbin {
+                let internal_id: String = ele.get("internal_id");
+                let lowestbin_price: f64 = ele.get("lowestbin_price");
+                update_lower_else_insert(&internal_id, lowestbin_price, bin_prices);
+            }
+        }
+        update_query_items_local(query_names);
     }
 
     copy_writer.finish().await
@@ -367,21 +412,14 @@ pub async fn update_under_bins_local(
     serde_json::to_writer(file, &bin_prices)
 }
 
-pub async fn update_query_items_local(query_prices: &Mutex<Vec<QueryDatabaseItem>>) {
+pub fn update_query_items_local(query_prices: DashSet<String>) {
     let file = OpenOptions::new()
         .create(true)
         .write(true)
         .truncate(true)
         .open("query_items.json")
         .unwrap();
-    let lock = query_prices.lock().unwrap();
-    let _ = serde_json::to_writer(
-        file,
-        &lock
-            .iter()
-            .map(|o| o.item_name.as_str())
-            .collect::<DashSet<&str>>(),
-    );
+    let _ = serde_json::to_writer(file, &query_prices);
 }
 
 pub async fn get_client() -> Client {

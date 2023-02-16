@@ -90,6 +90,9 @@ impl Config {
             .split('+')
             .map(|s| Feature::from_str(s).unwrap())
             .collect::<HashSet<Feature>>();
+        if features.contains(&Feature::Lowestbin) && !features.contains(&Feature::Query) {
+            panic!("The QUERY feature must be enabled to enable the LOWESTBIN feature");
+        }
         if features.contains(&Feature::Underbin) && !features.contains(&Feature::Lowestbin) {
             panic!("The LOWESTBIN feature must be enabled to enable the UNDERBIN feature");
         }
