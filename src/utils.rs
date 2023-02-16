@@ -200,7 +200,7 @@ pub async fn update_query_database(
     let database = get_client().await;
 
     if is_first_update {
-        let _ = database.simple_query("TRUNCATE TABLE query").await;
+        let _ = database.simple_query("TRUNCATE TABLE query").await?;
 
         let lock = auctions.lock().unwrap();
         let query_names = lock
@@ -209,14 +209,20 @@ pub async fn update_query_database(
             .collect::<DashSet<String>>();
         update_query_items_local(query_names);
     } else {
-        let to_delete = ended_auction_uuids
+        let mut to_delete = ended_auction_uuids
             .iter()
             .map(|u| format!("'{}'", *u))
-            .collect::<Vec<String>>()
-            .join(",");
+            .collect::<Vec<String>>();
+        for ele in auctions.get_mut().unwrap().iter() {
+            to_delete.push(format!("'{}'", ele.uuid));
+        }
+
         let _ = database
-            .simple_query(&format!("DELETE FROM query WHERE uuid in ({})", to_delete))
-            .await;
+            .simple_query(&format!(
+                "DELETE FROM query WHERE uuid in ({})",
+                to_delete.join(",")
+            ))
+            .await?;
     }
 
     let copy_statement = database.prepare("COPY query FROM STDIN BINARY").await?;
@@ -264,15 +270,18 @@ pub async fn update_query_database(
         copy_writer.as_mut().write(&row).await?;
     }
 
+    let rows_added = copy_writer.finish().await?;
+
     if !is_first_update {
-        let mut sql = String::from("SELECT item_name");
+        let mut query_sql = String::from("SELECT item_name");
         if update_lowestbin {
-            sql.push_str(", internal_id, lowestbin_price");
+            query_sql.push_str(", internal_id, lowestbin_price");
         }
-        sql.push_str(" FROM query");
-        let query_db_current = database.query(&sql, &[]).await?;
+        query_sql.push_str(" FROM query");
+
+        let full_query_auctions = database.query(&query_sql, &[]).await?;
         let query_names: DashSet<String> = DashSet::new();
-        for ele in query_db_current {
+        for ele in full_query_auctions {
             query_names.insert(ele.get("item_name"));
             if update_lowestbin {
                 let internal_id: String = ele.get("internal_id");
@@ -280,10 +289,11 @@ pub async fn update_query_database(
                 update_lower_else_insert(&internal_id, lowestbin_price, bin_prices);
             }
         }
+
         update_query_items_local(query_names);
     }
 
-    copy_writer.finish().await
+    Ok(rows_added)
 }
 
 pub async fn update_pets_database(pet_prices: DashMap<String, AvgSum>) -> Result<u64, Error> {

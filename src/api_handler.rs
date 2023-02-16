@@ -248,11 +248,14 @@ pub async fn update_auctions(config: Arc<Config>) {
     }
 
     if !ok_logs.is_empty() {
-        info_mention(ok_logs, config.super_secret_config_option);
+        info_mention(
+            ok_logs.trim().to_string(),
+            config.super_secret_config_option,
+        );
     }
 
     if !err_logs.is_empty() {
-        error(err_logs);
+        error(err_logs.trim().to_string());
     }
 
     info(format!(
@@ -467,7 +470,7 @@ fn parse_auctions(
         }
     }
 
-    return false;
+    false
 }
 
 /* Parse ended auctions into Vec<AvgAh> */
