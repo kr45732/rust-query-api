@@ -202,25 +202,27 @@ pub async fn update_query_database(
     if is_first_update {
         let _ = database.simple_query("TRUNCATE TABLE query").await?;
 
-        let lock = auctions.lock().unwrap();
-        let query_names = lock
+        let query_names = auctions
+            .lock()
+            .unwrap()
             .iter()
             .map(|o| o.item_name.to_string())
             .collect::<DashSet<String>>();
         update_query_items_local(query_names);
     } else {
-        let mut to_delete = ended_auction_uuids
+        // Remove ended auctions and duplicate 'new' auctions
+        let mut delete_uuids = ended_auction_uuids
             .iter()
             .map(|u| format!("'{}'", *u))
             .collect::<Vec<String>>();
         for ele in auctions.get_mut().unwrap().iter() {
-            to_delete.push(format!("'{}'", ele.uuid));
+            delete_uuids.push(format!("'{}'", ele.uuid));
         }
 
         let _ = database
             .simple_query(&format!(
                 "DELETE FROM query WHERE uuid in ({})",
-                to_delete.join(",")
+                delete_uuids.join(",")
             ))
             .await?;
     }
@@ -273,16 +275,20 @@ pub async fn update_query_database(
     let rows_added = copy_writer.finish().await?;
 
     if !is_first_update {
-        let mut query_sql = String::from("SELECT item_name");
-        if update_lowestbin {
-            query_sql.push_str(", internal_id, lowestbin_price");
-        }
-        query_sql.push_str(" FROM query");
-
-        let full_query_auctions = database.query(&query_sql, &[]).await?;
         let query_names: DashSet<String> = DashSet::new();
-        for ele in full_query_auctions {
+
+        let mut all_auctions_sql = String::from("SELECT item_name");
+        // These fields are only needed to update lowest bin
+        if update_lowestbin {
+            all_auctions_sql.push_str(", internal_id, lowestbin_price");
+        }
+        all_auctions_sql.push_str(" FROM query");
+
+        let all_auctions = database.query(&all_auctions_sql, &[]).await?;
+        for ele in all_auctions {
             query_names.insert(ele.get("item_name"));
+
+            // Has to be updated over all auctions instead of comparing previous lowest bins with new auctions
             if update_lowestbin {
                 let internal_id: String = ele.get("internal_id");
                 let lowestbin_price: f64 = ele.get("lowestbin_price");
