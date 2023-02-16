@@ -280,7 +280,7 @@ pub async fn update_query_database(
         let mut all_auctions_sql = String::from("SELECT item_name");
         // These fields are only needed to update lowest bin
         if update_lowestbin {
-            all_auctions_sql.push_str(", internal_id, lowestbin_price");
+            all_auctions_sql.push_str(", internal_id, lowestbin_price, bin");
         }
         all_auctions_sql.push_str(" FROM query");
 
@@ -289,7 +289,7 @@ pub async fn update_query_database(
             query_names.insert(ele.get("item_name"));
 
             // Has to be updated over all auctions instead of comparing previous lowest bins with new auctions
-            if update_lowestbin {
+            if update_lowestbin && ele.get("bin") {
                 let internal_id: String = ele.get("internal_id");
                 let lowestbin_price: f64 = ele.get("lowestbin_price");
                 update_lower_else_insert(&internal_id, lowestbin_price, bin_prices);
