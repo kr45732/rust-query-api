@@ -382,6 +382,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
     let mut item_name = String::new();
     let mut tier = String::new();
     let mut item_id = String::new();
+    let mut internal_id = String::new();
     let mut enchants = String::new();
     let mut end: i64 = -1;
     let mut bids = String::new();
@@ -407,6 +408,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
             "item_name" => item_name = query_pair.1.to_string(),
             "tier" => tier = query_pair.1.to_string(),
             "item_id" => item_id = query_pair.1.to_string(),
+            "internal_id" => internal_id = query_pair.1.to_string(),
             "enchants" => enchants = query_pair.1.to_string(),
             "end" => match query_pair.1.to_string().parse::<i64>() {
                 Ok(end_int) => end = end_int,
@@ -467,6 +469,14 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
             param_vec.push(&item_id);
             param_count += 1;
         }
+        if !internal_id.is_empty() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" internal_id = ${}", param_count).as_str());
+            param_vec.push(&internal_id);
+            param_count += 1;
+        }
         if !enchants.is_empty() {
             if param_count != 1 {
                 sql.push_str(" AND");
@@ -495,7 +505,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
         }
         if !sort.is_empty() {
             if param_count == 1 {
-                sql.push_str(" 1=1"); // Handles the unfinished WHERE
+                sql.push_str(" 1=1"); // Handles unfinished WHERE
             }
             if sort == "ASC" {
                 sql.push_str(" ORDER BY starting_bid ASC");
@@ -503,10 +513,17 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
                 sql.push_str(" ORDER BY starting_bid DESC");
             }
         };
-        if limit > 0 {
-            if param_count == 1 && sort.is_empty() {
-                sql.push_str(" 1=1"); // Handles the unfinished WHERE
+
+        // Prevent fetching too many rows
+        if limit <= 0 || limit >= 1000 {
+            if !valid_api_key(config.clone(), key.to_owned(), true) {
+                return bad_request("Not authorized");
             }
+        }
+        if param_count == 1 && sort.is_empty() {
+            sql.push_str(" 1=1"); // Handles unfinished WHERE
+        }
+        if limit > 0 {
             sql.push_str(format!(" LIMIT ${}", param_count).as_str());
             param_vec.push(&limit);
         }
