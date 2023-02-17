@@ -143,6 +143,7 @@ pub async fn update_auctions(config: Arc<Config>) {
                 update_pets,
                 &ended_auction_uuids,
                 !is_first_update,
+                &mut started_epoch,
             )
             .boxed(),
         );
@@ -485,9 +486,12 @@ async fn parse_ended_auctions(
     update_pets: bool,
     ended_auction_uuids: &DashSet<String>,
     update_ended_auction_uuids: bool,
+    started_epoch: &mut i64,
 ) -> bool {
     match get_ended_auctions().await {
         Some(page_request) => {
+            *started_epoch = page_request.last_updated;
+
             let avg_ah_map: DashMap<String, AvgSum> = DashMap::new();
             let avg_bin_map: DashMap<String, AvgSum> = DashMap::new();
 

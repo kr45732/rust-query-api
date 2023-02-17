@@ -230,6 +230,8 @@ pub struct Auction {
 
 #[derive(Deserialize)]
 pub struct EndedAuctions {
+    #[serde(rename = "lastUpdated")]
+    pub last_updated: i64,
     pub auctions: Vec<EndedAuction>,
 }
 
