@@ -32,7 +32,7 @@ pub async fn update_auctions(config: Arc<Config>) {
     info(String::from("Fetching auctions..."));
 
     let started = Instant::now();
-    let started_epoch = get_timestamp_millis() as i64;
+    let mut started_epoch = get_timestamp_millis() as i64;
     let last_updated = *LAST_UPDATED.lock().await;
     let is_first_update = last_updated == 0;
     *IS_UPDATING.lock().await = true;
@@ -74,6 +74,7 @@ pub async fn update_auctions(config: Arc<Config>) {
         }
 
         let json = json_opt.unwrap();
+        started_epoch = json.last_updated;
         // Parse the first page's auctions and append them to the prices
         let finished = parse_auctions(
             json.auctions,
@@ -165,7 +166,7 @@ pub async fn update_auctions(config: Arc<Config>) {
             is_first_update,
             &bin_prices,
             update_lowestbin,
-            last_updated
+            last_updated,
         )
         .await
         {

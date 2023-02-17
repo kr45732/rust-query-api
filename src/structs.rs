@@ -207,6 +207,8 @@ pub struct Auctions {
     pub page: i64,
     #[serde(rename = "totalPages")]
     pub total_pages: i64,
+    #[serde(rename = "lastUpdated")]
+    pub last_updated: i64,
     pub auctions: Vec<Auction>,
 }
 
