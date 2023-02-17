@@ -196,6 +196,7 @@ pub async fn update_query_database(
     is_first_update: bool,
     bin_prices: &DashMap<String, f64>,
     update_lowestbin: bool,
+    last_updated: i64,
 ) -> Result<u64, Error> {
     let database = get_client().await;
 
@@ -221,8 +222,9 @@ pub async fn update_query_database(
 
         let _ = database
             .simple_query(&format!(
-                "DELETE FROM query WHERE uuid in ({})",
-                delete_uuids.join(",")
+                "DELETE FROM query WHERE uuid in ({}) OR end_t <= {}",
+                delete_uuids.join(","),
+                last_updated
             ))
             .await?;
     }

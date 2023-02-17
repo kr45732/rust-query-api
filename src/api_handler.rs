@@ -165,6 +165,7 @@ pub async fn update_auctions(config: Arc<Config>) {
             is_first_update,
             &bin_prices,
             update_lowestbin,
+            last_updated
         )
         .await
         {
