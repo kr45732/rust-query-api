@@ -31,11 +31,16 @@ use std::{fs, time::Instant};
 pub async fn update_auctions(config: Arc<Config>) {
     info(String::from("Fetching auctions..."));
 
+    *IS_UPDATING.lock().await = true;
     let started = Instant::now();
     let mut started_epoch = get_timestamp_millis() as i64;
-    let last_updated = *LAST_UPDATED.lock().await;
+    // Periodically fetch entire ah to correct excess/missing auctions (please fix your API Hypixel)
+    let last_updated = if *TOTAL_UPDATES.lock().await % 5 == 0 {
+        0
+    } else {
+        *LAST_UPDATED.lock().await
+    };
     let is_first_update = last_updated == 0;
-    *IS_UPDATING.lock().await = true;
 
     // Stores all auction uuids in auctions vector to prevent duplicates
     let inserted_uuids: DashSet<String> = DashSet::new();
@@ -268,9 +273,9 @@ pub async fn update_auctions(config: Arc<Config>) {
         started.elapsed().as_secs_f32()
     ));
 
-    *IS_UPDATING.lock().await = false;
     *TOTAL_UPDATES.lock().await += 1;
     *LAST_UPDATED.lock().await = started_epoch;
+    *IS_UPDATING.lock().await = false;
 }
 
 async fn process_auction_page(
