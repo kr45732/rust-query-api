@@ -10,7 +10,8 @@
 - `end` - filter auctions whose end time is after this (epoch timestamp in milliseconds)
 - `bin` - filter if the auction should be a bin (true) or regular auction (false) or both (do not provide parameter)
 - `bids` - filter auctions by the UUID of their bidders
-- `sort` - sort by 'ASC' or 'DESC' bin price / starting price
+- `sort_by` - sort by 'starting_bid' or 'highest_bid'
+- `sort_order` - sort 'ASC' or 'DESC'
 - `limit` - max number of auctions returned (defaults to 1)
 
 ## Pets
@@ -43,7 +44,7 @@
 
 # Examples
 ### [example_1.json](https://github.com/kr45732/rust-query-api/blob/main/docs/example_1.json)
-- Request: /query?key=KEY&bin=true&item_id=POWER_WITHER_CHESTPLATE&tier=MYTHIC&item_name=%✪✪✪✪✪%&sort=ASC&limit=50
+- Request: /query?key=KEY&bin=true&item_id=POWER_WITHER_CHESTPLATE&tier=MYTHIC&item_name=%✪✪✪✪✪%&sort_by=starting_bid&sort_order=ASC&limit=50
 - Meaning: find the cheapest 50 bins where the item id is POWER_WITHER_CHESTPLATE (Necron's chestplate), the tier is mythic, and has 5 stars. Sort by ascending bin price
 
 ### [example_2.json](https://github.com/kr45732/rust-query-api/blob/main/docs/example_2.json)
