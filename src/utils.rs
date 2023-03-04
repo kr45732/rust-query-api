@@ -243,6 +243,7 @@ pub async fn update_query_database(
             Type::TEXT,
             Type::TEXT,
             Type::INT8,
+            Type::INT8,
             Type::FLOAT8,
             Type::TEXT_ARRAY,
             Type::BOOL,
