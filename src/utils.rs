@@ -264,6 +264,7 @@ pub async fn update_query_database(
             &m.item_id,
             &m.internal_id,
             &m.starting_bid,
+            &m.highest_bid,
             &m.lowestbin_price,
             &m.enchants,
             &m.bin,

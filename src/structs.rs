@@ -32,6 +32,7 @@ pub struct QueryDatabaseItem {
     pub item_id: String,
     pub internal_id: String,
     pub starting_bid: i64,
+    pub highest_bid: i64,
     #[serde(skip_serializing)]
     pub lowestbin_price: f64,
     pub enchants: Vec<String>,
@@ -51,6 +52,7 @@ impl From<Row> for QueryDatabaseItem {
             item_id: row.get("item_id"),
             internal_id: row.get("internal_id"),
             starting_bid: row.get("starting_bid"),
+            highest_bid: row.get("highest_bid"),
             lowestbin_price: row.get("lowestbin_price"),
             enchants: row.get("enchants"),
             bin: row.get("bin"),

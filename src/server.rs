@@ -376,7 +376,8 @@ async fn averages(
 /// HTTP Handler for query
 async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
     let mut query = String::new();
-    let mut sort = String::new();
+    let mut sort_by = String::new();
+    let mut sort_order = String::new();
     let mut limit: i64 = 1;
     let mut key = String::new();
     let mut item_name = String::new();
@@ -399,7 +400,8 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
     {
         match query_pair.0.to_string().as_str() {
             "query" => query = query_pair.1.to_string(),
-            "sort" => sort = query_pair.1.to_string(),
+            "sort_by" => sort_by = query_pair.1.to_string(),
+            "sort_order" => sort_order = query_pair.1.to_string(),
             "limit" => match query_pair.1.to_string().parse::<i64>() {
                 Ok(limit_int) => limit = limit_int,
                 Err(e) => return bad_request(&format!("Error parsing limit parameter: {}", e)),
@@ -436,6 +438,8 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
         let mut sql;
         let mut param_vec: Vec<&(dyn ToSql + Sync)> = Vec::new();
         let mut param_count = 1;
+
+        let mut is_sorting = false;
 
         if !bids.is_empty() {
             sql = String::from("SELECT * FROM query, unnest(bids) AS bid WHERE bid.bidder = $1");
@@ -503,15 +507,14 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
             param_vec.push(&bin_unwrapped);
             param_count += 1;
         }
-        if !sort.is_empty() {
+        if (sort_by == "starting_bid" || sort_by == "highest_bid")
+            && (sort_order == "ASC" || sort_order == "DESC")
+        {
             if param_count == 1 {
                 sql.push_str(" 1=1"); // Handles unfinished WHERE
             }
-            if sort == "ASC" {
-                sql.push_str(" ORDER BY starting_bid ASC");
-            } else {
-                sql.push_str(" ORDER BY starting_bid DESC");
-            }
+            sql.push_str(format!(" ORDER BY {} {}", sort_by, sort_order).as_str());
+            is_sorting = true;
         };
 
         // Prevent fetching too many rows
@@ -520,7 +523,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
                 return bad_request("Not authorized");
             }
         }
-        if param_count == 1 && sort.is_empty() {
+        if param_count == 1 && !is_sorting {
             sql.push_str(" 1=1"); // Handles unfinished WHERE
         }
         if limit > 0 {

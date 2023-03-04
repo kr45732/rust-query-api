@@ -461,11 +461,8 @@ fn parse_auctions(
                     end_t: auction.end,
                     item_name: auction.item_name,
                     tier: tier.to_string(),
-                    starting_bid: if auction.bin {
-                        auction.starting_bid
-                    } else {
-                        auction.highest_bid_amount
-                    },
+                    starting_bid: auction.starting_bid,
+                    highest_bid: auction.highest_bid_amount,
                     lowestbin_price,
                     item_id,
                     internal_id,
