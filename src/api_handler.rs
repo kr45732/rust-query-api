@@ -412,6 +412,17 @@ fn parse_auctions(
                     if let Some(new_years_cake) = &nbt.tag.extra_attributes.new_years_cake {
                         internal_id = format!("{}_{}", item_id, new_years_cake);
                     }
+                } else if item_id == "MIDAS_SWORD" || item_id == "MIDAS_STAFF" {
+                    if let Some(winning_bid) = &nbt.tag.extra_attributes.winning_bid {
+                        let best_bid = if item_id == "MIDAS_SWORD" {
+                            50000000
+                        } else {
+                            100000000
+                        };
+                        if winning_bid > &best_bid {
+                            internal_id = format!("{}_{}", item_id, best_bid);
+                        }
+                    }
                 }
 
                 if is_first_update {
@@ -599,6 +610,17 @@ async fn parse_ended_auctions(
                 } else if id == "NEW_YEAR_CAKE" {
                     if let Some(new_years_cake) = &nbt.tag.extra_attributes.new_years_cake {
                         id = format!("{}_{}", id, new_years_cake);
+                    }
+                } else if id == "MIDAS_SWORD" || id == "MIDAS_STAFF" {
+                    if let Some(winning_bid) = &nbt.tag.extra_attributes.winning_bid {
+                        let best_bid = if id == "MIDAS_SWORD" {
+                            50000000
+                        } else {
+                            100000000
+                        };
+                        if winning_bid > &best_bid {
+                            id = format!("{}_{}", id, best_bid);
+                        }
                     }
                 }
 
