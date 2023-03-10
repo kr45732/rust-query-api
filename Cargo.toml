@@ -18,7 +18,7 @@ postgres-types = { version = "0.2.4", features = ["derive", "array-impls"] }
 
 # Https
 surf = { version = "2.3.2", features = ["curl-client"] }
-hyper = { version = "0.14.24", features = ["full"] }
+hyper = { version = "0.14.25", features = ["full"] }
 
 # Logging
 log = "0.4.17"
