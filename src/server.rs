@@ -312,7 +312,7 @@ async fn averages(
     // Map each item id to its prices and sales
     let avg_map: DashMap<String, AvgVec> = DashMap::new();
 
-    for table in tables {
+    for (idx, table) in tables.into_iter().enumerate() {
         // Find and sort using query JSON
         let results_cursor = get_client()
             .await
@@ -326,16 +326,22 @@ async fn averages(
             return internal_error(&format!("Error when querying database: {}", e));
         }
 
-        results_cursor.unwrap().into_iter().for_each(|ele_row| {
-            for ele in AverageDatabaseItem::from(ele_row).prices {
+        for row in results_cursor.unwrap() {
+            let row_parsed = AverageDatabaseItem::from(row);
+            for ele in row_parsed.prices {
                 // If the id already exists in the map, append the new values, otherwise create a new entry
                 if avg_map.contains_key(&ele.item_id) {
-                    avg_map.alter(&ele.item_id, |_, value| value.add(&ele));
+                    avg_map.alter(&ele.item_id, |_, value| {
+                        value.add(&ele, row_parsed.time_t, idx)
+                    });
                 } else {
-                    avg_map.insert(ele.item_id.to_owned(), AvgVec::from(&ele));
+                    avg_map.insert(
+                        ele.item_id.to_owned(),
+                        AvgVec::from(&ele, row_parsed.time_t, idx),
+                    );
                 }
             }
-        });
+        }
     }
 
     // Stores the values after averaging by 'step'
@@ -343,15 +349,16 @@ async fn averages(
     for ele in avg_map {
         let mut count: i64 = 0;
         let mut sales: f32 = 0.0;
+        let sales_arr = ele.1.get_sales();
 
         // Average the number of sales by the step parameter
-        for i in (0..ele.1.sales.len()).step_by(step) {
+        for i in (0..sales_arr.len()).step_by(step) {
             for j in i..(i + step) {
-                if j >= ele.1.sales.len() {
+                if j >= sales_arr.len() {
                     break;
                 }
 
-                sales += ele.1.sales.get(j).unwrap();
+                sales += sales_arr.get(j).unwrap();
             }
             count += 1;
         }
@@ -518,10 +525,8 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
         };
 
         // Prevent fetching too many rows
-        if limit <= 0 || limit >= 1000 {
-            if !valid_api_key(config.clone(), key.to_owned(), true) {
-                return bad_request("Not authorized");
-            }
+        if (limit <= 0 || limit >= 1000) && !valid_api_key(config.clone(), key.to_owned(), true) {
+            return bad_request("Not authorized");
         }
         if param_count == 1 && !is_sorting {
             sql.push_str(" 1=1"); // Handles unfinished WHERE

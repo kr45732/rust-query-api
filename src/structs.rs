@@ -105,11 +105,7 @@ pub struct AvgSum {
 }
 
 impl AvgSum {
-    pub fn add(self, new_amount: i64) -> Self {
-        self.add_multiple(new_amount, 1)
-    }
-
-    pub fn add_multiple(mut self, sum: i64, count: i32) -> Self {
+    pub fn update(mut self, sum: i64, count: i32) -> Self {
         self.sum += sum;
         self.count += count;
         self
@@ -121,26 +117,39 @@ impl AvgSum {
 }
 
 pub struct AvgVec {
-    pub sum: Vec<f64>,
-    pub sales: Vec<f32>,
+    pub sum: Vec<Vec<f64>>,
+    pub sales: DashMap<i64, f32>,
 }
 
 impl AvgVec {
-    pub fn add(mut self, avg_ah: &AvgAh) -> Self {
-        self.sum.push(avg_ah.price);
-        self.sales.push(avg_ah.sales);
+    pub fn add(mut self, avg_ah: &AvgAh, time_t: i64, idx: usize) -> Self {
+        self.sum.get_mut(idx).unwrap().push(avg_ah.price);
+        if self.sales.contains_key(&time_t) {
+            self.sales.alter(&time_t, |_, value| value + avg_ah.sales)
+        } else {
+            self.sales.insert(time_t, avg_ah.sales);
+        }
         self
     }
 
-    pub fn from(avg_ah: &AvgAh) -> Self {
-        Self {
-            sum: vec![avg_ah.price],
-            sales: vec![avg_ah.sales],
-        }
+    pub fn from(avg_ah: &AvgAh, time_t: i64, idx: usize) -> Self {
+        let mut sum = vec![vec![], vec![]];
+        sum[idx].push(avg_ah.price);
+        let sales = DashMap::new();
+        sales.insert(time_t, avg_ah.sales);
+        Self { sum, sales }
+    }
+
+    pub fn get_sales(&self) -> Vec<f32> {
+        self.sales.iter().map(|e| *e.value()).collect()
     }
 
     pub fn get_average(&self) -> f64 {
-        self.sum.iter().sum::<f64>() / (self.sum.len() as f64)
+        self.sum
+            .iter()
+            .map(|e| e.iter().sum::<f64>() / (e.len() as f64))
+            .reduce(f64::min)
+            .unwrap()
     }
 }
 
