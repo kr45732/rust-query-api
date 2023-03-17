@@ -105,11 +105,7 @@ pub struct AvgSum {
 }
 
 impl AvgSum {
-    pub fn add(self, new_amount: i64) -> Self {
-        self.add_multiple(new_amount, 1)
-    }
-
-    pub fn add_multiple(mut self, sum: i64, count: i32) -> Self {
+    pub fn update(mut self, sum: i64, count: i32) -> Self {
         self.sum += sum;
         self.count += count;
         self

@@ -311,9 +311,8 @@ async fn averages(
 
     // Map each item id to its prices and sales
     let avg_map: DashMap<String, AvgVec> = DashMap::new();
-    let mut idx = 0;
 
-    for table in tables {
+    for (idx, table) in tables.into_iter().enumerate() {
         // Find and sort using query JSON
         let results_cursor = get_client()
             .await
@@ -343,8 +342,6 @@ async fn averages(
                 }
             }
         }
-
-        idx += 1;
     }
 
     // Stores the values after averaging by 'step'
@@ -528,10 +525,8 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
         };
 
         // Prevent fetching too many rows
-        if limit <= 0 || limit >= 1000 {
-            if !valid_api_key(config.clone(), key.to_owned(), true) {
-                return bad_request("Not authorized");
-            }
+        if (limit <= 0 || limit >= 1000) && !valid_api_key(config.clone(), key.to_owned(), true) {
+            return bad_request("Not authorized");
         }
         if param_count == 1 && !is_sorting {
             sql.push_str(" 1=1"); // Handles unfinished WHERE

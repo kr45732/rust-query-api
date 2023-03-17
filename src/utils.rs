@@ -26,8 +26,9 @@ use futures::{pin_mut, Future};
 use log::{error, info};
 use postgres_types::{ToSql, Type};
 use serde_json::Value;
+use std::fmt::Write;
 use std::sync::{Arc, Mutex};
-use std::time::UNIX_EPOCH;
+use std::time::{Instant, UNIX_EPOCH};
 use std::{fs::OpenOptions, thread, time::SystemTime};
 use tokio::time::{self, Duration};
 use tokio_postgres::{binary_copy::BinaryCopyInWriter, Error};
@@ -190,7 +191,127 @@ pub fn update_lower_else_insert(id: &String, starting_bid: f64, prices: &DashMap
     }
 }
 
-pub async fn update_query_database(
+pub async fn update_query_bin_underbin_fn(
+    auctions: Mutex<Vec<QueryDatabaseItem>>,
+    ended_auction_uuids: DashSet<String>,
+    is_first_update: bool,
+    bin_prices: &DashMap<String, f64>,
+    update_lowestbin: bool,
+    last_updated: i64,
+    update_underbin: bool,
+    under_bin_prices: &DashMap<String, Value>,
+) -> (String, String) {
+    let mut ok_logs = String::new();
+    let mut err_logs = String::new();
+
+    let query_started = Instant::now();
+    let _ = match update_query_database(
+        auctions,
+        ended_auction_uuids,
+        is_first_update,
+        bin_prices,
+        update_lowestbin,
+        last_updated,
+    )
+    .await
+    {
+        Ok(rows) => write!(
+            ok_logs,
+            "\nSuccessfully inserted {} query auctions into database in {}ms",
+            rows,
+            query_started.elapsed().as_millis()
+        ),
+        Err(e) => write!(err_logs, "\nError inserting query into database: {}", e),
+    };
+
+    if update_lowestbin {
+        let bins_started = Instant::now();
+        let _ = match update_bins_local(bin_prices).await {
+            Ok(_) => write!(
+                ok_logs,
+                "\nSuccessfully updated bins file in {}ms",
+                bins_started.elapsed().as_millis()
+            ),
+            Err(e) => write!(err_logs, "\nError updating bins file: {}", e),
+        };
+
+        if update_underbin {
+            let under_bins_started = Instant::now();
+            let _ = match update_under_bins_local(under_bin_prices).await {
+                Ok(_) => write!(
+                    ok_logs,
+                    "\nSuccessfully updated under bins file in {}ms",
+                    under_bins_started.elapsed().as_millis()
+                ),
+                Err(e) => {
+                    write!(err_logs, "\nError updating under bins file: {}", e)
+                }
+            };
+        }
+    }
+
+    (ok_logs, err_logs)
+}
+
+pub async fn update_pets_fn(pet_prices: DashMap<String, AvgSum>) -> (String, String) {
+    let pets_started = Instant::now();
+    match update_pets_database(pet_prices).await {
+        Ok(rows) => (
+            format!(
+                "\nSuccessfully inserted {} pets into database in {}ms",
+                rows,
+                pets_started.elapsed().as_millis()
+            ),
+            String::new(),
+        ),
+        Err(e) => (
+            String::new(),
+            format!("\nError inserting pets into database: {}", e),
+        ),
+    }
+}
+
+pub async fn update_average_auction_fn(
+    avg_ah_prices: Mutex<Vec<AvgAh>>,
+    started_epoch: i64,
+) -> (String, String) {
+    let avg_ah_started = Instant::now();
+    match update_avg_ah_database(avg_ah_prices, started_epoch).await {
+        Ok(_) => (
+            format!(
+                "\nSuccessfully inserted average auctions into database in {}ms",
+                avg_ah_started.elapsed().as_millis()
+            ),
+            String::new(),
+        ),
+        Err(e) => (
+            String::new(),
+            format!("\nError inserting average auctions into database: {}", e),
+        ),
+    }
+}
+
+pub async fn update_average_bin_fn(
+    avg_bin_prices: Mutex<Vec<AvgAh>>,
+    started_epoch: i64,
+) -> (String, String) {
+    let avg_bin_started = Instant::now();
+    match update_avg_bin_database(avg_bin_prices, started_epoch).await {
+        Ok(_) => (
+            format!(
+                "\nSuccessfully inserted average bins into database in {}ms",
+                avg_bin_started.elapsed().as_millis()
+            ),
+            String::new(),
+        ),
+        Err(e) => (
+            String::new(),
+            format!("\nError inserting average bins into database: {}", e),
+        ),
+    }
+}
+
+async fn update_query_database(
     mut auctions: Mutex<Vec<QueryDatabaseItem>>,
     ended_auction_uuids: DashSet<String>,
     is_first_update: bool,
@@ -306,7 +427,7 @@ pub async fn update_query_database(
     Ok(rows_added)
 }
 
-pub async fn update_pets_database(pet_prices: DashMap<String, AvgSum>) -> Result<u64, Error> {
+async fn update_pets_database(pet_prices: DashMap<String, AvgSum>) -> Result<u64, Error> {
     let database = get_client().await;
 
     // Add all old pet prices to the new prices if the new prices doesn't have that old pet name
@@ -318,7 +439,7 @@ pub async fn update_pets_database(pet_prices: DashMap<String, AvgSum>) -> Result
         let old_sum: i64 = old_price * (old_count as i64);
 
         if pet_prices.contains_key(&old_name) {
-            pet_prices.alter(&old_name, |_, value| value.add_multiple(old_sum, old_count));
+            pet_prices.alter(&old_name, |_, value| value.update(old_sum, old_count));
         } else {
             pet_prices.insert(
                 old_name,
@@ -352,7 +473,7 @@ pub async fn update_pets_database(pet_prices: DashMap<String, AvgSum>) -> Result
     copy_writer.finish().await
 }
 
-pub async fn update_avg_ah_database(
+async fn update_avg_ah_database(
     mut avg_ah_prices: Mutex<Vec<AvgAh>>,
     time_t: i64,
 ) -> Result<u64, Error> {
@@ -381,7 +502,7 @@ pub async fn update_avg_ah_database(
         .await
 }
 
-pub async fn update_avg_bin_database(
+async fn update_avg_bin_database(
     mut avg_bin_prices: Mutex<Vec<AvgAh>>,
     time_t: i64,
 ) -> Result<u64, Error> {
@@ -410,7 +531,7 @@ pub async fn update_avg_bin_database(
         .await
 }
 
-pub async fn update_bins_local(bin_prices: &DashMap<String, f64>) -> Result<(), serde_json::Error> {
+async fn update_bins_local(bin_prices: &DashMap<String, f64>) -> Result<(), serde_json::Error> {
     let file = OpenOptions::new()
         .create(true)
         .write(true)
@@ -420,7 +541,7 @@ pub async fn update_bins_local(bin_prices: &DashMap<String, f64>) -> Result<(), 
     serde_json::to_writer(file, bin_prices)
 }
 
-pub async fn update_under_bins_local(
+async fn update_under_bins_local(
     bin_prices: &DashMap<String, Value>,
 ) -> Result<(), serde_json::Error> {
     let file = OpenOptions::new()
@@ -432,7 +553,7 @@ pub async fn update_under_bins_local(
     serde_json::to_writer(file, &bin_prices)
 }
 
-pub fn update_query_items_local(query_prices: DashSet<String>) {
+fn update_query_items_local(query_prices: DashSet<String>) {
     let file = OpenOptions::new()
         .create(true)
         .write(true)

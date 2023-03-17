@@ -23,7 +23,6 @@ use futures::FutureExt;
 use futures::{stream::FuturesUnordered, StreamExt};
 use log::{debug, info};
 use serde_json::{json, Value};
-use std::fmt::Write;
 use std::sync::{Arc, Mutex};
 use std::{fs, time::Instant};
 
@@ -163,96 +162,46 @@ pub async fn update_auctions(config: Arc<Config>) {
     let insert_started = Instant::now();
     let mut ok_logs = String::new();
     let mut err_logs = String::new();
+    // Write async to database and files
+    let insert_futures = FuturesUnordered::new();
 
+    // Also updates bin and underbin (if enabled)
     if update_query {
-        let query_started = Instant::now();
-        let _ = match update_query_database(
-            query_prices,
-            ended_auction_uuids,
-            is_first_update,
-            &bin_prices,
-            update_lowestbin,
-            last_updated,
-        )
-        .await
-        {
-            Ok(rows) => write!(
-                ok_logs,
-                "Successfully inserted {} query auctions into database in {}ms",
-                rows,
-                query_started.elapsed().as_millis()
-            ),
-            Err(e) => write!(err_logs, "Error inserting query into database: {}", e),
-        };
-
-        if update_lowestbin {
-            let bins_started = Instant::now();
-            let _ = match update_bins_local(&bin_prices).await {
-                Ok(_) => write!(
-                    ok_logs,
-                    "\nSuccessfully updated bins file in {}ms",
-                    bins_started.elapsed().as_millis()
-                ),
-                Err(e) => write!(err_logs, "\nError updating bins file: {}", e),
-            };
-
-            if update_underbin {
-                let under_bins_started = Instant::now();
-                let _ = match update_under_bins_local(&under_bin_prices).await {
-                    Ok(_) => write!(
-                        ok_logs,
-                        "\nSuccessfully updated under bins file in {}ms",
-                        under_bins_started.elapsed().as_millis()
-                    ),
-                    Err(e) => write!(err_logs, "\nError updating under bins file: {}", e),
-                };
-            }
-        }
+        insert_futures.push(
+            update_query_bin_underbin_fn(
+                query_prices,
+                ended_auction_uuids,
+                is_first_update,
+                &bin_prices,
+                update_lowestbin,
+                last_updated,
+                update_underbin,
+                &under_bin_prices,
+            )
+            .boxed(),
+        );
     }
 
     if update_pets {
-        let pets_started = Instant::now();
-        let _ = match update_pets_database(pet_prices).await {
-            Ok(rows) => write!(
-                ok_logs,
-                "\nSuccessfully inserted {} pets into database in {}ms",
-                rows,
-                pets_started.elapsed().as_millis()
-            ),
-            Err(e) => write!(err_logs, "\nError inserting pets into database: {}", e),
-        };
+        insert_futures.push(update_pets_fn(pet_prices).boxed());
     }
 
     if update_average_auction {
-        let avg_ah_started = Instant::now();
-        let _ = match update_avg_ah_database(avg_ah_prices, started_epoch).await {
-            Ok(_) => write!(
-                ok_logs,
-                "\nSuccessfully inserted average auctions into database in {}ms",
-                avg_ah_started.elapsed().as_millis()
-            ),
-            Err(e) => write!(
-                err_logs,
-                "\nError inserting average auctions into database: {}",
-                e,
-            ),
-        };
+        insert_futures.push(update_average_auction_fn(avg_ah_prices, started_epoch).boxed());
     }
 
     if update_average_bin {
-        let avg_bin_started = Instant::now();
-        let _ = match update_avg_bin_database(avg_bin_prices, started_epoch).await {
-            Ok(_) => write!(
-                ok_logs,
-                "\nSuccessfully inserted average bins into database in {}ms",
-                avg_bin_started.elapsed().as_millis()
-            ),
-            Err(e) => write!(
-                err_logs,
-                "\nError inserting average bins into database: {}",
-                e
-            ),
-        };
+        insert_futures.push(update_average_bin_fn(avg_bin_prices, started_epoch).boxed());
+    }
+
+    let logs: Vec<(String, String)> = insert_futures.collect().await;
+    for ele in logs {
+        if !ele.0.is_empty() {
+            ok_logs.push_str(&ele.0);
+        }
+        if !ele.1.is_empty() {
+            err_logs.push_str(&ele.1);
+        }
     }
 
     if !ok_logs.is_empty() {
@@ -555,7 +504,7 @@ async fn parse_ended_auctions(
                         .to_uppercase();
 
                         if pet_prices.contains_key(&pet_id) {
-                            pet_prices.alter(&pet_id, |_, value| value.add(auction.price));
+                            pet_prices.alter(&pet_id, |_, value| value.update(auction.price, 1));
                         } else {
                             pet_prices.insert(
                                 pet_id,
@@ -627,8 +576,7 @@ async fn parse_ended_auctions(
                 // If the map already has this id, then add to the existing elements, otherwise create a new entry
                 if update_average_bin && auction.bin {
                     if avg_bin_map.contains_key(&id) {
-                        avg_bin_map
-                            .alter(&id, |_, value| value.add_multiple(auction.price, nbt.count));
+                        avg_bin_map.alter(&id, |_, value| value.update(auction.price, nbt.count));
                     } else {
                         avg_bin_map.insert(
                             id,
@@ -640,8 +588,7 @@ async fn parse_ended_auctions(
                     }
                 } else if update_average_auction && !auction.bin {
                     if avg_ah_map.contains_key(&id) {
-                        avg_ah_map
-                            .alter(&id, |_, value| value.add_multiple(auction.price, nbt.count));
+                        avg_ah_map.alter(&id, |_, value| value.update(auction.price, nbt.count));
                     } else {
                         avg_ah_map.insert(
                             id,
