@@ -205,7 +205,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
         start_auction_loop(move || {
             let auction_config = auction_config.clone();
             async move {
-                update_auctions(auction_config).await;
+                loop {
+                    let auction_config = auction_config.clone();
+                    if update_auctions(auction_config).await {
+                        break;
+                    }
+                }
             }
         })
         .await;
