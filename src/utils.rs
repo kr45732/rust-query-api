@@ -165,10 +165,8 @@ pub fn parse_nbt(data: &str) -> Option<PartialNbt> {
 }
 
 pub fn calculate_with_taxes(price: f64) -> f64 {
-    let price_float = price as f64;
     let tax_rate = if price >= 1000000.0 { 0.98 } else { 0.99 };
-
-    price_float * tax_rate
+    price * tax_rate
 }
 
 pub fn valid_api_key(config: Arc<Config>, key: String, admin_only: bool) -> bool {

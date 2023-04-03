@@ -300,6 +300,8 @@ async fn averages(
         }
     }
 
+    let old_method = config.old_method;
+
     // The API key in request doesn't match
     if !valid_api_key(config, key, false) {
         return bad_request("Not authorized");
@@ -331,13 +333,13 @@ async fn averages(
             for ele in row_parsed.prices {
                 // If the id already exists in the map, append the new values, otherwise create a new entry
                 if avg_map.contains_key(&ele.item_id) {
-                    avg_map.alter(&ele.item_id, |_, value| {
-                        value.add(&ele, row_parsed.time_t, idx)
+                    avg_map.alter(&ele.item_id.to_owned(), |_, value| {
+                        value.update(ele, row_parsed.time_t, idx)
                     });
                 } else {
                     avg_map.insert(
                         ele.item_id.to_owned(),
-                        AvgVec::from(&ele, row_parsed.time_t, idx),
+                        AvgVec::from(ele, row_parsed.time_t, idx),
                     );
                 }
             }
@@ -366,7 +368,7 @@ async fn averages(
         avg_map_final.insert(
             ele.0,
             PartialAvgAh {
-                price: ele.1.get_average(),
+                price: ele.1.get_average(old_method),
                 sales: sales / (count as f32),
             },
         );
