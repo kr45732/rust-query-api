@@ -117,39 +117,67 @@ impl AvgSum {
 }
 
 pub struct AvgVec {
-    pub sum: Vec<Vec<f64>>,
-    pub sales: DashMap<i64, f32>,
+    pub auctions: DashMap<i64, AvgAh>,
+    pub bins: DashMap<i64, AvgAh>,
 }
 
 impl AvgVec {
-    pub fn add(mut self, avg_ah: &AvgAh, time_t: i64, idx: usize) -> Self {
-        self.sum.get_mut(idx).unwrap().push(avg_ah.price);
-        if self.sales.contains_key(&time_t) {
-            self.sales.alter(&time_t, |_, value| value + avg_ah.sales)
+    pub fn from(avg_ah: AvgAh, time_t: i64, idx: usize) -> Self {
+        let s = Self {
+            auctions: DashMap::new(),
+            bins: DashMap::new(),
+        };
+        s.update(avg_ah, time_t, idx)
+    }
+
+    pub fn update(self, avg_ah: AvgAh, time_t: i64, idx: usize) -> Self {
+        if idx == 0 {
+            self.auctions.insert(time_t, avg_ah);
         } else {
-            self.sales.insert(time_t, avg_ah.sales);
+            self.bins.insert(time_t, avg_ah);
         }
         self
     }
 
-    pub fn from(avg_ah: &AvgAh, time_t: i64, idx: usize) -> Self {
-        let mut sum = vec![vec![], vec![]];
-        sum[idx].push(avg_ah.price);
-        let sales = DashMap::new();
-        sales.insert(time_t, avg_ah.sales);
-        Self { sum, sales }
-    }
-
     pub fn get_sales(&self) -> Vec<f32> {
-        self.sales.iter().map(|e| *e.value()).collect()
+        let merged = DashMap::new();
+        for ele in &self.auctions {
+            merged.insert(ele.key().to_owned(), ele.sales);
+        }
+        for ele in &self.bins {
+            if merged.contains_key(ele.key()) {
+                merged.alter(ele.key(), |_, e| e + ele.sales);
+            } else {
+                merged.insert(ele.key().to_owned(), ele.sales);
+            }
+        }
+        merged.iter().map(|e| *e.value()).collect()
     }
 
-    pub fn get_average(&self) -> f64 {
-        self.sum
-            .iter()
-            .map(|e| e.iter().sum::<f64>() / (e.len() as f64))
-            .reduce(f64::min)
-            .unwrap()
+    pub fn get_average(&self, old_method: bool) -> f64 {
+        let mut auctions_sum = 0.0;
+        let mut auctions_sales = 0.0;
+        for ele in &self.auctions {
+            auctions_sum += ele.price;
+            auctions_sales += ele.sales;
+        }
+
+        let mut bins_sum = 0.0;
+        let mut bins_sales = 0.0;
+        for ele in &self.bins {
+            bins_sum += ele.price;
+            bins_sales += ele.sales;
+        }
+
+        let auctions_average = auctions_sum / self.auctions.len() as f64;
+        let bins_average = bins_sum / self.bins.len() as f64;
+        if !old_method && auctions_sales > bins_sales * 10.0 {
+            auctions_average
+        } else if !old_method && bins_sales > auctions_sales * 10.0 {
+            bins_average
+        } else {
+            auctions_average.min(bins_average)
+        }
     }
 }
 
