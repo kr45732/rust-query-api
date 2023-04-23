@@ -223,6 +223,7 @@ pub struct PartialExtraAttr {
     #[serde(rename = "petInfo")]
     pub pet: Option<String>,
     pub enchantments: Option<DashMap<String, i32>>,
+    pub runes: Option<DashMap<String, i32>>,
     pub attributes: Option<DashMap<String, i32>>,
     pub party_hat_color: Option<String>,
     pub new_years_cake: Option<i32>,

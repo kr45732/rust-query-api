@@ -389,6 +389,14 @@ fn parse_auctions(
                             internal_id = format!("{}_{}", item_id, best_bid);
                         }
                     }
+                } else if item_id == "RUNE" && nbt.tag.extra_attributes.runes.is_some() {
+                    if let Some(runes) = &nbt.tag.extra_attributes.runes {
+                        if runes.len() == 1 {
+                            for entry in runes {
+                                internal_id = format!("{}_RUNE;{}", entry.key().to_uppercase(), entry.value());
+                            }
+                        }
+                    }
                 }
 
                 if is_first_update {
@@ -593,6 +601,14 @@ async fn parse_ended_auctions(
                         };
                         if winning_bid > &best_bid {
                             id = format!("{}_{}", id, best_bid);
+                        }
+                    }
+                }  else if id == "RUNE" && nbt.tag.extra_attributes.runes.is_some() {
+                    if let Some(runes) = &nbt.tag.extra_attributes.runes {
+                        if runes.len() == 1 {
+                            for entry in runes {
+                                id = format!("{}_RUNE;{}", entry.key().to_uppercase(), entry.value());
+                            }
                         }
                     }
                 }
