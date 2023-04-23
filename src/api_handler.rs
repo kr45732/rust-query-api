@@ -233,7 +233,7 @@ pub async fn update_auctions(config: Arc<Config>) -> bool {
     *LAST_UPDATED.lock().await = started_epoch;
     *IS_UPDATING.lock().await = false;
 
-    return true;
+    true
 }
 
 async fn process_auction_page(
@@ -393,7 +393,11 @@ fn parse_auctions(
                     if let Some(runes) = &nbt.tag.extra_attributes.runes {
                         if runes.len() == 1 {
                             for entry in runes {
-                                internal_id = format!("{}_RUNE;{}", entry.key().to_uppercase(), entry.value());
+                                internal_id = format!(
+                                    "{}_RUNE;{}",
+                                    entry.key().to_uppercase(),
+                                    entry.value()
+                                );
                             }
                         }
                     }
@@ -603,11 +607,15 @@ async fn parse_ended_auctions(
                             id = format!("{}_{}", id, best_bid);
                         }
                     }
-                }  else if id == "RUNE" && nbt.tag.extra_attributes.runes.is_some() {
+                } else if id == "RUNE" && nbt.tag.extra_attributes.runes.is_some() {
                     if let Some(runes) = &nbt.tag.extra_attributes.runes {
                         if runes.len() == 1 {
                             for entry in runes {
-                                id = format!("{}_RUNE;{}", entry.key().to_uppercase(), entry.value());
+                                id = format!(
+                                    "{}_RUNE;{}",
+                                    entry.key().to_uppercase(),
+                                    entry.value()
+                                );
                             }
                         }
                     }
