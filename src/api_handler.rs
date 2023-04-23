@@ -364,7 +364,15 @@ fn parse_auctions(
                     }
                 } else if item_id == "PARTY_HAT_CRAB" || item_id == "PARTY_HAT_CRAB_ANIMATED" {
                     if let Some(party_hat_color) = &nbt.tag.extra_attributes.party_hat_color {
-                        internal_id = format!("{}_{}", item_id, party_hat_color.to_uppercase());
+                        internal_id = format!(
+                            "PARTY_HAT_CRAB_{}{}",
+                            party_hat_color.to_uppercase(),
+                            if item_id.ends_with("_ANIMATED") {
+                                "_ANIMATED"
+                            } else {
+                                ""
+                            }
+                        );
                     }
                 } else if item_id == "NEW_YEAR_CAKE" {
                     if let Some(new_years_cake) = &nbt.tag.extra_attributes.new_years_cake {
@@ -500,11 +508,10 @@ async fn parse_ended_auctions(
                             item_name.replace(' ', "_").replace("_✦", ""),
                             pet_info.tier,
                             if let Some(held_item) = pet_info.held_item {
-                                match held_item.as_str() {
-                                    "PET_ITEM_TIER_BOOST"
-                                    | "PET_ITEM_VAMPIRE_FANG"
-                                    | "PET_ITEM_TOY_JERRY" => "_TB",
-                                    _ => "",
+                                if held_item == "PET_ITEM_TIER_BOOST" {
+                                    "_TB"
+                                } else {
+                                    ""
                                 }
                             } else {
                                 ""
@@ -563,7 +570,15 @@ async fn parse_ended_auctions(
                     }
                 } else if id == "PARTY_HAT_CRAB" || id == "PARTY_HAT_CRAB_ANIMATED" {
                     if let Some(party_hat_color) = &nbt.tag.extra_attributes.party_hat_color {
-                        id = format!("{}_{}", id, party_hat_color.to_uppercase());
+                        id = format!(
+                            "PARTY_HAT_CRAB_{}{}",
+                            party_hat_color.to_uppercase(),
+                            if id.ends_with("_ANIMATED") {
+                                "_ANIMATED"
+                            } else {
+                                ""
+                            }
+                        );
                     }
                 } else if id == "NEW_YEAR_CAKE" {
                     if let Some(new_years_cake) = &nbt.tag.extra_attributes.new_years_cake {
