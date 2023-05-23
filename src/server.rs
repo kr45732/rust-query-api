@@ -319,7 +319,11 @@ async fn averages(
         let results_cursor = get_client()
             .await
             .query(
-                format!("SELECT * FROM {} WHERE time_t > $1 ORDER BY time_t", table).as_str(),
+                format!(
+                    "SELECT time_t, prices FROM {} WHERE time_t > $1 ORDER BY time_t",
+                    table
+                )
+                .as_str(),
                 &[&time],
             )
             .await;

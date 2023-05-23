@@ -653,7 +653,7 @@ async fn parse_ended_auctions(
             for ele in avg_ah_map {
                 avg_ah_prices.lock().unwrap().push(AvgAh {
                     item_id: ele.0,
-                    price: (ele.1.sum as f64) / (ele.1.count as f64),
+                    price: (ele.1.sum as f32) / (ele.1.count as f32),
                     sales: ele.1.count as f32,
                 })
             }
@@ -662,7 +662,7 @@ async fn parse_ended_auctions(
             for ele in avg_bin_map {
                 avg_bin_prices.lock().unwrap().push(AvgAh {
                     item_id: ele.0,
-                    price: (ele.1.sum as f64) / (ele.1.count as f64),
+                    price: (ele.1.sum as f32) / (ele.1.count as f32),
                     sales: ele.1.count as f32,
                 })
             }

@@ -78,8 +78,8 @@ pub struct AverageDatabaseItem {
 impl From<Row> for AverageDatabaseItem {
     fn from(row: Row) -> Self {
         Self {
-            time_t: row.get("time_t"),
-            prices: row.get("prices"),
+            time_t: row.get(0),
+            prices: row.get(1),
         }
     }
 }
@@ -88,14 +88,14 @@ impl From<Row> for AverageDatabaseItem {
 #[postgres(name = "avg_ah")]
 pub struct AvgAh {
     pub item_id: String,
-    pub price: f64,
+    pub price: f32,
     pub sales: f32,
 }
 
 #[derive(Serialize)]
 
 pub struct PartialAvgAh {
-    pub price: f64,
+    pub price: f32,
     pub sales: f32,
 }
 
@@ -154,7 +154,7 @@ impl AvgVec {
         merged.iter().map(|e| *e.value()).collect()
     }
 
-    pub fn get_average(&self, old_method: bool) -> f64 {
+    pub fn get_average(&self, old_method: bool) -> f32 {
         let mut auctions_sum = 0.0;
         let mut auctions_sales = 0.0;
         for ele in &self.auctions {
@@ -169,8 +169,8 @@ impl AvgVec {
             bins_sales += ele.sales;
         }
 
-        let auctions_average = auctions_sum / self.auctions.len() as f64;
-        let bins_average = bins_sum / self.bins.len() as f64;
+        let auctions_average = auctions_sum / self.auctions.len() as f32;
+        let bins_average = bins_sum / self.bins.len() as f32;
         if !old_method && auctions_sales > bins_sales * 10.0 {
             auctions_average
         } else if !old_method && bins_sales > auctions_sales * 10.0 {
