@@ -363,7 +363,7 @@ async fn update_query_database(
             Type::TEXT,
             Type::INT8,
             Type::INT8,
-            Type::FLOAT8,
+            Type::FLOAT4,
             Type::TEXT_ARRAY,
             Type::BOOL,
             BID_ARRAY.lock().await.to_owned().unwrap(),
