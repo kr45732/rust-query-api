@@ -401,6 +401,27 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
     let mut end: i64 = -1;
     let mut bids = String::new();
     let mut bin = Option::None;
+    let mut potato_books = -1;
+    let mut stars = -1;
+    let mut farming_for_dummies = -1;
+    let mut transmission_tuner = -1;
+    let mut mana_disintegrator = -1;
+    let mut reforge = String::new();
+    let mut rune = String::new();
+    let mut skin = String::new();
+    let mut power_scroll = String::new();
+    let mut drill_upgrade_module = String::new();
+    let mut drill_fuel_tank = String::new();
+    let mut drill_engine = String::new();
+    let mut dye = String::new();
+    let mut accessory_enrichment = String::new();
+    let mut recombobulated = Option::None;
+    let mut wood_singularity = Option::None;
+    let mut art_of_war = Option::None;
+    let mut art_of_peace = Option::None;
+    let mut etherwarp = Option::None;
+    let mut necron_scrolls = String::new();
+    let mut gemstones = String::new();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in Url::parse(&format!(
@@ -434,6 +455,82 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
                 Ok(bin_bool) => bin = Some(bin_bool),
                 Err(e) => return bad_request(&format!("Error parsing bin parameter: {}", e)),
             },
+            "potato_books" => match query_pair.1.to_string().parse::<i16>() {
+                Ok(potato_books_int) => potato_books = potato_books_int,
+                Err(e) => {
+                    return bad_request(&format!("Error parsing potato_books parameter: {}", e))
+                }
+            },
+            "stars" => match query_pair.1.to_string().parse::<i16>() {
+                Ok(stars_int) => stars = stars_int,
+                Err(e) => return bad_request(&format!("Error parsing stars parameter: {}", e)),
+            },
+            "farming_for_dummies" => match query_pair.1.to_string().parse::<i16>() {
+                Ok(farming_for_dummies_int) => farming_for_dummies = farming_for_dummies_int,
+                Err(e) => {
+                    return bad_request(&format!(
+                        "Error parsing farming_for_dummies parameter: {}",
+                        e
+                    ))
+                }
+            },
+            "transmission_tuner" => match query_pair.1.to_string().parse::<i16>() {
+                Ok(transmission_tuner_int) => transmission_tuner = transmission_tuner_int,
+                Err(e) => {
+                    return bad_request(&format!(
+                        "Error parsing transmission_tuner parameter: {}",
+                        e
+                    ))
+                }
+            },
+            "mana_disintegrator" => match query_pair.1.to_string().parse::<i16>() {
+                Ok(mana_disintegrator_int) => mana_disintegrator = mana_disintegrator_int,
+                Err(e) => {
+                    return bad_request(&format!(
+                        "Error parsing mana_disintegrator parameter: {}",
+                        e
+                    ))
+                }
+            },
+            "reforge" => reforge = query_pair.1.to_string(),
+            "rune" => rune = query_pair.1.to_string(),
+            "skin" => skin = query_pair.1.to_string(),
+            "power_scroll" => power_scroll = query_pair.1.to_string(),
+            "drill_upgrade_module" => drill_upgrade_module = query_pair.1.to_string(),
+            "drill_fuel_tank" => drill_fuel_tank = query_pair.1.to_string(),
+            "drill_engine" => drill_engine = query_pair.1.to_string(),
+            "dye" => dye = query_pair.1.to_string(),
+            "accessory_enrichment" => accessory_enrichment = query_pair.1.to_string(),
+            "recombobulated" => match query_pair.1.to_string().parse::<bool>() {
+                Ok(recombobulated_bool) => recombobulated = Some(recombobulated_bool),
+                Err(e) => {
+                    return bad_request(&format!("Error parsing recombobulated parameter: {}", e))
+                }
+            },
+            "wood_singularity" => match query_pair.1.to_string().parse::<bool>() {
+                Ok(wood_singularity_bool) => wood_singularity = Some(wood_singularity_bool),
+                Err(e) => {
+                    return bad_request(&format!("Error parsing wood_singularity parameter: {}", e))
+                }
+            },
+            "art_of_war" => match query_pair.1.to_string().parse::<bool>() {
+                Ok(art_of_war_bool) => art_of_war = Some(art_of_war_bool),
+                Err(e) => {
+                    return bad_request(&format!("Error parsing art_of_war parameter: {}", e))
+                }
+            },
+            "art_of_peace" => match query_pair.1.to_string().parse::<bool>() {
+                Ok(art_of_peace_bool) => art_of_peace = Some(art_of_peace_bool),
+                Err(e) => {
+                    return bad_request(&format!("Error parsing art_of_peace parameter: {}", e))
+                }
+            },
+            "etherwarp" => match query_pair.1.to_string().parse::<bool>() {
+                Ok(etherwarp_bool) => etherwarp = Some(etherwarp_bool),
+                Err(e) => return bad_request(&format!("Error parsing etherwarp parameter: {}", e)),
+            },
+            "necron_scrolls" => necron_scrolls = query_pair.1.to_string(),
+            "gemstones" => gemstones = query_pair.1.to_string(),
             _ => {}
         }
     }
@@ -494,14 +591,27 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
             param_vec.push(&internal_id);
             param_count += 1;
         }
+        let enchants_split: Vec<String>;
         if !enchants.is_empty() {
             if param_count != 1 {
                 sql.push_str(" AND");
             }
-            sql.push_str(format!(" ${} = ANY (enchants)", param_count).as_str());
-            param_vec.push(&enchants);
-            param_count += 1;
-        };
+
+            sql.push_str(" enchants @> ARRAY[");
+            let start_param_count = param_count;
+            enchants_split = enchants.split(",").map(|s| s.to_string()).collect();
+            for enchant in enchants_split.iter() {
+                if param_count != start_param_count {
+                    sql.push(',');
+                }
+
+                sql.push_str(format!("${}", param_count).as_str());
+
+                param_vec.push(enchant);
+                param_count += 1;
+            }
+            sql.push_str("]");
+        }
         if end >= 0 {
             if param_count != 1 {
                 sql.push_str(" AND");
@@ -509,6 +619,210 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
             sql.push_str(format!(" end_t > ${}", param_count).as_str());
             param_vec.push(&end);
             param_count += 1;
+        }
+        if potato_books >= 0 {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" potato_books = ${}", param_count).as_str());
+            param_vec.push(&potato_books);
+            param_count += 1;
+        }
+        if stars >= 0 {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" stars = ${}", param_count).as_str());
+            param_vec.push(&stars);
+            param_count += 1;
+        }
+        if farming_for_dummies >= 0 {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" farming_for_dummies > ${}", param_count).as_str());
+            param_vec.push(&farming_for_dummies);
+            param_count += 1;
+        }
+        if transmission_tuner >= 0 {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" transmission_tuner > ${}", param_count).as_str());
+            param_vec.push(&transmission_tuner);
+            param_count += 1;
+        }
+        if mana_disintegrator >= 0 {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" mana_disintegrator > ${}", param_count).as_str());
+            param_vec.push(&mana_disintegrator);
+            param_count += 1;
+        }
+        if !reforge.is_empty() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" reforge = ${}", param_count).as_str());
+            param_vec.push(&reforge);
+            param_count += 1;
+        }
+        if !rune.is_empty() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" rune = ${}", param_count).as_str());
+            param_vec.push(&rune);
+            param_count += 1;
+        }
+        if !skin.is_empty() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" skin = ${}", param_count).as_str());
+            param_vec.push(&skin);
+            param_count += 1;
+        }
+        if !power_scroll.is_empty() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" power_scroll = ${}", param_count).as_str());
+            param_vec.push(&power_scroll);
+            param_count += 1;
+        }
+        if !drill_upgrade_module.is_empty() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" drill_upgrade_module = ${}", param_count).as_str());
+            param_vec.push(&drill_upgrade_module);
+            param_count += 1;
+        }
+        if !drill_fuel_tank.is_empty() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" drill_fuel_tank = ${}", param_count).as_str());
+            param_vec.push(&drill_fuel_tank);
+            param_count += 1;
+        }
+        if !drill_engine.is_empty() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" drill_engine = ${}", param_count).as_str());
+            param_vec.push(&drill_engine);
+            param_count += 1;
+        }
+        if !dye.is_empty() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" dye = ${}", param_count).as_str());
+            param_vec.push(&dye);
+            param_count += 1;
+        }
+        if !accessory_enrichment.is_empty() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" accessory_enrichment = ${}", param_count).as_str());
+            param_vec.push(&accessory_enrichment);
+            param_count += 1;
+        }
+        let recombobulated_unwrapped;
+        if recombobulated.is_some() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" recombobulated = ${}", param_count).as_str());
+            recombobulated_unwrapped = recombobulated.unwrap();
+            param_vec.push(&recombobulated_unwrapped);
+            param_count += 1;
+        }
+        let wood_singularity_unwrapped;
+        if wood_singularity.is_some() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" wood_singularity = ${}", param_count).as_str());
+            wood_singularity_unwrapped = wood_singularity.unwrap();
+            param_vec.push(&wood_singularity_unwrapped);
+            param_count += 1;
+        }
+        let art_of_war_unwrapped;
+        if art_of_war.is_some() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" art_of_war = ${}", param_count).as_str());
+            art_of_war_unwrapped = art_of_war.unwrap();
+            param_vec.push(&art_of_war_unwrapped);
+            param_count += 1;
+        }
+        let art_of_peace_unwrapped;
+        if art_of_peace.is_some() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" art_of_peace = ${}", param_count).as_str());
+            art_of_peace_unwrapped = art_of_peace.unwrap();
+            param_vec.push(&art_of_peace_unwrapped);
+            param_count += 1;
+        }
+        let etherwarp_unwrapped;
+        if etherwarp.is_some() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+            sql.push_str(format!(" etherwarp = ${}", param_count).as_str());
+            etherwarp_unwrapped = etherwarp.unwrap();
+            param_vec.push(&etherwarp_unwrapped);
+            param_count += 1;
+        }
+        let necron_scrolls_split: Vec<String>;
+        if !necron_scrolls.is_empty() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+
+            sql.push_str(" necron_scrolls @> ARRAY[");
+            let start_param_count = param_count;
+            necron_scrolls_split = necron_scrolls.split(",").map(|s| s.to_string()).collect();
+            for necron_scroll in necron_scrolls_split.iter() {
+                if param_count != start_param_count {
+                    sql.push(',');
+                }
+
+                sql.push_str(format!("${}", param_count).as_str());
+
+                param_vec.push(necron_scroll);
+                param_count += 1;
+            }
+            sql.push_str("]");
+        }
+        let gemstones_split: Vec<String>;
+        if !gemstones.is_empty() {
+            if param_count != 1 {
+                sql.push_str(" AND");
+            }
+
+            sql.push_str(" gemstones @> ARRAY[");
+            let start_param_count = param_count;
+            gemstones_split = gemstones.split(",").map(|s| s.to_string()).collect();
+            for gemstone in gemstones_split.iter() {
+                if param_count != start_param_count {
+                    sql.push(',');
+                }
+
+                sql.push_str(format!("${}", param_count).as_str());
+
+                param_vec.push(gemstone);
+                param_count += 1;
+            }
+            sql.push_str("]");
         }
         let bin_unwrapped;
         if bin.is_some() {
@@ -531,7 +845,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
         };
 
         // Prevent fetching too many rows
-        if (limit <= 0 || limit >= 1000) && !valid_api_key(config.clone(), key.to_owned(), true) {
+        if (limit <= 0 || limit >= 500) && !valid_api_key(config.clone(), key.to_owned(), true) {
             return bad_request("Not authorized");
         }
         if param_count == 1 && !is_sorting {

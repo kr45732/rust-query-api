@@ -312,7 +312,8 @@ fn parse_auctions(
             let mut tier = auction.tier;
 
             let nbt = &parse_nbt(&auction.item_bytes).unwrap().i[0];
-            let item_id = nbt.tag.extra_attributes.id.to_owned();
+            let extra_attrs = &nbt.tag.extra_attributes;
+            let item_id = extra_attrs.id.to_owned();
             let mut internal_id = item_id.to_owned();
             let mut lowestbin_price = auction.starting_bid as f32 / nbt.count as f32;
 
@@ -459,6 +460,27 @@ fn parse_auctions(
                     bin: auction.bin,
                     bids,
                     count: nbt.count,
+                    potato_books: extra_attrs.hot_potato_count,
+                    stars: extra_attrs.get_stars(),
+                    farming_for_dummies: extra_attrs.farming_for_dummies_count,
+                    transmission_tuner: extra_attrs.tuned_transmission,
+                    mana_disintegrator: extra_attrs.mana_disintegrator_count,
+                    reforge: extra_attrs.modifier.to_owned(),
+                    rune: extra_attrs.get_rune(),
+                    skin: extra_attrs.skin.to_owned(),
+                    power_scroll: extra_attrs.power_ability_scroll.to_owned(),
+                    drill_upgrade_module: extra_attrs.drill_part_upgrade_module.to_owned(),
+                    drill_fuel_tank: extra_attrs.drill_part_fuel_tank.to_owned(),
+                    drill_engine: extra_attrs.drill_part_engine.to_owned(),
+                    dye: extra_attrs.dye_item.to_owned(),
+                    accessory_enrichment: extra_attrs.get_talisman_enrichment(),
+                    recombobulated: extra_attrs.is_recombobulated(),
+                    wood_singularity: extra_attrs.is_wood_singularity_applied(),
+                    art_of_war: extra_attrs.is_art_of_war_applied(),
+                    art_of_peace: extra_attrs.is_art_of_peace_applied(),
+                    etherwarp: extra_attrs.is_etherwarp_applied(),
+                    necron_scrolls: extra_attrs.ability_scroll.to_owned(),
+                    gemstones: extra_attrs.get_gemstones(),
                 });
             }
         }
@@ -624,25 +646,29 @@ async fn parse_ended_auctions(
                 // If the map already has this id, then add to the existing elements, otherwise create a new entry
                 if update_average_bin && auction.bin {
                     if avg_bin_map.contains_key(&id) {
-                        avg_bin_map.alter(&id, |_, value| value.update(auction.price, nbt.count));
+                        avg_bin_map.alter(&id, |_, value| {
+                            value.update(auction.price, nbt.count as i32)
+                        });
                     } else {
                         avg_bin_map.insert(
                             id,
                             AvgSum {
                                 sum: auction.price,
-                                count: nbt.count,
+                                count: nbt.count as i32,
                             },
                         );
                     }
                 } else if update_average_auction && !auction.bin {
                     if avg_ah_map.contains_key(&id) {
-                        avg_ah_map.alter(&id, |_, value| value.update(auction.price, nbt.count));
+                        avg_ah_map.alter(&id, |_, value| {
+                            value.update(auction.price, nbt.count as i32)
+                        });
                     } else {
                         avg_ah_map.insert(
                             id,
                             AvgSum {
                                 sum: auction.price,
-                                count: nbt.count,
+                                count: nbt.count as i32,
                             },
                         );
                     }
