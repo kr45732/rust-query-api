@@ -133,7 +133,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             internal_id TEXT,
                             starting_bid BIGINT,
                             highest_bid BIGINT,
-                            lowestbin_price DOUBLE PRECISION,
+                            lowestbin_price REAL,
                             enchants TEXT[],
                             bin BOOLEAN,
                             bids bid[],

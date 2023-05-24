@@ -314,7 +314,7 @@ fn parse_auctions(
             let nbt = &parse_nbt(&auction.item_bytes).unwrap().i[0];
             let item_id = nbt.tag.extra_attributes.id.to_owned();
             let mut internal_id = item_id.to_owned();
-            let mut lowestbin_price = auction.starting_bid as f64 / nbt.count as f64;
+            let mut lowestbin_price = auction.starting_bid as f32 / nbt.count as f32;
 
             let mut enchants = Vec::new();
             if update_query && nbt.tag.extra_attributes.enchantments.is_some() {
@@ -358,7 +358,7 @@ fn parse_auctions(
                         if attributes.len() == 1 {
                             for entry in attributes {
                                 internal_id = format!("{}_{}", item_id, entry.key().to_uppercase());
-                                lowestbin_price /= 2_i64.pow((entry.value() - 1) as u32) as f64;
+                                lowestbin_price /= 2_i64.pow((entry.value() - 1) as u32) as f32;
                             }
                         }
                     }

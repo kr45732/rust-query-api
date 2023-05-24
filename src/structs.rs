@@ -34,7 +34,7 @@ pub struct QueryDatabaseItem {
     pub starting_bid: i64,
     pub highest_bid: i64,
     #[serde(skip_serializing)]
-    pub lowestbin_price: f64,
+    pub lowestbin_price: f32,
     pub enchants: Vec<String>,
     pub bin: bool,
     pub bids: Vec<Bid>,
