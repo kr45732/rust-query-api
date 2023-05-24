@@ -391,7 +391,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
     let mut query = String::new();
     let mut sort_by = String::new();
     let mut sort_order = String::new();
-    let mut limit: i32 = 1;
+    let mut limit: i64 = 1;
     let mut key = String::new();
     let mut item_name = String::new();
     let mut tier = String::new();
