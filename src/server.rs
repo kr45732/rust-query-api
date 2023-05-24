@@ -415,7 +415,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
             "query" => query = query_pair.1.to_string(),
             "sort_by" => sort_by = query_pair.1.to_string(),
             "sort_order" => sort_order = query_pair.1.to_string(),
-            "limit" => match query_pair.1.to_string().parse::<i32>() {
+            "limit" => match query_pair.1.to_string().parse::<i64>() {
                 Ok(limit_int) => limit = limit_int,
                 Err(e) => return bad_request(&format!("Error parsing limit parameter: {}", e)),
             },
