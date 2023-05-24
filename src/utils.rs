@@ -164,7 +164,7 @@ pub fn parse_nbt(data: &str) -> Option<PartialNbt> {
         .and_then(|bytes| nbt::from_gzip_reader::<_, PartialNbt>(std::io::Cursor::new(bytes)).ok())
 }
 
-pub fn calculate_with_taxes(price: f64) -> f64 {
+pub fn calculate_with_taxes(price: f32) -> f32 {
     let tax_rate = if price >= 1000000.0 { 0.98 } else { 0.99 };
     price * tax_rate
 }
@@ -179,7 +179,7 @@ pub fn valid_api_key(config: Arc<Config>, key: String, admin_only: bool) -> bool
     config.api_key.is_empty() || (key == config.api_key)
 }
 
-pub fn update_lower_else_insert(id: &String, starting_bid: f64, prices: &DashMap<String, f64>) {
+pub fn update_lower_else_insert(id: &String, starting_bid: f32, prices: &DashMap<String, f32>) {
     if let Some(mut ele) = prices.get_mut(id) {
         if starting_bid < *ele {
             *ele = starting_bid;
@@ -193,7 +193,7 @@ pub async fn update_query_bin_underbin_fn(
     auctions: Mutex<Vec<QueryDatabaseItem>>,
     ended_auction_uuids: DashSet<String>,
     is_first_update: bool,
-    bin_prices: &DashMap<String, f64>,
+    bin_prices: &DashMap<String, f32>,
     update_lowestbin: bool,
     last_updated: i64,
     update_underbin: bool,
@@ -313,7 +313,7 @@ async fn update_query_database(
     mut auctions: Mutex<Vec<QueryDatabaseItem>>,
     ended_auction_uuids: DashSet<String>,
     is_first_update: bool,
-    bin_prices: &DashMap<String, f64>,
+    bin_prices: &DashMap<String, f32>,
     update_lowestbin: bool,
     last_updated: i64,
 ) -> Result<u64, Error> {
@@ -529,7 +529,7 @@ async fn update_avg_bin_database(
         .await
 }
 
-async fn update_bins_local(bin_prices: &DashMap<String, f64>) -> Result<(), serde_json::Error> {
+async fn update_bins_local(bin_prices: &DashMap<String, f32>) -> Result<(), serde_json::Error> {
     let file = OpenOptions::new()
         .create(true)
         .write(true)

@@ -46,11 +46,11 @@ pub async fn update_auctions(config: Arc<Config>) -> bool {
     let inserted_uuids: DashSet<String> = DashSet::new();
     let query_prices: Mutex<Vec<QueryDatabaseItem>> = Mutex::new(Vec::new());
     let pet_prices: DashMap<String, AvgSum> = DashMap::new();
-    let bin_prices: DashMap<String, f64> = DashMap::new();
+    let bin_prices: DashMap<String, f32> = DashMap::new();
     let under_bin_prices: DashMap<String, Value> = DashMap::new();
     let avg_ah_prices: Mutex<Vec<AvgAh>> = Mutex::new(Vec::new());
     let avg_bin_prices: Mutex<Vec<AvgAh>> = Mutex::new(Vec::new());
-    let past_bin_prices: DashMap<String, f64> = serde_json::from_str(
+    let past_bin_prices: DashMap<String, f32> = serde_json::from_str(
         &fs::read_to_string("lowestbin.json").unwrap_or_else(|_| String::from("{}")),
     )
     .unwrap();
@@ -240,9 +240,9 @@ async fn process_auction_page(
     page_number: i64,
     inserted_uuids: &DashSet<String>,
     query_prices: &Mutex<Vec<QueryDatabaseItem>>,
-    bin_prices: &DashMap<String, f64>,
+    bin_prices: &DashMap<String, f32>,
     under_bin_prices: &DashMap<String, Value>,
-    past_bin_prices: &DashMap<String, f64>,
+    past_bin_prices: &DashMap<String, f32>,
     update_query: bool,
     update_lowestbin: bool,
     update_underbin: bool,
@@ -292,9 +292,9 @@ fn parse_auctions(
     auctions: Vec<Auction>,
     inserted_uuids: &DashSet<String>,
     query_prices: &Mutex<Vec<QueryDatabaseItem>>,
-    bin_prices: &DashMap<String, f64>,
+    bin_prices: &DashMap<String, f32>,
     under_bin_prices: &DashMap<String, Value>,
-    past_bin_prices: &DashMap<String, f64>,
+    past_bin_prices: &DashMap<String, f32>,
     update_query: bool,
     update_lowestbin: bool,
     update_underbin: bool,
@@ -415,7 +415,7 @@ fn parse_auctions(
                 {
                     if let Some(past_bin_price) = past_bin_prices.get(&internal_id) {
                         let profit = calculate_with_taxes(*past_bin_price.value())
-                            - auction.starting_bid as f64;
+                            - auction.starting_bid as f32;
                         if profit > 1000000.0 {
                             under_bin_prices.insert(
                                 auction.uuid.clone(),
