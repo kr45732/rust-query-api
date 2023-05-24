@@ -245,9 +245,9 @@ pub struct PetInfo {
 
 #[derive(Deserialize)]
 pub struct Auctions {
-    pub page: i64,
+    pub page: i32,
     #[serde(rename = "totalPages")]
-    pub total_pages: i64,
+    pub total_pages: i32,
     #[serde(rename = "lastUpdated")]
     pub last_updated: i64,
     pub auctions: Vec<Auction>,

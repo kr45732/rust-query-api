@@ -237,7 +237,7 @@ pub async fn update_auctions(config: Arc<Config>) -> bool {
 }
 
 async fn process_auction_page(
-    page_number: i64,
+    page_number: i32,
     inserted_uuids: &DashSet<String>,
     query_prices: &Mutex<Vec<QueryDatabaseItem>>,
     bin_prices: &DashMap<String, f32>,
@@ -676,7 +676,7 @@ async fn parse_ended_auctions(
 }
 
 /* Gets an auction page from the Hypixel API */
-async fn get_auction_page(page_number: i64) -> Option<Auctions> {
+async fn get_auction_page(page_number: i32) -> Option<Auctions> {
     let res = HTTP_CLIENT
         .get(format!(
             "https://api.hypixel.net/skyblock/auctions?page={}",

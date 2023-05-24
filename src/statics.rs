@@ -34,7 +34,7 @@ lazy_static! {
         .unwrap();
     pub static ref MC_CODE_REGEX: Regex = Regex::new("(?i)\u{00A7}[0-9A-FK-OR]").unwrap();
     pub static ref IS_UPDATING: Mutex<bool> = Mutex::new(false);
-    pub static ref TOTAL_UPDATES: Mutex<i16> = Mutex::new(0);
+    pub static ref TOTAL_UPDATES: Mutex<i32> = Mutex::new(0);
     pub static ref LAST_UPDATED: Mutex<i64> = Mutex::new(0);
     pub static ref WEBHOOK: Mutex<Option<Webhook>> = Mutex::new(None);
     pub static ref BID_ARRAY: Mutex<Option<Type>> = Mutex::new(None);

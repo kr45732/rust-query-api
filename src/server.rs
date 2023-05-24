@@ -353,7 +353,7 @@ async fn averages(
     // Stores the values after averaging by 'step'
     let avg_map_final: DashMap<String, PartialAvgAh> = DashMap::new();
     for ele in avg_map {
-        let mut count: i64 = 0;
+        let mut count: i32 = 0;
         let mut sales: f32 = 0.0;
         let sales_arr = ele.1.get_sales();
 
@@ -391,7 +391,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
     let mut query = String::new();
     let mut sort_by = String::new();
     let mut sort_order = String::new();
-    let mut limit: i64 = 1;
+    let mut limit: i32 = 1;
     let mut key = String::new();
     let mut item_name = String::new();
     let mut tier = String::new();
@@ -415,7 +415,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
             "query" => query = query_pair.1.to_string(),
             "sort_by" => sort_by = query_pair.1.to_string(),
             "sort_order" => sort_order = query_pair.1.to_string(),
-            "limit" => match query_pair.1.to_string().parse::<i64>() {
+            "limit" => match query_pair.1.to_string().parse::<i32>() {
                 Ok(limit_int) => limit = limit_int,
                 Err(e) => return bad_request(&format!("Error parsing limit parameter: {}", e)),
             },
