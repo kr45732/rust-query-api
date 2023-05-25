@@ -333,7 +333,7 @@ impl PartialExtraAttr {
 
     pub fn get_rune(&self) -> Option<String> {
         if let Some(runes_val) = &self.runes {
-            for ele in runes_val {
+            if let Some(ele) = runes_val.into_iter().next() {
                 return Some(format!("{}_RUNE;{}", ele.key(), ele.value()));
             }
         }
@@ -430,7 +430,7 @@ impl PartialExtraAttr {
                             "{}_{}_{}_GEM",
                             ele.key(),
                             quality,
-                            ele.key().split("_").next().unwrap()
+                            ele.key().split('_').next().unwrap()
                         ));
                     }
                 }

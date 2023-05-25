@@ -16,8 +16,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#![warn(clippy::all)]
-
 use std::sync::Arc;
 use std::{
     error::Error,

@@ -386,133 +386,6 @@ async fn averages(
         .unwrap())
 }
 
-fn bool_eq<'a>(
-    sql: &mut String,
-    param_vec: &mut Vec<&'a (dyn ToSql + Sync)>,
-    param_name: &str,
-    param_value: &'a Option<bool>,
-    param_count: i32,
-    sort_by_query: bool,
-) -> i32 {
-    if let Some(param_value) = param_value {
-        return param_eq(
-            sql,
-            param_vec,
-            param_name,
-            param_value,
-            param_count,
-            sort_by_query,
-        );
-    }
-    return param_count;
-}
-fn int_eq<'a>(
-    sql: &mut String,
-    param_vec: &mut Vec<&'a (dyn ToSql + Sync)>,
-    param_name: &str,
-    param_value: &'a i16,
-    param_count: i32,
-    sort_by_query: bool,
-) -> i32 {
-    if param_value >= &0 {
-        return param_eq(
-            sql,
-            param_vec,
-            param_name,
-            param_value,
-            param_count,
-            sort_by_query,
-        );
-    }
-    return param_count;
-}
-fn str_eq<'a>(
-    sql: &mut String,
-    param_vec: &mut Vec<&'a (dyn ToSql + Sync)>,
-    param_name: &str,
-    param_value: &'a String,
-    param_count: i32,
-    sort_by_query: bool,
-) -> i32 {
-    if !param_value.is_empty() {
-        return param_eq(
-            sql,
-            param_vec,
-            param_name,
-            param_value,
-            param_count,
-            sort_by_query,
-        );
-    }
-    return param_count;
-}
-
-fn array_contains<'a>(
-    sql: &mut String,
-    param_vec: &mut Vec<&'a (dyn ToSql + Sync)>,
-    param_name: &str,
-    param_value: &'a Vec<String>,
-    param_count: i32,
-    sort_by_query: bool,
-) -> i32 {
-    if param_count != 1 {
-        println!("{:?}", param_value);
-
-        sql.push_str(if sort_by_query { " +" } else { " AND" });
-    }
-    if sort_by_query {
-        sql.push_str(" CASE WHEN")
-    }
-
-    let mut param_count_mut = param_count;
-
-    sql.push_str(" ");
-    sql.push_str(param_name);
-    sql.push_str(" @> ARRAY[");
-    let start_param_count = param_count;
-    for enchant in param_value.iter() {
-        if param_count != start_param_count {
-            sql.push(',');
-        }
-
-        sql.push_str(format!("${}", param_count).as_str());
-        param_vec.push(enchant);
-        param_count_mut += 1;
-    }
-    sql.push_str("]");
-
-    if sort_by_query {
-        sql.push_str(" THEN 1 ELSE 0 END")
-    }
-
-    return param_count_mut;
-}
-
-fn param_eq<'a>(
-    sql: &mut String,
-    param_vec: &mut Vec<&'a (dyn ToSql + Sync)>,
-    param_name: &str,
-    param_value: &'a (dyn ToSql + Sync),
-    param_count: i32,
-    sort_by_query: bool,
-) -> i32 {
-    if param_count != 1 {
-        sql.push_str(if sort_by_query { " +" } else { " AND" });
-    }
-    if sort_by_query {
-        sql.push_str(" CASE WHEN")
-    }
-
-    sql.push_str(format!(" {} = ${}", param_name, param_count).as_str());
-    param_vec.push(param_value);
-
-    if sort_by_query {
-        sql.push_str(" THEN 1 ELSE 0 END")
-    }
-
-    return param_count + 1;
-}
-
 /// HTTP Handler for query
 async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
     let mut query = String::new();
@@ -883,7 +756,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
 
         let enchants_split;
         if !enchants.is_empty() {
-            enchants_split = enchants.split(",").map(|s| s.trim().to_string()).collect();
+            enchants_split = enchants.split(',').map(|s| s.trim().to_string()).collect();
             param_count = array_contains(
                 &mut sql,
                 &mut param_vec,
@@ -896,7 +769,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
         let necron_scrolls_split;
         if !necron_scrolls.is_empty() {
             necron_scrolls_split = necron_scrolls
-                .split(",")
+                .split(',')
                 .map(|s| s.trim().to_string())
                 .collect();
             param_count = array_contains(
@@ -910,7 +783,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
         }
         let gemstones_split;
         if !gemstones.is_empty() {
-            gemstones_split = gemstones.split(",").map(|s| s.trim().to_string()).collect();
+            gemstones_split = gemstones.split(',').map(|s| s.trim().to_string()).collect();
             param_count = array_contains(
                 &mut sql,
                 &mut param_vec,
@@ -1134,6 +1007,138 @@ async fn base(config: Arc<Config>) -> hyper::Result<Response<Body>> {
             .to_string(),
         ))
         .unwrap())
+}
+
+fn bool_eq<'a>(
+    sql: &mut String,
+    param_vec: &mut Vec<&'a (dyn ToSql + Sync)>,
+    param_name: &str,
+    param_value: &'a Option<bool>,
+    param_count: i32,
+    sort_by_query: bool,
+) -> i32 {
+    if let Some(param_value) = param_value {
+        return param_eq(
+            sql,
+            param_vec,
+            param_name,
+            param_value,
+            param_count,
+            sort_by_query,
+        );
+    }
+
+    param_count
+}
+
+fn int_eq<'a>(
+    sql: &mut String,
+    param_vec: &mut Vec<&'a (dyn ToSql + Sync)>,
+    param_name: &str,
+    param_value: &'a i16,
+    param_count: i32,
+    sort_by_query: bool,
+) -> i32 {
+    if param_value >= &0 {
+        return param_eq(
+            sql,
+            param_vec,
+            param_name,
+            param_value,
+            param_count,
+            sort_by_query,
+        );
+    }
+
+    param_count
+}
+
+fn str_eq<'a>(
+    sql: &mut String,
+    param_vec: &mut Vec<&'a (dyn ToSql + Sync)>,
+    param_name: &str,
+    param_value: &'a String,
+    param_count: i32,
+    sort_by_query: bool,
+) -> i32 {
+    if !param_value.is_empty() {
+        return param_eq(
+            sql,
+            param_vec,
+            param_name,
+            param_value,
+            param_count,
+            sort_by_query,
+        );
+    }
+
+    param_count
+}
+
+fn param_eq<'a>(
+    sql: &mut String,
+    param_vec: &mut Vec<&'a (dyn ToSql + Sync)>,
+    param_name: &str,
+    param_value: &'a (dyn ToSql + Sync),
+    param_count: i32,
+    sort_by_query: bool,
+) -> i32 {
+    if param_count != 1 {
+        sql.push_str(if sort_by_query { " +" } else { " AND" });
+    }
+    if sort_by_query {
+        sql.push_str(" CASE WHEN")
+    }
+
+    sql.push_str(format!(" {} = ${}", param_name, param_count).as_str());
+    param_vec.push(param_value);
+
+    if sort_by_query {
+        sql.push_str(" THEN 1 ELSE 0 END")
+    }
+
+    param_count + 1
+}
+
+fn array_contains<'a>(
+    sql: &mut String,
+    param_vec: &mut Vec<&'a (dyn ToSql + Sync)>,
+    param_name: &str,
+    param_value: &'a Vec<String>,
+    param_count: i32,
+    sort_by_query: bool,
+) -> i32 {
+    if param_count != 1 {
+        println!("{:?}", param_value);
+
+        sql.push_str(if sort_by_query { " +" } else { " AND" });
+    }
+    if sort_by_query {
+        sql.push_str(" CASE WHEN")
+    }
+
+    let mut param_count_mut = param_count;
+
+    sql.push(' ');
+    sql.push_str(param_name);
+    sql.push_str(" @> ARRAY[");
+    let start_param_count = param_count;
+    for enchant in param_value.iter() {
+        if param_count != start_param_count {
+            sql.push(',');
+        }
+
+        sql.push_str(format!("${}", param_count).as_str());
+        param_vec.push(enchant);
+        param_count_mut += 1;
+    }
+    sql.push(']');
+
+    if sort_by_query {
+        sql.push_str(" THEN 1 ELSE 0 END")
+    }
+
+    param_count_mut
 }
 
 fn http_err(status: StatusCode, reason: &str) -> hyper::Result<Response<Body>> {
