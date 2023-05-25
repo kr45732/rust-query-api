@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::utils::is_false;
 use dashmap::DashMap;
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
@@ -26,6 +27,8 @@ use tokio_postgres::Row;
 #[derive(Serialize)]
 pub struct QueryDatabaseItem {
     pub uuid: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub score: Option<i32>,
     pub auctioneer: String,
     pub end_t: i64,
     pub item_name: String,
@@ -70,16 +73,16 @@ pub struct QueryDatabaseItem {
     pub dye: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub accessory_enrichment: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub recombobulated: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub wood_singularity: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub art_of_war: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub art_of_peace: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub etherwarp: Option<bool>,
+    #[serde(skip_serializing_if = "is_false")]
+    pub recombobulated: bool,
+    #[serde(skip_serializing_if = "is_false")]
+    pub wood_singularity: bool,
+    #[serde(skip_serializing_if = "is_false")]
+    pub art_of_war: bool,
+    #[serde(skip_serializing_if = "is_false")]
+    pub art_of_peace: bool,
+    #[serde(skip_serializing_if = "is_false")]
+    pub etherwarp: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub necron_scrolls: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -90,6 +93,7 @@ impl From<Row> for QueryDatabaseItem {
     fn from(row: Row) -> Self {
         Self {
             uuid: row.get("uuid"),
+            score: row.try_get("score").unwrap_or(None),
             auctioneer: row.get("auctioneer"),
             end_t: row.get("end_t"),
             item_name: row.get("item_name"),
@@ -345,54 +349,44 @@ impl PartialExtraAttr {
         None
     }
 
-    pub fn is_recombobulated(&self) -> Option<bool> {
+    pub fn is_recombobulated(&self) -> bool {
         if let Some(rarity_upgrades_value) = &self.rarity_upgrades {
-            if rarity_upgrades_value == &1 {
-                return Some(true);
-            }
+            return rarity_upgrades_value == &1;
         }
 
-        None
+        false
     }
 
-    pub fn is_wood_singularity_applied(&self) -> Option<bool> {
+    pub fn is_wood_singularity_applied(&self) -> bool {
         if let Some(wood_singularity_count_value) = &self.wood_singularity_count {
-            if wood_singularity_count_value == &1 {
-                return Some(true);
-            }
+            return wood_singularity_count_value == &1;
         }
 
-        None
+        false
     }
 
-    pub fn is_art_of_war_applied(&self) -> Option<bool> {
+    pub fn is_art_of_war_applied(&self) -> bool {
         if let Some(art_of_war_count_value) = &self.art_of_war_count {
-            if art_of_war_count_value == &1 {
-                return Some(true);
-            }
+            return art_of_war_count_value == &1;
         }
 
-        None
+        false
     }
 
-    pub fn is_art_of_peace_applied(&self) -> Option<bool> {
+    pub fn is_art_of_peace_applied(&self) -> bool {
         if let Some(art_of_peace_value) = &self.art_of_peace_applied {
-            if art_of_peace_value == &1 {
-                return Some(true);
-            }
+            return art_of_peace_value == &1;
         }
 
-        None
+        false
     }
 
-    pub fn is_etherwarp_applied(&self) -> Option<bool> {
+    pub fn is_etherwarp_applied(&self) -> bool {
         if let Some(ethermerge_value) = &self.ethermerge {
-            if ethermerge_value == &1 {
-                return Some(true);
-            }
+            return ethermerge_value == &1;
         }
 
-        None
+        false
     }
 
     pub fn get_gemstones(&self) -> Option<Vec<String>> {

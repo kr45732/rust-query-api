@@ -145,7 +145,7 @@ async fn debug_log(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Res
     }
 
     if !valid_api_key(config, key, true) {
-        return bad_request("Not authorized");
+        return unauthorized();
     }
 
     let file_result = fs::read_to_string("debug.log");
@@ -178,7 +178,7 @@ async fn info_log(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Resp
     }
 
     if !valid_api_key(config, key, true) {
-        return bad_request("Not authorized");
+        return unauthorized();
     }
 
     let file_result = fs::read_to_string("info.log");
@@ -215,7 +215,7 @@ async fn pets(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response
 
     // The API key in request doesn't match
     if !valid_api_key(config, key, false) {
-        return bad_request("Not authorized");
+        return unauthorized();
     }
 
     if query.is_empty() {
@@ -304,7 +304,7 @@ async fn averages(
 
     // The API key in request doesn't match
     if !valid_api_key(config, key, false) {
-        return bad_request("Not authorized");
+        return unauthorized();
     }
 
     if time < 0 {
@@ -386,19 +386,146 @@ async fn averages(
         .unwrap())
 }
 
+fn bool_eq<'a>(
+    sql: &mut String,
+    param_vec: &mut Vec<&'a (dyn ToSql + Sync)>,
+    param_name: &str,
+    param_value: &'a Option<bool>,
+    param_count: i32,
+    sort_by_query: bool,
+) -> i32 {
+    if let Some(param_value) = param_value {
+        return param_eq(
+            sql,
+            param_vec,
+            param_name,
+            param_value,
+            param_count,
+            sort_by_query,
+        );
+    }
+    return param_count;
+}
+fn int_eq<'a>(
+    sql: &mut String,
+    param_vec: &mut Vec<&'a (dyn ToSql + Sync)>,
+    param_name: &str,
+    param_value: &'a i16,
+    param_count: i32,
+    sort_by_query: bool,
+) -> i32 {
+    if param_value >= &0 {
+        return param_eq(
+            sql,
+            param_vec,
+            param_name,
+            param_value,
+            param_count,
+            sort_by_query,
+        );
+    }
+    return param_count;
+}
+fn str_eq<'a>(
+    sql: &mut String,
+    param_vec: &mut Vec<&'a (dyn ToSql + Sync)>,
+    param_name: &str,
+    param_value: &'a String,
+    param_count: i32,
+    sort_by_query: bool,
+) -> i32 {
+    if !param_value.is_empty() {
+        return param_eq(
+            sql,
+            param_vec,
+            param_name,
+            param_value,
+            param_count,
+            sort_by_query,
+        );
+    }
+    return param_count;
+}
+
+fn array_contains<'a>(
+    sql: &mut String,
+    param_vec: &mut Vec<&'a (dyn ToSql + Sync)>,
+    param_name: &str,
+    param_value: &'a Vec<String>,
+    param_count: i32,
+    sort_by_query: bool,
+) -> i32 {
+    if param_count != 1 {
+        println!("{:?}", param_value);
+
+        sql.push_str(if sort_by_query { " +" } else { " AND" });
+    }
+    if sort_by_query {
+        sql.push_str(" CASE WHEN")
+    }
+
+    let mut param_count_mut = param_count;
+
+    sql.push_str(" ");
+    sql.push_str(param_name);
+    sql.push_str(" @> ARRAY[");
+    let start_param_count = param_count;
+    for enchant in param_value.iter() {
+        if param_count != start_param_count {
+            sql.push(',');
+        }
+
+        sql.push_str(format!("${}", param_count).as_str());
+        param_vec.push(enchant);
+        param_count_mut += 1;
+    }
+    sql.push_str("]");
+
+    if sort_by_query {
+        sql.push_str(" THEN 1 ELSE 0 END")
+    }
+
+    return param_count_mut;
+}
+
+fn param_eq<'a>(
+    sql: &mut String,
+    param_vec: &mut Vec<&'a (dyn ToSql + Sync)>,
+    param_name: &str,
+    param_value: &'a (dyn ToSql + Sync),
+    param_count: i32,
+    sort_by_query: bool,
+) -> i32 {
+    if param_count != 1 {
+        sql.push_str(if sort_by_query { " +" } else { " AND" });
+    }
+    if sort_by_query {
+        sql.push_str(" CASE WHEN")
+    }
+
+    sql.push_str(format!(" {} = ${}", param_name, param_count).as_str());
+    param_vec.push(param_value);
+
+    if sort_by_query {
+        sql.push_str(" THEN 1 ELSE 0 END")
+    }
+
+    return param_count + 1;
+}
+
 /// HTTP Handler for query
 async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
     let mut query = String::new();
     let mut sort_by = String::new();
     let mut sort_order = String::new();
-    let mut limit: i64 = 1;
+    let mut limit = 1;
     let mut key = String::new();
     let mut item_name = String::new();
     let mut tier = String::new();
     let mut item_id = String::new();
     let mut internal_id = String::new();
     let mut enchants = String::new();
-    let mut end: i64 = -1;
+    let mut end = -1;
     let mut bids = String::new();
     let mut bin = Option::None;
     let mut potato_books = -1;
@@ -536,37 +663,78 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
     }
 
     if !valid_api_key(config.clone(), key.to_owned(), false) {
-        return bad_request("Not authorized");
+        return unauthorized();
+    }
+    // Prevent fetching too many rows
+    if (limit <= 0 || limit >= 500) && !valid_api_key(config.clone(), key.to_owned(), true) {
+        return unauthorized();
     }
 
     let database_ref = get_client().await;
-
     let results_cursor;
 
     // Find and sort using query
     if query.is_empty() {
-        let mut sql;
+        let mut sql = String::new();
         let mut param_vec: Vec<&(dyn ToSql + Sync)> = Vec::new();
         let mut param_count = 1;
 
-        let mut is_sorting = false;
+        let sort_by_query = sort_by == "query";
+        let mut sort_by_query_end_sql = String::new();
 
-        if !bids.is_empty() {
-            sql = String::from("SELECT * FROM query, unnest(bids) AS bid WHERE bid.bidder = $1");
-            param_vec.push(&bids);
-            param_count += 1;
-        } else {
-            sql = String::from("SELECT * FROM query WHERE");
-        }
-
-        if !tier.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
+        if !sort_by_query {
+            if !bids.is_empty() {
+                // TODO: support bids in sort_by query
+                sql =
+                    String::from("SELECT * FROM query, unnest(bids) AS bid WHERE bid.bidder = $1");
+                param_vec.push(&bids);
+                param_count += 1;
+            } else {
+                sql = String::from("SELECT * FROM query WHERE");
             }
-            sql.push_str(format!(" tier = ${}", param_count).as_str());
-            param_vec.push(&tier);
-            param_count += 1;
         }
+
+        param_count = int_eq(
+            &mut sql,
+            &mut param_vec,
+            "stars",
+            &stars,
+            param_count,
+            sort_by_query,
+        );
+        param_count = int_eq(
+            &mut sql,
+            &mut param_vec,
+            "potato_books",
+            &potato_books,
+            param_count,
+            sort_by_query,
+        );
+        param_count = int_eq(
+            &mut sql,
+            &mut param_vec,
+            "farming_for_dummies",
+            &farming_for_dummies,
+            param_count,
+            sort_by_query,
+        );
+        param_count = int_eq(
+            &mut sql,
+            &mut param_vec,
+            "transmission_tuner",
+            &transmission_tuner,
+            param_count,
+            sort_by_query,
+        );
+        param_count = int_eq(
+            &mut sql,
+            &mut param_vec,
+            "mana_disintegrator",
+            &mana_disintegrator,
+            param_count,
+            sort_by_query,
+        );
+
         if !item_name.is_empty() {
             if param_count != 1 {
                 sql.push_str(" AND");
@@ -575,291 +743,252 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
             param_vec.push(&item_name);
             param_count += 1;
         }
+        param_count = str_eq(
+            &mut sql,
+            &mut param_vec,
+            "reforge",
+            &reforge,
+            param_count,
+            sort_by_query,
+        );
+        param_count = str_eq(
+            &mut sql,
+            &mut param_vec,
+            "rune",
+            &rune,
+            param_count,
+            sort_by_query,
+        );
+        param_count = str_eq(
+            &mut sql,
+            &mut param_vec,
+            "skin",
+            &skin,
+            param_count,
+            sort_by_query,
+        );
+        param_count = str_eq(
+            &mut sql,
+            &mut param_vec,
+            "tier",
+            &tier,
+            param_count,
+            sort_by_query,
+        );
+        param_count = str_eq(
+            &mut sql,
+            &mut param_vec,
+            "dye",
+            &dye,
+            param_count,
+            sort_by_query,
+        );
+        param_count = str_eq(
+            &mut sql,
+            &mut param_vec,
+            "internal_id",
+            &internal_id,
+            param_count,
+            sort_by_query,
+        );
+        param_count = str_eq(
+            &mut sql,
+            &mut param_vec,
+            "power_scroll",
+            &power_scroll,
+            param_count,
+            sort_by_query,
+        );
+        param_count = str_eq(
+            &mut sql,
+            &mut param_vec,
+            "drill_upgrade_module",
+            &drill_upgrade_module,
+            param_count,
+            sort_by_query,
+        );
+        param_count = str_eq(
+            &mut sql,
+            &mut param_vec,
+            "drill_fuel_tank",
+            &drill_fuel_tank,
+            param_count,
+            sort_by_query,
+        );
+        param_count = str_eq(
+            &mut sql,
+            &mut param_vec,
+            "drill_engine",
+            &drill_engine,
+            param_count,
+            sort_by_query,
+        );
+        param_count = str_eq(
+            &mut sql,
+            &mut param_vec,
+            "accessory_enrichment",
+            &accessory_enrichment,
+            param_count,
+            sort_by_query,
+        );
+
+        param_count = bool_eq(
+            &mut sql,
+            &mut param_vec,
+            "bin",
+            &bin,
+            param_count,
+            sort_by_query,
+        );
+        param_count = bool_eq(
+            &mut sql,
+            &mut param_vec,
+            "recombobulated",
+            &recombobulated,
+            param_count,
+            sort_by_query,
+        );
+        param_count = bool_eq(
+            &mut sql,
+            &mut param_vec,
+            "wood_singularity",
+            &wood_singularity,
+            param_count,
+            sort_by_query,
+        );
+        param_count = bool_eq(
+            &mut sql,
+            &mut param_vec,
+            "art_of_war",
+            &art_of_war,
+            param_count,
+            sort_by_query,
+        );
+        param_count = bool_eq(
+            &mut sql,
+            &mut param_vec,
+            "art_of_peace",
+            &art_of_peace,
+            param_count,
+            sort_by_query,
+        );
+        param_count = bool_eq(
+            &mut sql,
+            &mut param_vec,
+            "etherwarp",
+            &etherwarp,
+            param_count,
+            sort_by_query,
+        );
+
+        let enchants_split;
+        if !enchants.is_empty() {
+            enchants_split = enchants.split(",").map(|s| s.trim().to_string()).collect();
+            param_count = array_contains(
+                &mut sql,
+                &mut param_vec,
+                "enchants",
+                &enchants_split,
+                param_count,
+                sort_by_query,
+            );
+        }
+        let necron_scrolls_split;
+        if !necron_scrolls.is_empty() {
+            necron_scrolls_split = necron_scrolls
+                .split(",")
+                .map(|s| s.trim().to_string())
+                .collect();
+            param_count = array_contains(
+                &mut sql,
+                &mut param_vec,
+                "necron_scrolls",
+                &necron_scrolls_split,
+                param_count,
+                sort_by_query,
+            );
+        }
+        let gemstones_split;
+        if !gemstones.is_empty() {
+            gemstones_split = gemstones.split(",").map(|s| s.trim().to_string()).collect();
+            param_count = array_contains(
+                &mut sql,
+                &mut param_vec,
+                "gemstones",
+                &gemstones_split,
+                param_count,
+                sort_by_query,
+            );
+        }
+
         if !item_id.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
+            if sort_by_query {
+                if !sort_by_query_end_sql.is_empty() {
+                    sort_by_query_end_sql.push_str(" AND");
+                }
+                sort_by_query_end_sql.push_str(format!(" item_id = ${}", param_count).as_str());
+            } else {
+                if param_count != 1 {
+                    sql.push_str(" AND");
+                }
+                sql.push_str(format!(" item_id = ${}", param_count).as_str());
             }
-            sql.push_str(format!(" item_id = ${}", param_count).as_str());
             param_vec.push(&item_id);
             param_count += 1;
         }
-        if !internal_id.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" internal_id = ${}", param_count).as_str());
-            param_vec.push(&internal_id);
-            param_count += 1;
-        }
-        let enchants_split: Vec<String>;
-        if !enchants.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-
-            sql.push_str(" enchants @> ARRAY[");
-            let start_param_count = param_count;
-            enchants_split = enchants.split(",").map(|s| s.to_string()).collect();
-            for enchant in enchants_split.iter() {
-                if param_count != start_param_count {
-                    sql.push(',');
-                }
-
-                sql.push_str(format!("${}", param_count).as_str());
-
-                param_vec.push(enchant);
-                param_count += 1;
-            }
-            sql.push_str("]");
-        }
         if end >= 0 {
-            if param_count != 1 {
-                sql.push_str(" AND");
+            if sort_by_query {
+                if !sort_by_query_end_sql.is_empty() {
+                    sort_by_query_end_sql.push_str(" AND");
+                }
+                sort_by_query_end_sql.push_str(format!(" end_t > ${}", param_count).as_str());
+            } else {
+                if param_count != 1 {
+                    sql.push_str(" AND");
+                }
+                sql.push_str(format!(" end_t > ${}", param_count).as_str());
             }
-            sql.push_str(format!(" end_t > ${}", param_count).as_str());
             param_vec.push(&end);
             param_count += 1;
         }
-        if potato_books >= 0 {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" potato_books = ${}", param_count).as_str());
-            param_vec.push(&potato_books);
-            param_count += 1;
-        }
-        if stars >= 0 {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" stars = ${}", param_count).as_str());
-            param_vec.push(&stars);
-            param_count += 1;
-        }
-        if farming_for_dummies >= 0 {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" farming_for_dummies > ${}", param_count).as_str());
-            param_vec.push(&farming_for_dummies);
-            param_count += 1;
-        }
-        if transmission_tuner >= 0 {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" transmission_tuner > ${}", param_count).as_str());
-            param_vec.push(&transmission_tuner);
-            param_count += 1;
-        }
-        if mana_disintegrator >= 0 {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" mana_disintegrator > ${}", param_count).as_str());
-            param_vec.push(&mana_disintegrator);
-            param_count += 1;
-        }
-        if !reforge.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" reforge = ${}", param_count).as_str());
-            param_vec.push(&reforge);
-            param_count += 1;
-        }
-        if !rune.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" rune = ${}", param_count).as_str());
-            param_vec.push(&rune);
-            param_count += 1;
-        }
-        if !skin.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" skin = ${}", param_count).as_str());
-            param_vec.push(&skin);
-            param_count += 1;
-        }
-        if !power_scroll.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" power_scroll = ${}", param_count).as_str());
-            param_vec.push(&power_scroll);
-            param_count += 1;
-        }
-        if !drill_upgrade_module.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" drill_upgrade_module = ${}", param_count).as_str());
-            param_vec.push(&drill_upgrade_module);
-            param_count += 1;
-        }
-        if !drill_fuel_tank.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" drill_fuel_tank = ${}", param_count).as_str());
-            param_vec.push(&drill_fuel_tank);
-            param_count += 1;
-        }
-        if !drill_engine.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" drill_engine = ${}", param_count).as_str());
-            param_vec.push(&drill_engine);
-            param_count += 1;
-        }
-        if !dye.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" dye = ${}", param_count).as_str());
-            param_vec.push(&dye);
-            param_count += 1;
-        }
-        if !accessory_enrichment.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" accessory_enrichment = ${}", param_count).as_str());
-            param_vec.push(&accessory_enrichment);
-            param_count += 1;
-        }
-        let recombobulated_unwrapped;
-        if recombobulated.is_some() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" recombobulated = ${}", param_count).as_str());
-            recombobulated_unwrapped = recombobulated.unwrap();
-            param_vec.push(&recombobulated_unwrapped);
-            param_count += 1;
-        }
-        let wood_singularity_unwrapped;
-        if wood_singularity.is_some() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" wood_singularity = ${}", param_count).as_str());
-            wood_singularity_unwrapped = wood_singularity.unwrap();
-            param_vec.push(&wood_singularity_unwrapped);
-            param_count += 1;
-        }
-        let art_of_war_unwrapped;
-        if art_of_war.is_some() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" art_of_war = ${}", param_count).as_str());
-            art_of_war_unwrapped = art_of_war.unwrap();
-            param_vec.push(&art_of_war_unwrapped);
-            param_count += 1;
-        }
-        let art_of_peace_unwrapped;
-        if art_of_peace.is_some() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" art_of_peace = ${}", param_count).as_str());
-            art_of_peace_unwrapped = art_of_peace.unwrap();
-            param_vec.push(&art_of_peace_unwrapped);
-            param_count += 1;
-        }
-        let etherwarp_unwrapped;
-        if etherwarp.is_some() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" etherwarp = ${}", param_count).as_str());
-            etherwarp_unwrapped = etherwarp.unwrap();
-            param_vec.push(&etherwarp_unwrapped);
-            param_count += 1;
-        }
-        let necron_scrolls_split: Vec<String>;
-        if !necron_scrolls.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
 
-            sql.push_str(" necron_scrolls @> ARRAY[");
-            let start_param_count = param_count;
-            necron_scrolls_split = necron_scrolls.split(",").map(|s| s.to_string()).collect();
-            for necron_scroll in necron_scrolls_split.iter() {
-                if param_count != start_param_count {
-                    sql.push(',');
-                }
-
-                sql.push_str(format!("${}", param_count).as_str());
-
-                param_vec.push(necron_scroll);
-                param_count += 1;
-            }
-            sql.push_str("]");
+        // Handle unfinished WHERE
+        if sort_by_query && sort_by_query_end_sql.is_empty() {
+            sort_by_query_end_sql.push_str(" 1=1");
+        } else if param_count == 1 {
+            sql.push_str(" 1=1");
         }
-        let gemstones_split: Vec<String>;
-        if !gemstones.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
 
-            sql.push_str(" gemstones @> ARRAY[");
-            let start_param_count = param_count;
-            gemstones_split = gemstones.split(",").map(|s| s.to_string()).collect();
-            for gemstone in gemstones_split.iter() {
-                if param_count != start_param_count {
-                    sql.push(',');
-                }
-
-                sql.push_str(format!("${}", param_count).as_str());
-
-                param_vec.push(gemstone);
-                param_count += 1;
-            }
-            sql.push_str("]");
-        }
-        let bin_unwrapped;
-        if bin.is_some() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" bin = ${}", param_count).as_str());
-            bin_unwrapped = bin.unwrap();
-            param_vec.push(&bin_unwrapped);
-            param_count += 1;
-        }
-        if (sort_by == "starting_bid" || sort_by == "highest_bid")
+        if sort_by_query {
+            sort_by_query_end_sql.push_str(" ORDER BY score DESC");
+        } else if (sort_by == "starting_bid" || sort_by == "highest_bid")
             && (sort_order == "ASC" || sort_order == "DESC")
         {
-            if param_count == 1 {
-                sql.push_str(" 1=1"); // Handles unfinished WHERE
-            }
             sql.push_str(format!(" ORDER BY {} {}", sort_by, sort_order).as_str());
-            is_sorting = true;
         };
 
-        // Prevent fetching too many rows
-        if (limit <= 0 || limit >= 500) && !valid_api_key(config.clone(), key.to_owned(), true) {
-            return bad_request("Not authorized");
-        }
-        if param_count == 1 && !is_sorting {
-            sql.push_str(" 1=1"); // Handles unfinished WHERE
-        }
         if limit > 0 {
-            sql.push_str(format!(" LIMIT ${}", param_count).as_str());
+            if sort_by_query {
+                sort_by_query_end_sql.push_str(format!(" LIMIT ${}", param_count).as_str());
+            } else {
+                sql.push_str(format!(" LIMIT ${}", param_count).as_str());
+            }
             param_vec.push(&limit);
         }
 
+        if sort_by_query {
+            sql = format!(
+                "SELECT *,{} AS score FROM query WHERE{}",
+                if sql.is_empty() { "0" } else { &sql },
+                sort_by_query_end_sql
+            );
+        }
+
+        println!("{}", sql);
         results_cursor = database_ref.query(&sql, &param_vec).await;
     } else {
         if !valid_api_key(config, key, true) {
-            return bad_request("Not authorized");
+            return unauthorized();
         }
 
         results_cursor = database_ref
@@ -905,7 +1034,7 @@ async fn query_items(config: Arc<Config>, req: Request<Body>) -> hyper::Result<R
     }
 
     if !valid_api_key(config, key, false) {
-        return bad_request("Not authorized");
+        return unauthorized();
     }
 
     let file_result = fs::read_to_string("query_items.json");
@@ -935,7 +1064,7 @@ async fn lowestbin(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Res
     }
 
     if !valid_api_key(config, key, false) {
-        return bad_request("Not authorized");
+        return unauthorized();
     }
 
     let file_result = fs::read_to_string("lowestbin.json");
@@ -965,7 +1094,7 @@ async fn underbin(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Resp
     }
 
     if !valid_api_key(config, key, false) {
-        return bad_request("Not authorized");
+        return unauthorized();
     }
 
     let file_result = fs::read_to_string("underbin.json");
@@ -1021,10 +1150,14 @@ fn bad_request(reason: &str) -> hyper::Result<Response<Body>> {
     http_err(StatusCode::BAD_REQUEST, reason)
 }
 
-fn not_found() -> hyper::Result<Response<Body>> {
-    http_err(StatusCode::NOT_FOUND, "Not found")
-}
-
 fn internal_error(reason: &str) -> hyper::Result<Response<Body>> {
     http_err(StatusCode::INTERNAL_SERVER_ERROR, reason)
+}
+
+fn unauthorized() -> hyper::Result<Response<Body>> {
+    http_err(StatusCode::UNAUTHORIZED, "Unauthorized")
+}
+
+fn not_found() -> hyper::Result<Response<Body>> {
+    http_err(StatusCode::NOT_FOUND, "Not found")
 }

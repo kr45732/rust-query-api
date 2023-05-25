@@ -613,3 +613,7 @@ pub fn get_timestamp_millis() -> u128 {
         .unwrap()
         .as_millis()
 }
+
+pub fn is_false(b: &bool) -> bool {
+    !b
+}

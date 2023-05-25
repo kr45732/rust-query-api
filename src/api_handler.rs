@@ -447,6 +447,7 @@ fn parse_auctions(
 
                 query_prices.lock().unwrap().push(QueryDatabaseItem {
                     uuid: auction.uuid,
+                    score: None,
                     auctioneer: auction.auctioneer,
                     end_t: auction.end,
                     item_name: auction.item_name,
