@@ -68,9 +68,9 @@
 - Request: /query?key=KEY&bin=true&item_id=POWER_WITHER_CHESTPLATE&recombobulated=true&stars=5&sort_by=starting_bid&sort_order=ASC&limit=50
 - Meaning: find the cheapest 50 bins where the item id is POWER_WITHER_CHESTPLATE, is recombobulated, and has 5 stars. Sort by ascending bin price
 
-### [Query Example #1](docs/query_example_2.json)
-- Request: /query?key=KEY&bin=true&item_id=POWER_WITHER_CHESTPLATE&recombobulated=true&stars=5&sort_by=query&limit=50
-- Meaning: find the closest matching bins where the item id is POWER_WITHER_CHESTPLATE, is recombobulated, and has 5 stars. Sort by ascending bin price and limit to 50 results. Returns a score indicating number of conditions matched
+### [Query Example #2](docs/query_example_2.json)
+- Request: /query?key=KEY&bin=true&item_id=POWER_WITHER_CHESTPLATE&recombobulated=true&enchants=GROWTH;6&gemstones=COMBAT_0_FINE_JASPER_GEM&stars=5&sort_by=query&limit=50
+- Meaning: find the closest matching bins where the item id is POWER_WITHER_CHESTPLATE, is recombobulated, enchanted with growth 6, have a fine jasper in the combat gemstone slot, and has 5 stars. Sort by ascending bin price and limit to 50 results. Returns a score indicating number of conditions matched
 
 ### [Pets Example](docs/pets_example.json)
 - Request: /pets?key=KEY&query=[LVL_100]_WITHER_SKELETON_LEGENDARY,[LVL_80]_BAL_EPIC,[LVL_96]_ENDER_DRAGON_EPIC_TB
