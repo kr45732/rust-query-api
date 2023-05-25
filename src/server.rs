@@ -608,14 +608,6 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
             sort_by_query,
         );
 
-        if !item_name.is_empty() {
-            if param_count != 1 {
-                sql.push_str(" AND");
-            }
-            sql.push_str(format!(" item_name ILIKE ${}", param_count).as_str());
-            param_vec.push(&item_name);
-            param_count += 1;
-        }
         param_count = str_eq(
             &mut sql,
             &mut param_vec,
@@ -822,6 +814,22 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
                 sql.push_str(format!(" end_t > ${}", param_count).as_str());
             }
             param_vec.push(&end);
+            param_count += 1;
+        }
+        if !item_name.is_empty() {
+            if sort_by_query {
+                if !sort_by_query_end_sql.is_empty() {
+                    sort_by_query_end_sql.push_str(" AND");
+                }
+                sort_by_query_end_sql
+                    .push_str(format!(" item_name ILIKE ${}", param_count).as_str());
+            } else {
+                if param_count != 1 {
+                    sql.push_str(" AND");
+                }
+                sql.push_str(format!(" item_name ILIKE ${}", param_count).as_str());
+            }
+            param_vec.push(&item_name);
             param_count += 1;
         }
 
