@@ -47,7 +47,7 @@ A versatile API facade for the Hypixel Auction API written in Rust. The entire a
 - `/query_items`
 
 ### Documentation & Examples
-- See documentation and examples [here](https://github.com/kr45732/rust-query-api/blob/main/docs/docs.md)
+- See documentation and examples [here](docs/docs.md)
 
 ## Free Hosting
 ### Deploy On Railway
