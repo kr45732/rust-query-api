@@ -1132,11 +1132,11 @@ fn array_contains<'a>(
     sql.push_str(" @> ARRAY[");
     let start_param_count = param_count;
     for enchant in param_value.iter() {
-        if param_count != start_param_count {
+        if param_count_mut != start_param_count {
             sql.push(',');
         }
 
-        sql.push_str(format!("${}", param_count).as_str());
+        sql.push_str(format!("${}", param_count_mut).as_str());
         param_vec.push(enchant);
         param_count_mut += 1;
     }
