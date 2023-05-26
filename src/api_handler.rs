@@ -451,6 +451,7 @@ fn parse_auctions(
                     auctioneer: auction.auctioneer,
                     end_t: auction.end,
                     item_name: auction.item_name,
+                    lore: format!("{}\n{}", nbt.tag.display.name, auction.item_lore),
                     tier: tier.to_string(),
                     starting_bid: auction.starting_bid,
                     highest_bid: auction.highest_bid_amount,

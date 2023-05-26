@@ -126,6 +126,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             auctioneer TEXT,
                             end_t BIGINT,
                             item_name TEXT,
+                            lore TEXT,
                             tier TEXT,
                             item_id TEXT,
                             internal_id TEXT,

@@ -841,7 +841,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
         }
 
         if sort_by_query {
-            sort_by_query_end_sql.push_str(" ORDER BY score DESC");
+            sort_by_query_end_sql.push_str(" ORDER BY score DESC, cur_bid");
         } else if (sort_by == "starting_bid" || sort_by == "highest_bid")
             && (sort_order == "ASC" || sort_order == "DESC")
         {
@@ -859,13 +859,12 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
 
         if sort_by_query {
             sql = format!(
-                "SELECT *,{} AS score FROM query WHERE{}",
+                "SELECT *,{} AS score, GREATEST(starting_bid, highest_bid) AS cur_bid FROM query WHERE{}",
                 if sql.is_empty() { "0" } else { &sql },
                 sort_by_query_end_sql
             );
         }
 
-        println!("{}", sql);
         results_cursor = database_ref.query(&sql, &param_vec).await;
     } else {
         if !valid_api_key(config, key, true) {
