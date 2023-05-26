@@ -367,7 +367,28 @@ async fn update_query_database(
             Type::TEXT_ARRAY,
             Type::BOOL,
             BID_ARRAY.lock().await.to_owned().unwrap(),
-            Type::INT4,
+            Type::INT2,
+            Type::INT2,
+            Type::INT2,
+            Type::INT2,
+            Type::INT2,
+            Type::INT2,
+            Type::TEXT,
+            Type::TEXT,
+            Type::TEXT,
+            Type::TEXT,
+            Type::TEXT,
+            Type::TEXT,
+            Type::TEXT,
+            Type::TEXT,
+            Type::TEXT,
+            Type::BOOL,
+            Type::BOOL,
+            Type::BOOL,
+            Type::BOOL,
+            Type::BOOL,
+            Type::TEXT_ARRAY,
+            Type::TEXT_ARRAY,
         ],
     );
 
@@ -390,6 +411,27 @@ async fn update_query_database(
             &m.bin,
             &m.bids,
             &m.count,
+            &m.potato_books,
+            &m.stars,
+            &m.farming_for_dummies,
+            &m.transmission_tuner,
+            &m.mana_disintegrator,
+            &m.reforge,
+            &m.rune,
+            &m.skin,
+            &m.power_scroll,
+            &m.drill_upgrade_module,
+            &m.drill_fuel_tank,
+            &m.drill_engine,
+            &m.dye,
+            &m.accessory_enrichment,
+            &m.recombobulated,
+            &m.wood_singularity,
+            &m.art_of_war,
+            &m.art_of_peace,
+            &m.etherwarp,
+            &m.necron_scrolls,
+            &m.gemstones,
         ];
 
         copy_writer.as_mut().write(&row).await?;
@@ -570,4 +612,8 @@ pub fn get_timestamp_millis() -> u128 {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_millis()
+}
+
+pub fn is_false(b: &bool) -> bool {
+    !b
 }

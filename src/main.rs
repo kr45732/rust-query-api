@@ -16,8 +16,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#![warn(clippy::all)]
-
 use std::sync::Arc;
 use std::{
     error::Error,
@@ -137,7 +135,28 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             enchants TEXT[],
                             bin BOOLEAN,
                             bids bid[],
-                            count INTEGER
+                            count SMALLINT,
+                            potato_books SMALLINT,
+                            stars SMALLINT,
+                            farming_for_dummies SMALLINT,
+                            transmission_tuner SMALLINT,
+                            mana_disintegrator SMALLINT,
+                            reforge TEXT,
+                            rune TEXT,
+                            skin TEXT,
+                            power_scroll TEXT,
+                            drill_upgrade_module TEXT,
+                            drill_fuel_tank TEXT,
+                            drill_engine TEXT,
+                            dye TEXT,
+                            accessory_enrichment TEXT,
+                            recombobulated BOOLEAN,
+                            wood_singularity BOOLEAN,
+                            art_of_war BOOLEAN,
+                            art_of_peace BOOLEAN,
+                            etherwarp BOOLEAN,
+                            necron_scrolls TEXT[],
+                            gemstones TEXT[]
                         )",
                 )
                 .await;
