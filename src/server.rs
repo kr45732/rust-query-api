@@ -1121,15 +1121,17 @@ fn array_contains<'a>(
 
         sql.push_str(if sort_by_query { " +" } else { " AND" });
     }
-    if sort_by_query {
-        sql.push_str(" CASE WHEN")
-    }
 
     let mut param_count_mut = param_count;
 
-    sql.push(' ');
-    sql.push_str(param_name);
-    sql.push_str(" @> ARRAY[");
+    if sort_by_query {
+        sql.push_str(" cardinality(ARRAY(SELECT unnest(ARRAY[");
+    } else {
+        sql.push(' ');
+        sql.push_str(param_name);
+        sql.push_str(" @> ARRAY[");
+    }
+
     let start_param_count = param_count;
     for enchant in param_value.iter() {
         if param_count_mut != start_param_count {
@@ -1140,10 +1142,12 @@ fn array_contains<'a>(
         param_vec.push(enchant);
         param_count_mut += 1;
     }
-    sql.push(']');
 
+    sql.push(']');
     if sort_by_query {
-        sql.push_str(" THEN 1 ELSE 0 END")
+        sql.push_str(") intersect SELECT unnest(");
+        sql.push_str(param_name);
+        sql.push_str(")))");
     }
 
     param_count_mut
