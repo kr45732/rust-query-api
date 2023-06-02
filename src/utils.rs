@@ -165,8 +165,23 @@ pub fn parse_nbt(data: &str) -> Option<PartialNbt> {
 }
 
 pub fn calculate_with_taxes(price: f32) -> f32 {
-    let tax_rate = if price >= 1000000.0 { 0.98 } else { 0.99 };
-    price * tax_rate
+    let mut tax = 0.0;
+
+    // 1% for claiming bin over 1m (when buying)
+    if price >= 1000000.0 {
+        tax += 0.01;
+    }
+
+    // Tax for starting new bin (when reselling)
+    if price <= 10000000.0 {
+        tax += 0.01;
+    } else if price <= 100000000.0 {
+        tax += 0.02;
+    } else {
+        tax += 0.025;
+    }
+
+    price * (1.0 - tax)
 }
 
 pub fn valid_api_key(config: Arc<Config>, key: String, admin_only: bool) -> bool {
