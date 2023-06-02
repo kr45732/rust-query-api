@@ -181,7 +181,7 @@ pub fn calculate_with_taxes(price: f32) -> f32 {
         tax += 0.025;
     }
 
-    return price * (1.0 - tax);
+    price * (1.0 - tax)
 }
 
 pub fn valid_api_key(config: Arc<Config>, key: String, admin_only: bool) -> bool {
