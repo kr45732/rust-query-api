@@ -375,6 +375,10 @@ fn parse_auctions(
                             }
                         );
                     }
+                } else if item_id == "PARTY_HAT_SLOTH" {
+                    if let Some(party_hat_emoji) = &nbt.tag.extra_attributes.party_hat_emoji {
+                        internal_id = format!("{}_{}", item_id, party_hat_emoji);
+                    }
                 } else if item_id == "NEW_YEAR_CAKE" {
                     if let Some(new_years_cake) = &nbt.tag.extra_attributes.new_years_cake {
                         internal_id = format!("{}_{}", item_id, new_years_cake);
@@ -615,6 +619,10 @@ async fn parse_ended_auctions(
                                 ""
                             }
                         );
+                    }
+                } else if id == "PARTY_HAT_SLOTH" {
+                    if let Some(party_hat_emoji) = &nbt.tag.extra_attributes.party_hat_emoji {
+                        id = format!("{}_{}", id, party_hat_emoji);
                     }
                 } else if id == "NEW_YEAR_CAKE" {
                     if let Some(new_years_cake) = &nbt.tag.extra_attributes.new_years_cake {

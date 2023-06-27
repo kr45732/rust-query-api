@@ -298,6 +298,7 @@ pub struct PartialExtraAttr {
     pub runes: Option<DashMap<String, i32>>,
     pub attributes: Option<DashMap<String, i32>>,
     pub party_hat_color: Option<String>,
+    pub party_hat_emoji: Option<String>,
     pub new_years_cake: Option<i32>,
     pub winning_bid: Option<i64>,
     pub hot_potato_count: Option<i16>,
