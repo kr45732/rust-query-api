@@ -26,6 +26,7 @@ use futures::{pin_mut, Future};
 use log::{error, info};
 use postgres_types::{ToSql, Type};
 use serde_json::Value;
+use std::cmp::Ordering;
 use std::fmt::Write;
 use std::sync::{Arc, Mutex};
 use std::time::{Instant, UNIX_EPOCH};
@@ -633,4 +634,47 @@ pub fn get_timestamp_millis() -> u128 {
 
 pub fn is_false(b: &bool) -> bool {
     !b
+}
+
+/// Trust me, this is not overkill
+pub fn median(data: &[f32]) -> f32 {
+    match data.len() {
+        even if even % 2 == 0 => {
+            let fst = select(data, (even / 2) - 1);
+            let snd = select(data, even / 2);
+
+            (fst + snd) / 2.0
+        }
+        odd => select(data, odd / 2),
+    }
+}
+
+fn select(data: &[f32], k: usize) -> f32 {
+    let (left, pivot, right) = partition(data);
+
+    let pivot_idx = left.len();
+
+    match pivot_idx.cmp(&k) {
+        Ordering::Equal => pivot,
+        Ordering::Greater => select(&left, k),
+        Ordering::Less => select(&right, k - (pivot_idx + 1)),
+    }
+}
+
+fn partition(data: &[f32]) -> (Vec<f32>, f32, Vec<f32>) {
+    let (pivot_slice, tail) = data.split_at(1);
+    let pivot = pivot_slice[0];
+    let (left, right) = tail.iter().fold((vec![], vec![]), |mut splits, next| {
+        {
+            let (ref mut left, ref mut right) = &mut splits;
+            if next < &pivot {
+                left.push(*next);
+            } else {
+                right.push(*next);
+            }
+        }
+        splits
+    });
+
+    (left, pivot, right)
 }
