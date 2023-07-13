@@ -59,70 +59,84 @@ pub async fn start_server(config: Arc<Config>) {
 async fn handle_response(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
     info!("{} {}", req.method(), req.uri().path());
 
-    if let (&Method::GET, "/") = (req.method(), req.uri().path()) {
-        base(config).await
-    } else if let (&Method::GET, "/query") = (req.method(), req.uri().path()) {
-        if config.is_enabled(Feature::Query) {
-            query(config, req).await
-        } else {
-            bad_request("Query feature is not enabled")
+    if req.method() != Method::GET {
+        return not_implemented();
+    }
+
+    match req.uri().path() {
+        "/" => base(config).await,
+        "/query" => {
+            if config.is_enabled(Feature::Query) {
+                query(config, req).await
+            } else {
+                bad_request("Query feature is not enabled")
+            }
         }
-    } else if let (&Method::GET, "/query_items") = (req.method(), req.uri().path()) {
-        if config.is_enabled(Feature::Query) {
-            query_items(config, req).await
-        } else {
-            bad_request("Query feature is not enabled")
+        "/query_items" => {
+            if config.is_enabled(Feature::Query) {
+                query_items(config, req).await
+            } else {
+                bad_request("Query feature is not enabled")
+            }
         }
-    } else if let (&Method::GET, "/pets") = (req.method(), req.uri().path()) {
-        if config.is_enabled(Feature::Pets) {
-            pets(config, req).await
-        } else {
-            bad_request("Pets feature is not enabled")
+        "/pets" => {
+            if config.is_enabled(Feature::Pets) {
+                pets(config, req).await
+            } else {
+                bad_request("Pets feature is not enabled")
+            }
         }
-    } else if let (&Method::GET, "/lowestbin") = (req.method(), req.uri().path()) {
-        if config.is_enabled(Feature::Lowestbin) {
-            lowestbin(config, req).await
-        } else {
-            bad_request("Lowest bins feature is not enabled")
+        "/lowestbin" => {
+            if config.is_enabled(Feature::Lowestbin) {
+                lowestbin(config, req).await
+            } else {
+                bad_request("Lowest bins feature is not enabled")
+            }
         }
-    } else if let (&Method::GET, "/underbin") = (req.method(), req.uri().path()) {
-        if config.is_enabled(Feature::Underbin) {
-            underbin(config, req).await
-        } else {
-            bad_request("Under bins feature is not enabled")
+        "/underbin" => {
+            if config.is_enabled(Feature::Underbin) {
+                underbin(config, req).await
+            } else {
+                bad_request("Under bins feature is not enabled")
+            }
         }
-    } else if let (&Method::GET, "/average_auction") = (req.method(), req.uri().path()) {
-        if config.is_enabled(Feature::AverageAuction) {
-            averages(config, req, vec!["average"]).await
-        } else {
-            bad_request("Average auction feature is not enabled")
+        "/average_auction" => {
+            if config.is_enabled(Feature::AverageAuction) {
+                averages(config, req, vec!["average"]).await
+            } else {
+                bad_request("Average auction feature is not enabled")
+            }
         }
-    } else if let (&Method::GET, "/average_bin") = (req.method(), req.uri().path()) {
-        if config.is_enabled(Feature::AverageBin) {
-            averages(config, req, vec!["average_bin"]).await
-        } else {
-            bad_request("Average bin feature is not enabled")
+        "/average_bin" => {
+            if config.is_enabled(Feature::AverageBin) {
+                averages(config, req, vec!["average_bin"]).await
+            } else {
+                bad_request("Average bin feature is not enabled")
+            }
         }
-    } else if let (&Method::GET, "/average") = (req.method(), req.uri().path()) {
-        if config.is_enabled(Feature::AverageAuction) && config.is_enabled(Feature::AverageBin) {
-            averages(config, req, vec!["average", "average_bin"]).await
-        } else {
-            bad_request("Both average auction and average bin feature are not enabled")
+        "/average" => {
+            if config.is_enabled(Feature::AverageAuction) && config.is_enabled(Feature::AverageBin)
+            {
+                averages(config, req, vec!["average", "average_bin"]).await
+            } else {
+                bad_request("Both average auction and average bin feature are not enabled")
+            }
         }
-    } else if let (&Method::GET, "/debug") = (req.method(), req.uri().path()) {
-        if config.debug {
-            debug_log(config, req).await
-        } else {
-            bad_request("Debug is not enabled")
+        "/debug" => {
+            if config.debug {
+                debug_log(config, req).await
+            } else {
+                bad_request("Debug is not enabled")
+            }
         }
-    } else if let (&Method::GET, "/info") = (req.method(), req.uri().path()) {
-        if config.debug {
-            info_log(config, req).await
-        } else {
-            bad_request("Debug is not enabled")
+        "/info" => {
+            if config.debug {
+                info_log(config, req).await
+            } else {
+                bad_request("Debug is not enabled")
+            }
         }
-    } else {
-        not_found()
+        _ => not_found(),
     }
 }
 
@@ -275,7 +289,9 @@ async fn averages(
 ) -> hyper::Result<Response<Body>> {
     let mut key = String::new();
     let mut time = 0;
-    let mut step: usize = 1;
+    let mut step = 1;
+    let mut center = String::from("mean");
+    let mut percent = 0.25;
 
     // Reads the query parameters from the request and stores them in the corresponding variable
     for query_pair in Url::parse(&format!(
@@ -296,11 +312,14 @@ async fn averages(
                 Err(e) => return bad_request(&format!("Error parsing step parameter: {}", e)),
             },
             "key" => key = query_pair.1.to_string(),
+            "center" => center = query_pair.1.to_string(),
+            "percent" => match query_pair.1.to_string().parse::<f32>() {
+                Ok(percent_float) => percent = percent_float,
+                Err(e) => return bad_request(&format!("Error parsing percent parameter: {}", e)),
+            },
             _ => {}
         }
     }
-
-    let old_method = config.old_method;
 
     // The API key in request doesn't match
     if !valid_api_key(config, key, false) {
@@ -309,6 +328,10 @@ async fn averages(
 
     if time < 0 {
         return bad_request("The time parameter cannot be negative");
+    }
+
+    if percent <= 0.0 || percent >= 1.0 {
+        return bad_request("The percent parameter must be between 0 and 1");
     }
 
     // Map each item id to its prices and sales
@@ -372,7 +395,11 @@ async fn averages(
         avg_map_final.insert(
             ele.0,
             PartialAvgAh {
-                price: ele.1.get_average(old_method),
+                price: match center.as_str() {
+                    "median" => ele.1.get_median(),
+                    "modified_median" => ele.1.get_modified_median(percent),
+                    _ => ele.1.get_average(center == "mean_old"),
+                },
                 sales: sales / (count as f32),
             },
         );
@@ -746,7 +773,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
             sort_by_query,
         );
 
-        let enchants_split;
+        let enchants_split: Vec<String>;
         if !enchants.is_empty() {
             enchants_split = enchants.split(',').map(|s| s.trim().to_string()).collect();
             param_count = array_contains(
@@ -758,7 +785,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
                 sort_by_query,
             );
         }
-        let necron_scrolls_split;
+        let necron_scrolls_split: Vec<String>;
         if !necron_scrolls.is_empty() {
             necron_scrolls_split = necron_scrolls
                 .split(',')
@@ -773,7 +800,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
                 sort_by_query,
             );
         }
-        let gemstones_split;
+        let gemstones_split: Vec<String>;
         if !gemstones.is_empty() {
             gemstones_split = gemstones.split(',').map(|s| s.trim().to_string()).collect();
             param_count = array_contains(
@@ -1111,13 +1138,11 @@ fn array_contains<'a>(
     sql: &mut String,
     param_vec: &mut Vec<&'a (dyn ToSql + Sync)>,
     param_name: &str,
-    param_value: &'a Vec<String>,
+    param_value: &'a [String],
     param_count: i32,
     sort_by_query: bool,
 ) -> i32 {
     if param_count != 1 {
-        println!("{:?}", param_value);
-
         sql.push_str(if sort_by_query { " +" } else { " AND" });
     }
 
@@ -1176,4 +1201,8 @@ fn unauthorized() -> hyper::Result<Response<Body>> {
 
 fn not_found() -> hyper::Result<Response<Body>> {
     http_err(StatusCode::NOT_FOUND, "Not found")
+}
+
+fn not_implemented() -> hyper::Result<Response<Body>> {
+    http_err(StatusCode::NOT_IMPLEMENTED, "Unsupported method")
 }

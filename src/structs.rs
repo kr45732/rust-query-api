@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::utils::is_false;
+use crate::utils::{is_false, median};
 use dashmap::DashMap;
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
@@ -249,6 +249,52 @@ impl AvgVec {
             bins_average
         } else {
             auctions_average.min(bins_average)
+        }
+    }
+
+    pub fn get_median(&self) -> f32 {
+        let mut combined_vec: Vec<f32> = Vec::new();
+
+        for ele in &self.auctions {
+            combined_vec.push(ele.price);
+        }
+
+        for ele in &self.bins {
+            combined_vec.push(ele.price);
+        }
+
+        median(&combined_vec)
+    }
+
+    pub fn get_modified_median(&self, percent: f32) -> f32 {
+        let mut combined_vec: Vec<f32> = Vec::new();
+
+        for ele in &self.auctions {
+            combined_vec.push(ele.price);
+        }
+
+        for ele in &self.bins {
+            combined_vec.push(ele.price);
+        }
+
+        let median = median(&combined_vec);
+        let lower_bound = median * (1.0 - percent);
+        let upper_bound = median * (1.0 + percent);
+
+        let mut sum = 0.0;
+        let mut count = 0;
+
+        for ele in combined_vec {
+            if lower_bound <= ele && ele <= upper_bound {
+                sum += ele;
+                count += 1
+            }
+        }
+
+        if count == 0 {
+            median
+        } else {
+            sum / count as f32
         }
     }
 }
