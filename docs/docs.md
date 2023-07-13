@@ -49,16 +49,22 @@
 - `key` - key to access the API
 - `time` - unix timestamp, in milliseconds, for how far back the average auction prices should be calculated. The most is 5 days back
 - `step` - how the auction sales should be averaged. For example, 1 would average it by minute, 60 would average it by hour, 1440 would average it by day, and so on
+- `center` - measure of center used to determine item prices. Supported methods are 'mean', 'mean_old', 'median', 'modified_median'
+- `percent` - percent of median (above and below) to average when using 'modified_median' center
 
 ## Average Bins
 - `key` - key to access the API
 - `time` - unix timestamp, in milliseconds, for how far back the average bin prices should be calculated. The most is 5 days back
 - `step` - how the bin sales should be averaged. For example, 1 would average it by minute, 60 would average it by hour, 1440 would average it by day, and so on
+- `center` - measure of center used to determine item prices. Supported methods are 'mean', 'mean_old', 'median', 'modified_median'
+- `percent` - percent of median (above and below) to average when using 'modified_median' center
 
 ## Average Auctions & Bins
 - `key` - key to access the API
 - `time` - unix timestamp, in milliseconds, for how far back the average auction & bin prices should be calculated. The most is 5 days back
 - `step` - how the auction & bin sales should be averaged. For example, 1 would average it by minute, 60 would average it by hour, 1440 would average it by day, and so on
+- `center` - measure of center used to determine item prices. Supported methods are 'mean', 'mean_old', 'median', 'modified_median'
+- `percent` - percent of median (above and below) to average when using 'modified_median' center
 
 ## Query Items
 - `key` - key to access the API
