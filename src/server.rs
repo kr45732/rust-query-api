@@ -425,6 +425,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
     let mut item_id = String::new();
     let mut internal_id = String::new();
     let mut enchants = String::new();
+    let mut attributes = String::new();
     let mut end = -1;
     let mut bids = String::new();
     let mut bin = Option::None;
@@ -473,6 +474,7 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
             "item_id" => item_id = query_pair.1.to_string(),
             "internal_id" => internal_id = query_pair.1.to_string(),
             "enchants" => enchants = query_pair.1.to_string(),
+            "attributes" => attributes = query_pair.1.to_string(),
             "end" => match query_pair.1.to_string().parse::<i64>() {
                 Ok(end_int) => end = end_int,
                 Err(e) => return bad_request(&format!("Error parsing end parameter: {}", e)),
@@ -781,6 +783,21 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
                 &mut param_vec,
                 "enchants",
                 &enchants_split,
+                param_count,
+                sort_by_query,
+            );
+        }
+        let attributes_split: Vec<String>;
+        if !attributes.is_empty() {
+            attributes_split = attributes
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect();
+            param_count = array_contains(
+                &mut sql,
+                &mut param_vec,
+                "attributes",
+                &attributes_split,
                 param_count,
                 sort_by_query,
             );

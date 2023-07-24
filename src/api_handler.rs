@@ -311,20 +311,32 @@ fn parse_auctions(
         if inserted_uuids.insert(auction.uuid.to_string()) {
             let mut tier = auction.tier;
 
-            let nbt = &parse_nbt(&auction.item_bytes).unwrap().i[0];
+            let nbt: &PartialNbtElement = &parse_nbt(&auction.item_bytes).unwrap().i[0];
             let extra_attrs = &nbt.tag.extra_attributes;
-            let item_id = extra_attrs.id.to_owned();
-            let mut internal_id = item_id.to_owned();
+            let id = extra_attrs.id.to_owned();
+            let mut lowestbin_id = id.to_owned();
             let mut lowestbin_price = auction.starting_bid as f32 / nbt.count as f32;
 
             let mut enchants = Vec::new();
-            if update_query && nbt.tag.extra_attributes.enchantments.is_some() {
-                for entry in nbt.tag.extra_attributes.enchantments.as_ref().unwrap() {
-                    enchants.push(format!("{};{}", entry.key().to_uppercase(), entry.value()));
+            let mut attributes = Vec::new();
+            if update_query {
+                if let Some(enchantments) = &extra_attrs.enchantments {
+                    for entry in enchantments {
+                        enchants.push(format!("{};{}", entry.key().to_uppercase(), entry.value()));
+                    }
+                }
+                if let Some(attributes_unwrap) = &extra_attrs.attributes {
+                    for entry in attributes_unwrap {
+                        attributes.push(format!(
+                            "ATTRIBUTE_SHARD_{};{}",
+                            entry.0.to_uppercase(),
+                            entry.1
+                        ));
+                    }
                 }
             }
 
-            if item_id == "PET" {
+            if id == "PET" {
                 // If the pet is tier boosted, the tier field in the auction shows the rarity after boosting
                 tier =
                     serde_json::from_str::<PetInfo>(nbt.tag.extra_attributes.pet.as_ref().unwrap())
@@ -336,7 +348,7 @@ fn parse_auctions(
                     split.next();
 
                     if let Some(pet_name) = split.next() {
-                        internal_id = format!(
+                        lowestbin_id = format!(
                             "{};{}",
                             pet_name.replace(' ', "_").replace("_✦", "").to_uppercase(),
                             match tier.as_str() {
@@ -354,51 +366,57 @@ fn parse_auctions(
             }
 
             if auction.bin && update_lowestbin {
-                if item_id == "ATTRIBUTE_SHARD" {
-                    if let Some(attributes) = &nbt.tag.extra_attributes.attributes {
+                if let Some(attributes) = &extra_attrs.attributes {
+                    if id == "ATTRIBUTE_SHARD" {
                         if attributes.len() == 1 {
                             for entry in attributes {
-                                internal_id = format!("{}_{}", item_id, entry.key().to_uppercase());
-                                lowestbin_price /= 2_i64.pow((entry.value() - 1) as u32) as f32;
+                                lowestbin_id = format!("{}_{}", id, entry.0.to_uppercase());
+                                lowestbin_price /= 2_i64.pow((entry.1 - 1) as u32) as f32;
                             }
                         }
+                    } else {
+                        for entry in attributes {
+                            lowestbin_id.push_str("+ATTRIBUTE_SHARD_");
+                            lowestbin_id.push_str(&entry.0.to_uppercase());
+                        }
                     }
-                } else if item_id == "PARTY_HAT_CRAB" || item_id == "PARTY_HAT_CRAB_ANIMATED" {
-                    if let Some(party_hat_color) = &nbt.tag.extra_attributes.party_hat_color {
-                        internal_id = format!(
+                }
+                if id == "PARTY_HAT_CRAB" || id == "PARTY_HAT_CRAB_ANIMATED" {
+                    if let Some(party_hat_color) = &extra_attrs.party_hat_color {
+                        lowestbin_id = format!(
                             "PARTY_HAT_CRAB_{}{}",
                             party_hat_color.to_uppercase(),
-                            if item_id.ends_with("_ANIMATED") {
+                            if id.ends_with("_ANIMATED") {
                                 "_ANIMATED"
                             } else {
                                 ""
                             }
                         );
                     }
-                } else if item_id == "PARTY_HAT_SLOTH" {
-                    if let Some(party_hat_emoji) = &nbt.tag.extra_attributes.party_hat_emoji {
-                        internal_id = format!("{}_{}", item_id, party_hat_emoji.to_uppercase());
+                } else if id == "PARTY_HAT_SLOTH" {
+                    if let Some(party_hat_emoji) = &extra_attrs.party_hat_emoji {
+                        lowestbin_id = format!("{}_{}", id, party_hat_emoji.to_uppercase());
                     }
-                } else if item_id == "NEW_YEAR_CAKE" {
-                    if let Some(new_years_cake) = &nbt.tag.extra_attributes.new_years_cake {
-                        internal_id = format!("{}_{}", item_id, new_years_cake);
+                } else if id == "NEW_YEAR_CAKE" {
+                    if let Some(new_years_cake) = &extra_attrs.new_years_cake {
+                        lowestbin_id = format!("{}_{}", id, new_years_cake);
                     }
-                } else if item_id == "MIDAS_SWORD" || item_id == "MIDAS_STAFF" {
-                    if let Some(winning_bid) = &nbt.tag.extra_attributes.winning_bid {
-                        let best_bid = if item_id == "MIDAS_SWORD" {
+                } else if id == "MIDAS_SWORD" || id == "MIDAS_STAFF" {
+                    if let Some(winning_bid) = &extra_attrs.winning_bid {
+                        let best_bid = if id == "MIDAS_SWORD" {
                             50000000
                         } else {
                             100000000
                         };
                         if winning_bid > &best_bid {
-                            internal_id = format!("{}_{}", item_id, best_bid);
+                            lowestbin_id = format!("{}_{}", id, best_bid);
                         }
                     }
-                } else if item_id == "RUNE" && nbt.tag.extra_attributes.runes.is_some() {
-                    if let Some(runes) = &nbt.tag.extra_attributes.runes {
+                } else if id == "RUNE" && nbt.tag.extra_attributes.runes.is_some() {
+                    if let Some(runes) = &extra_attrs.runes {
                         if runes.len() == 1 {
                             for entry in runes {
-                                internal_id = format!(
+                                lowestbin_id = format!(
                                     "{}_RUNE;{}",
                                     entry.key().to_uppercase(),
                                     entry.value()
@@ -409,16 +427,16 @@ fn parse_auctions(
                 }
 
                 if is_first_update {
-                    update_lower_else_insert(&internal_id, lowestbin_price, bin_prices);
+                    update_lower_else_insert(&lowestbin_id, lowestbin_price, bin_prices);
                 }
 
                 if update_underbin
-                    && item_id != "PET" // TODO: Improve under bins
+                    && id != "PET" // TODO: Improve under bins
                     && !auction.item_lore.contains("Furniture")
                     &&  auction.item_name != "null"
                     && !auction.item_name.contains("Minion Skin")
                 {
-                    if let Some(past_bin_price) = past_bin_prices.get(&internal_id) {
+                    if let Some(past_bin_price) = past_bin_prices.get(&lowestbin_id) {
                         let profit = calculate_with_taxes(*past_bin_price.value())
                             - auction.starting_bid as f32;
                         if profit > 1000000.0 {
@@ -427,7 +445,7 @@ fn parse_auctions(
                                 json!({
                                     "uuid": auction.uuid,
                                     "name":  auction.item_name,
-                                    "id" : internal_id,
+                                    "id" : lowestbin_id,
                                     "auctioneer":  auction.auctioneer,
                                     "starting_bid" :  auction.starting_bid,
                                     "past_bin_price": *past_bin_price.value(),
@@ -460,9 +478,10 @@ fn parse_auctions(
                     starting_bid: auction.starting_bid,
                     highest_bid: auction.highest_bid_amount,
                     lowestbin_price,
-                    item_id,
-                    internal_id,
+                    item_id: id,
+                    internal_id: lowestbin_id,
                     enchants,
+                    attributes,
                     bin: auction.bin,
                     bids,
                     count: nbt.count,
@@ -599,16 +618,22 @@ async fn parse_ended_auctions(
                     continue;
                 }
 
-                if id == "ATTRIBUTE_SHARD" {
-                    if let Some(attributes) = &nbt.tag.extra_attributes.attributes {
+                if let Some(attributes) = &nbt.tag.extra_attributes.attributes {
+                    if id == "ATTRIBUTE_SHARD" {
                         if attributes.len() == 1 {
                             for entry in attributes {
-                                id = format!("ATTRIBUTE_SHARD_{}", entry.key().to_uppercase());
-                                auction.price /= 2_i64.pow((entry.value() - 1) as u32);
+                                id = format!("ATTRIBUTE_SHARD_{}", entry.0.to_uppercase());
+                                auction.price /= 2_i64.pow((entry.1 - 1) as u32);
                             }
                         }
+                    } else {
+                        for entry in attributes {
+                            id.push_str("+ATTRIBUTE_SHARD_");
+                            id.push_str(&entry.0.to_uppercase());
+                        }
                     }
-                } else if id == "PARTY_HAT_CRAB" || id == "PARTY_HAT_CRAB_ANIMATED" {
+                }
+                if id == "PARTY_HAT_CRAB" || id == "PARTY_HAT_CRAB_ANIMATED" {
                     if let Some(party_hat_color) = &nbt.tag.extra_attributes.party_hat_color {
                         id = format!(
                             "PARTY_HAT_CRAB_{}{}",

@@ -21,6 +21,7 @@ use dashmap::DashMap;
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::BTreeMap;
 use tokio_postgres::Row;
 
 /* Query API */
@@ -44,6 +45,8 @@ pub struct QueryDatabaseItem {
     pub lowestbin_price: f32,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub enchants: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub attributes: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub bids: Vec<Bid>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -106,6 +109,7 @@ impl From<Row> for QueryDatabaseItem {
             highest_bid: row.get("highest_bid"),
             lowestbin_price: row.get("lowestbin_price"),
             enchants: row.get("enchants"),
+            attributes: row.get("attributes"),
             bin: row.get("bin"),
             bids: row.get("bids"),
             count: row.get("count"),
@@ -342,7 +346,7 @@ pub struct PartialExtraAttr {
     pub pet: Option<String>,
     pub enchantments: Option<DashMap<String, i32>>,
     pub runes: Option<DashMap<String, i32>>,
-    pub attributes: Option<DashMap<String, i32>>,
+    pub attributes: Option<BTreeMap<String, i32>>,
     pub party_hat_color: Option<String>,
     pub party_hat_emoji: Option<String>,
     pub new_years_cake: Option<i32>,

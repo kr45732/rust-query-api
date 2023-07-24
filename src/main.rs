@@ -134,6 +134,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             highest_bid BIGINT,
                             lowestbin_price REAL,
                             enchants TEXT[],
+                            attributes TEXT[],
                             bin BOOLEAN,
                             bids bid[],
                             count SMALLINT,
