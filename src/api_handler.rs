@@ -338,10 +338,9 @@ fn parse_auctions(
 
             if id == "PET" {
                 // If the pet is tier boosted, the tier field in the auction shows the rarity after boosting
-                tier =
-                    serde_json::from_str::<PetInfo>(nbt.tag.extra_attributes.pet.as_ref().unwrap())
-                        .unwrap()
-                        .tier;
+                tier = serde_json::from_str::<PetInfo>(extra_attrs.pet.as_ref().unwrap())
+                    .unwrap()
+                    .tier;
 
                 if auction.bin && update_lowestbin {
                     let mut split = auction.item_name.split("] ");
@@ -412,7 +411,7 @@ fn parse_auctions(
                             lowestbin_id = format!("{}_{}", id, best_bid);
                         }
                     }
-                } else if id == "RUNE" && nbt.tag.extra_attributes.runes.is_some() {
+                } else if id == "RUNE" {
                     if let Some(runes) = &extra_attrs.runes {
                         if runes.len() == 1 {
                             for entry in runes {
@@ -549,13 +548,12 @@ async fn parse_ended_auctions(
                 }
 
                 let nbt = &parse_nbt(&auction.item_bytes).unwrap().i[0];
-                let mut id = nbt.tag.extra_attributes.id.to_owned();
+                let extra_attrs = &nbt.tag.extra_attributes;
+                let mut id = extra_attrs.id.to_owned();
 
                 if id == "PET" {
-                    let pet_info = serde_json::from_str::<PetInfo>(
-                        nbt.tag.extra_attributes.pet.as_ref().unwrap(),
-                    )
-                    .unwrap();
+                    let pet_info =
+                        serde_json::from_str::<PetInfo>(extra_attrs.pet.as_ref().unwrap()).unwrap();
 
                     let item_name = MC_CODE_REGEX
                         .replace_all(&nbt.tag.display.name, "")
@@ -618,7 +616,7 @@ async fn parse_ended_auctions(
                     continue;
                 }
 
-                if let Some(attributes) = &nbt.tag.extra_attributes.attributes {
+                if let Some(attributes) = &extra_attrs.attributes {
                     if id == "ATTRIBUTE_SHARD" {
                         if attributes.len() == 1 {
                             for entry in attributes {
@@ -634,7 +632,7 @@ async fn parse_ended_auctions(
                     }
                 }
                 if id == "PARTY_HAT_CRAB" || id == "PARTY_HAT_CRAB_ANIMATED" {
-                    if let Some(party_hat_color) = &nbt.tag.extra_attributes.party_hat_color {
+                    if let Some(party_hat_color) = &extra_attrs.party_hat_color {
                         id = format!(
                             "PARTY_HAT_CRAB_{}{}",
                             party_hat_color.to_uppercase(),
@@ -646,15 +644,15 @@ async fn parse_ended_auctions(
                         );
                     }
                 } else if id == "PARTY_HAT_SLOTH" {
-                    if let Some(party_hat_emoji) = &nbt.tag.extra_attributes.party_hat_emoji {
+                    if let Some(party_hat_emoji) = &extra_attrs.party_hat_emoji {
                         id = format!("{}_{}", id, party_hat_emoji.to_uppercase());
                     }
                 } else if id == "NEW_YEAR_CAKE" {
-                    if let Some(new_years_cake) = &nbt.tag.extra_attributes.new_years_cake {
+                    if let Some(new_years_cake) = &extra_attrs.new_years_cake {
                         id = format!("{}_{}", id, new_years_cake);
                     }
                 } else if id == "MIDAS_SWORD" || id == "MIDAS_STAFF" {
-                    if let Some(winning_bid) = &nbt.tag.extra_attributes.winning_bid {
+                    if let Some(winning_bid) = &extra_attrs.winning_bid {
                         let best_bid = if id == "MIDAS_SWORD" {
                             50000000
                         } else {
@@ -664,8 +662,8 @@ async fn parse_ended_auctions(
                             id = format!("{}_{}", id, best_bid);
                         }
                     }
-                } else if id == "RUNE" && nbt.tag.extra_attributes.runes.is_some() {
-                    if let Some(runes) = &nbt.tag.extra_attributes.runes {
+                } else if id == "RUNE" {
+                    if let Some(runes) = &extra_attrs.runes {
                         if runes.len() == 1 {
                             for entry in runes {
                                 id = format!(
