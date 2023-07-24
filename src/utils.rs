@@ -195,20 +195,20 @@ pub fn valid_api_key(config: Arc<Config>, key: String, admin_only: bool) -> bool
     config.api_key.is_empty() || (key == config.api_key)
 }
 
-pub fn update_lower_else_insert(id: &String, starting_bid: f32, prices: &DashMap<String, f32>) {
+pub fn update_lower_else_insert(id: &str, starting_bid: f32, prices: &DashMap<String, f32>) {
     if let Some(mut ele) = prices.get_mut(id) {
         if starting_bid < *ele {
             *ele = starting_bid;
         }
     } else {
-        prices.insert(id.clone(), starting_bid);
+        prices.insert(id.to_string(), starting_bid);
     }
 }
 
 pub async fn update_query_bin_underbin_fn(
     auctions: Mutex<Vec<QueryDatabaseItem>>,
     ended_auction_uuids: DashSet<String>,
-    is_first_update: bool,
+    is_full_update: bool,
     bin_prices: &DashMap<String, f32>,
     update_lowestbin: bool,
     last_updated: i64,
@@ -222,7 +222,7 @@ pub async fn update_query_bin_underbin_fn(
     let _ = match update_query_database(
         auctions,
         ended_auction_uuids,
-        is_first_update,
+        is_full_update,
         bin_prices,
         update_lowestbin,
         last_updated,
@@ -328,14 +328,14 @@ pub async fn update_average_bin_fn(
 async fn update_query_database(
     mut auctions: Mutex<Vec<QueryDatabaseItem>>,
     ended_auction_uuids: DashSet<String>,
-    is_first_update: bool,
+    is_full_update: bool,
     bin_prices: &DashMap<String, f32>,
     update_lowestbin: bool,
     last_updated: i64,
 ) -> Result<u64, Error> {
     let database = get_client().await;
 
-    if is_first_update {
+    if is_full_update {
         let _ = database.simple_query("TRUNCATE TABLE query").await?;
 
         let query_names = auctions
@@ -382,6 +382,7 @@ async fn update_query_database(
             Type::INT8,
             Type::FLOAT4,
             Type::TEXT_ARRAY,
+            Type::TEXT_ARRAY,
             Type::BOOL,
             BID_ARRAY.lock().await.to_owned().unwrap(),
             Type::INT2,
@@ -426,6 +427,7 @@ async fn update_query_database(
             &m.highest_bid,
             &m.lowestbin_price,
             &m.enchants,
+            &m.attributes,
             &m.bin,
             &m.bids,
             &m.count,
@@ -457,7 +459,7 @@ async fn update_query_database(
 
     let rows_added = copy_writer.finish().await?;
 
-    if !is_first_update {
+    if !is_full_update {
         let query_names: DashSet<String> = DashSet::new();
 
         let mut all_auctions_sql = String::from("SELECT item_name");
@@ -590,6 +592,21 @@ async fn update_avg_bin_database(
 }
 
 async fn update_bins_local(bin_prices: &DashMap<String, f32>) -> Result<(), serde_json::Error> {
+    // Calculate lowestbin of item (regardless of attributes)
+    let additional_prices = DashMap::new();
+    for ele in bin_prices {
+        if ele.key().contains("+ATTRIBUTE_SHARD_") {
+            update_lower_else_insert(
+                ele.key().split("+ATTRIBUTE_SHARD_").next().unwrap(),
+                *ele.value(),
+                &additional_prices,
+            );
+        }
+    }
+    for ele in additional_prices {
+        bin_prices.insert(ele.0, ele.1);
+    }
+
     let file = OpenOptions::new()
         .create(true)
         .write(true)
@@ -677,4 +694,19 @@ fn partition(data: &[f32]) -> (Vec<f32>, f32, Vec<f32>) {
     });
 
     (left, pivot, right)
+}
+
+pub fn update_average_map(map: &DashMap<String, AvgSum>, id: &str, price: i64, count: i16) {
+    // If the map already has this id, then add to the existing elements, otherwise create a new entry
+    if map.contains_key(id) {
+        map.alter(id, |_, value| value.update(price, count as i32));
+    } else {
+        map.insert(
+            id.to_string(),
+            AvgSum {
+                sum: price,
+                count: count as i32,
+            },
+        );
+    }
 }
