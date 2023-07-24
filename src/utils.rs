@@ -208,7 +208,7 @@ pub fn update_lower_else_insert(id: &str, starting_bid: f32, prices: &DashMap<St
 pub async fn update_query_bin_underbin_fn(
     auctions: Mutex<Vec<QueryDatabaseItem>>,
     ended_auction_uuids: DashSet<String>,
-    is_first_update: bool,
+    is_full_update: bool,
     bin_prices: &DashMap<String, f32>,
     update_lowestbin: bool,
     last_updated: i64,
@@ -222,7 +222,7 @@ pub async fn update_query_bin_underbin_fn(
     let _ = match update_query_database(
         auctions,
         ended_auction_uuids,
-        is_first_update,
+        is_full_update,
         bin_prices,
         update_lowestbin,
         last_updated,
@@ -328,14 +328,14 @@ pub async fn update_average_bin_fn(
 async fn update_query_database(
     mut auctions: Mutex<Vec<QueryDatabaseItem>>,
     ended_auction_uuids: DashSet<String>,
-    is_first_update: bool,
+    is_full_update: bool,
     bin_prices: &DashMap<String, f32>,
     update_lowestbin: bool,
     last_updated: i64,
 ) -> Result<u64, Error> {
     let database = get_client().await;
 
-    if is_first_update {
+    if is_full_update {
         let _ = database.simple_query("TRUNCATE TABLE query").await?;
 
         let query_names = auctions
@@ -459,7 +459,7 @@ async fn update_query_database(
 
     let rows_added = copy_writer.finish().await?;
 
-    if !is_first_update {
+    if !is_full_update {
         let query_names: DashSet<String> = DashSet::new();
 
         let mut all_auctions_sql = String::from("SELECT item_name");

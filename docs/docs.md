@@ -7,6 +7,7 @@
 - `item_id` - filter by id
 - `internal_id` - filter by internal id
 - `enchants` - filter by comma separated list of enchants
+- `attributes` - filter by comma separated list of attributes. Each attribute is formatted as ATTRIBUTE_SHARD_{NAME};{LEVEL}
 - `end` - filter if end time is after this (epoch timestamp in milliseconds)
 - `bin` - filter by bin (true) or regular auction (false) or any (do not provide parameter)
 - `potato_books` - filter by potato books count (hot and fuming potato books are combined)

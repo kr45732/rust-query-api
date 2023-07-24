@@ -40,7 +40,7 @@ pub async fn update_auctions(config: Arc<Config>) -> bool {
     } else {
         previous_started_epoch
     };
-    let is_first_update = last_updated == 0;
+    let is_full_update = last_updated == 0;
 
     // Stores all auction uuids in auctions vector to prevent duplicates
     let inserted_uuids: DashSet<String> = DashSet::new();
@@ -100,7 +100,7 @@ pub async fn update_auctions(config: Arc<Config>) -> bool {
             last_updated,
         );
 
-        if is_first_update {
+        if is_full_update {
             debug!("Sending {} async requests", json.total_pages);
             // Skip page zero since it's already been parsed
             for page_number in 1..json.total_pages {
@@ -143,7 +143,7 @@ pub async fn update_auctions(config: Arc<Config>) -> bool {
     }
 
     // Update average auctions if the feature is enabled
-    if update_average_auction || update_average_bin || update_pets || !is_first_update {
+    if update_average_auction || update_average_bin || update_pets || !is_full_update {
         futures.push(
             parse_ended_auctions(
                 &avg_ah_prices,
@@ -153,7 +153,7 @@ pub async fn update_auctions(config: Arc<Config>) -> bool {
                 update_average_bin,
                 update_pets,
                 &ended_auction_uuids,
-                !is_first_update,
+                !is_full_update,
                 &mut started_epoch,
             )
             .boxed(),
@@ -178,7 +178,7 @@ pub async fn update_auctions(config: Arc<Config>) -> bool {
             update_query_bin_underbin_fn(
                 query_prices,
                 ended_auction_uuids,
-                is_first_update,
+                is_full_update,
                 &bin_prices,
                 update_lowestbin,
                 last_updated,
@@ -300,10 +300,10 @@ fn parse_auctions(
     update_underbin: bool,
     last_updated: i64,
 ) -> bool {
-    let is_first_update = last_updated == 0;
+    let is_full_update = last_updated == 0;
 
     for auction in auctions {
-        if !is_first_update && last_updated >= auction.last_updated {
+        if !is_full_update && last_updated >= auction.last_updated {
             return true;
         }
 
@@ -425,7 +425,7 @@ fn parse_auctions(
                     }
                 }
 
-                if is_first_update {
+                if is_full_update {
                     update_lower_else_insert(&lowestbin_id, lowestbin_price, bin_prices);
                 }
 
