@@ -311,7 +311,7 @@ fn parse_auctions(
         if inserted_uuids.insert(auction.uuid.to_string()) {
             let mut tier = auction.tier;
 
-            let nbt: &PartialNbtElement = &parse_nbt(&auction.item_bytes).unwrap().i[0];
+            let nbt = &parse_nbt(&auction.item_bytes).unwrap().i[0];
             let extra_attrs = &nbt.tag.extra_attributes;
             let id = extra_attrs.id.to_owned();
             let mut lowestbin_id = id.to_owned();
