@@ -596,8 +596,11 @@ async fn update_bins_local(bin_prices: &DashMap<String, f32>) -> Result<(), serd
     let additional_prices = DashMap::new();
     for ele in bin_prices {
         if ele.key().contains("+ATTRIBUTE_SHARD_") {
-            let mut split = ele.key().split("+ATTRIBUTE_SHARD_");
-            update_lower_else_insert(split.next().unwrap(), *ele.value(), &additional_prices);
+            update_lower_else_insert(
+                ele.key().split("+ATTRIBUTE_SHARD_").next().unwrap(),
+                *ele.value(),
+                &additional_prices,
+            );
         }
     }
     for ele in additional_prices {
