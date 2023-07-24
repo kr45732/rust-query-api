@@ -195,13 +195,13 @@ pub fn valid_api_key(config: Arc<Config>, key: String, admin_only: bool) -> bool
     config.api_key.is_empty() || (key == config.api_key)
 }
 
-pub fn update_lower_else_insert(id: &String, starting_bid: f32, prices: &DashMap<String, f32>) {
+pub fn update_lower_else_insert(id: &str, starting_bid: f32, prices: &DashMap<String, f32>) {
     if let Some(mut ele) = prices.get_mut(id) {
         if starting_bid < *ele {
             *ele = starting_bid;
         }
     } else {
-        prices.insert(id.clone(), starting_bid);
+        prices.insert(id.to_string(), starting_bid);
     }
 }
 
@@ -679,4 +679,19 @@ fn partition(data: &[f32]) -> (Vec<f32>, f32, Vec<f32>) {
     });
 
     (left, pivot, right)
+}
+
+pub fn update_average_map(map: &DashMap<String, AvgSum>, id: &str, price: i64, count: i16) {
+    // If the map already has this id, then add to the existing elements, otherwise create a new entry
+    if map.contains_key(id) {
+        map.alter(id, |_, value| value.update(price, count as i32));
+    } else {
+        map.insert(
+            id.to_string(),
+            AvgSum {
+                sum: price,
+                count: count as i32,
+            },
+        );
+    }
 }

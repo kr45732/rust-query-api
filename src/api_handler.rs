@@ -625,6 +625,15 @@ async fn parse_ended_auctions(
                             }
                         }
                     } else {
+                        if !attributes.is_empty() {
+                            // Track average of item (regardless of attributes)
+                            if update_average_bin && auction.bin {
+                                update_average_map(&avg_bin_map, &id, auction.price, nbt.count);
+                            } else if update_average_auction && !auction.bin {
+                                update_average_map(&avg_ah_map, &id, auction.price, nbt.count);
+                            }
+                        }
+
                         for entry in attributes {
                             id.push_str("+ATTRIBUTE_SHARD_");
                             id.push_str(&entry.0.to_uppercase());
@@ -676,35 +685,10 @@ async fn parse_ended_auctions(
                     }
                 }
 
-                // If the map already has this id, then add to the existing elements, otherwise create a new entry
                 if update_average_bin && auction.bin {
-                    if avg_bin_map.contains_key(&id) {
-                        avg_bin_map.alter(&id, |_, value| {
-                            value.update(auction.price, nbt.count as i32)
-                        });
-                    } else {
-                        avg_bin_map.insert(
-                            id,
-                            AvgSum {
-                                sum: auction.price,
-                                count: nbt.count as i32,
-                            },
-                        );
-                    }
+                    update_average_map(&avg_bin_map, &id, auction.price, nbt.count);
                 } else if update_average_auction && !auction.bin {
-                    if avg_ah_map.contains_key(&id) {
-                        avg_ah_map.alter(&id, |_, value| {
-                            value.update(auction.price, nbt.count as i32)
-                        });
-                    } else {
-                        avg_ah_map.insert(
-                            id,
-                            AvgSum {
-                                sum: auction.price,
-                                count: nbt.count as i32,
-                            },
-                        );
-                    }
+                    update_average_map(&avg_ah_map, &id, auction.price, nbt.count);
                 }
             }
 
