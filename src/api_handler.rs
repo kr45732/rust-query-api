@@ -624,14 +624,12 @@ async fn parse_ended_auctions(
                                 auction.price /= 2_i64.pow((entry.1 - 1) as u32);
                             }
                         }
-                    } else {
-                        if !attributes.is_empty() {
-                            // Track average of item (regardless of attributes)
-                            if update_average_bin && auction.bin {
-                                update_average_map(&avg_bin_map, &id, auction.price, nbt.count);
-                            } else if update_average_auction && !auction.bin {
-                                update_average_map(&avg_ah_map, &id, auction.price, nbt.count);
-                            }
+                    } else if !attributes.is_empty() {
+                        // Track average of item (regardless of attributes)
+                        if update_average_bin && auction.bin {
+                            update_average_map(&avg_bin_map, &id, auction.price, nbt.count);
+                        } else if update_average_auction && !auction.bin {
+                            update_average_map(&avg_ah_map, &id, auction.price, nbt.count);
                         }
 
                         for entry in attributes {
