@@ -592,6 +592,18 @@ async fn update_avg_bin_database(
 }
 
 async fn update_bins_local(bin_prices: &DashMap<String, f32>) -> Result<(), serde_json::Error> {
+    // Calculate lowestbin of item (regardless of attributes)
+    let additional_prices = DashMap::new();
+    for ele in bin_prices {
+        if ele.key().contains("+ATTRIBUTE_SHARD_") {
+            let mut split = ele.key().split("+ATTRIBUTE_SHARD_");
+            update_lower_else_insert(split.next().unwrap(), *ele.value(), &additional_prices);
+        }
+    }
+    for ele in additional_prices {
+        bin_prices.insert(ele.0, ele.1);
+    }
+
     let file = OpenOptions::new()
         .create(true)
         .write(true)
