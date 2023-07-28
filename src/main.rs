@@ -53,12 +53,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
             WriteLogger::new(
                 LevelFilter::Info,
                 simplelog::Config::default(),
-                File::create("info.log").unwrap(),
+                File::create("info.log")?,
             ),
             WriteLogger::new(
                 LevelFilter::Debug,
                 simplelog::Config::default(),
-                File::create("debug.log").unwrap(),
+                File::create("debug.log")?,
             ),
         ])
         .expect("Error when creating loggers");
@@ -83,10 +83,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .await
             .insert(
                 Pool::builder(Manager::from_config(
-                    config
-                        .postgres_url
-                        .parse::<tokio_postgres::Config>()
-                        .unwrap(),
+                    config.postgres_url.parse::<tokio_postgres::Config>()?,
                     NoTls,
                     ManagerConfig {
                         recycling_method: RecyclingMethod::Fast,
@@ -94,12 +91,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 ))
                 .max_size(16)
                 .runtime(Runtime::Tokio1)
-                .build()
-                .unwrap(),
+                .build()?,
             )
             .get()
-            .await
-            .unwrap();
+            .await?;
 
         if config.is_enabled(Feature::Query) {
             // Create bid custom type
@@ -116,7 +111,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let _ = BID_ARRAY
                 .lock()
                 .await
-                .insert(database.prepare("SELECT $1::_bid").await.unwrap().params()[0].clone());
+                .insert(database.prepare("SELECT $1::_bid").await?.params()[0].clone());
 
             // Create query table if doesn't exist
             let _ = database
@@ -161,7 +156,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             gemstones TEXT[]
                         )",
                 )
-                .await;
+                .await?;
         }
 
         if config.is_enabled(Feature::AverageAuction) || config.is_enabled(Feature::AverageBin) {
@@ -169,7 +164,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let _ = database
                 .simple_query(
                     "CREATE TYPE avg_ah AS (
-                            item_id TEXT,
                             price REAL,
                             sales REAL
                         )",
@@ -180,12 +174,26 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 // Create average auction table if doesn't exist
                 let _ = database
                     .simple_query(
-                        "CREATE TABLE IF NOT EXISTS average (
-                                time_t BIGINT NOT NULL PRIMARY KEY,
-                                prices avg_ah[]
+                        "CREATE TABLE IF NOT EXISTS average_auction (
+                                time_t INT,
+                                item_id TEXT,
+                                price REAL,
+                                sales REAL,
+                                PRIMARY KEY (time_t, item_id)
                             )",
                     )
-                    .await;
+                    .await?;
+
+                let _ = database
+                    .simple_query(
+                        "CREATE INDEX IF NOT EXISTS average_auction_time_t_idx ON average_auction (time_t)",
+                    )
+                    .await?;
+                let _ = database
+                    .simple_query(
+                        "CREATE INDEX IF NOT EXISTS average_auction_item_id_idx ON average_auction (item_id)",
+                    )
+                    .await?;
             }
 
             if config.is_enabled(Feature::AverageBin) {
@@ -193,11 +201,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 let _ = database
                     .simple_query(
                         "CREATE TABLE IF NOT EXISTS average_bin (
-                                time_t BIGINT NOT NULL PRIMARY KEY,
-                                prices avg_ah[]
+                                time_t INT,
+                                item_id TEXT,
+                                price REAL,
+                                sales REAL,
+                                PRIMARY KEY (time_t, item_id)
                             )",
                     )
-                    .await;
+                    .await?;
+
+                let _ = database
+                    .simple_query(
+                        "CREATE INDEX IF NOT EXISTS average_bin_time_t_idx ON average_bin (time_t)",
+                    )
+                    .await?;
+                let _ = database
+                    .simple_query(
+                        "CREATE INDEX IF NOT EXISTS average_bin_item_id_idx ON average_bin (item_id)",
+                    )
+                    .await?;
             }
         }
 
@@ -211,7 +233,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             count INTEGER
                         )",
                 )
-                .await;
+                .await?;
         }
     }
 

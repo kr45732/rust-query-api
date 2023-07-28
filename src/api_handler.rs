@@ -48,8 +48,8 @@ pub async fn update_auctions(config: Arc<Config>) -> bool {
     let pet_prices: DashMap<String, AvgSum> = DashMap::new();
     let bin_prices: DashMap<String, f32> = DashMap::new();
     let under_bin_prices: DashMap<String, Value> = DashMap::new();
-    let avg_ah_prices: Mutex<Vec<AvgAh>> = Mutex::new(Vec::new());
-    let avg_bin_prices: Mutex<Vec<AvgAh>> = Mutex::new(Vec::new());
+    let avg_ah_prices: DashMap<String, AvgSum> = DashMap::new();
+    let avg_bin_prices: DashMap<String, AvgSum> = DashMap::new();
     let past_bin_prices: DashMap<String, f32> = serde_json::from_str(
         &fs::read_to_string("lowestbin.json").unwrap_or_else(|_| String::from("{}")),
     )
@@ -189,16 +189,26 @@ pub async fn update_auctions(config: Arc<Config>) -> bool {
         );
     }
 
-    if update_pets {
+    if update_pets && !pet_prices.is_empty() {
         insert_futures.push(update_pets_fn(pet_prices).boxed());
     }
 
-    if update_average_auction {
-        insert_futures.push(update_average_auction_fn(avg_ah_prices, started_epoch).boxed());
+    if update_average_auction && !avg_ah_prices.is_empty() {
+        insert_futures.push(
+            update_average_fn(
+                "average auctions",
+                "average_auction",
+                avg_ah_prices,
+                started_epoch,
+            )
+            .boxed(),
+        );
     }
 
-    if update_average_bin {
-        insert_futures.push(update_average_bin_fn(avg_bin_prices, started_epoch).boxed());
+    if update_average_bin && !avg_bin_prices.is_empty() {
+        insert_futures.push(
+            update_average_fn("average bins", "average_bin", avg_bin_prices, started_epoch).boxed(),
+        );
     }
 
     let logs: Vec<(String, String)> = insert_futures.collect().await;
@@ -432,7 +442,7 @@ fn parse_auctions(
                 if update_underbin
                     && id != "PET" // TODO: Improve under bins
                     && !auction.item_lore.contains("Furniture")
-                    &&  auction.item_name != "null"
+                    && auction.item_name != "null"
                     && !auction.item_name.contains("Minion Skin")
                 {
                     if let Some(past_bin_price) = past_bin_prices.get(&lowestbin_id) {
@@ -515,8 +525,8 @@ fn parse_auctions(
 
 /* Parse ended auctions into Vec<AvgAh> */
 async fn parse_ended_auctions(
-    avg_ah_prices: &Mutex<Vec<AvgAh>>,
-    avg_bin_prices: &Mutex<Vec<AvgAh>>,
+    avg_ah_prices: &DashMap<String, AvgSum>,
+    avg_bin_prices: &DashMap<String, AvgSum>,
     pet_prices: &DashMap<String, AvgSum>,
     update_average_auction: bool,
     update_average_bin: bool,
@@ -528,9 +538,6 @@ async fn parse_ended_auctions(
     match get_ended_auctions().await {
         Some(page_request) => {
             *started_epoch = page_request.last_updated;
-
-            let avg_ah_map: DashMap<String, AvgSum> = DashMap::new();
-            let avg_bin_map: DashMap<String, AvgSum> = DashMap::new();
 
             for mut auction in page_request.auctions {
                 if update_ended_auction_uuids {
@@ -576,8 +583,8 @@ async fn parse_ended_auctions(
                         )
                         .to_uppercase();
 
-                        if pet_prices.contains_key(&pet_id) {
-                            pet_prices.alter(&pet_id, |_, value| value.update(auction.price, 1));
+                        if let Some(mut value) = pet_prices.get_mut(&pet_id) {
+                            value.update(auction.price, 1);
                         } else {
                             pet_prices.insert(
                                 pet_id,
@@ -627,9 +634,9 @@ async fn parse_ended_auctions(
                     } else if !attributes.is_empty() {
                         // Track average of item (regardless of attributes)
                         if update_average_bin && auction.bin {
-                            update_average_map(&avg_bin_map, &id, auction.price, nbt.count);
+                            update_average_map(avg_bin_prices, &id, auction.price, nbt.count);
                         } else if update_average_auction && !auction.bin {
-                            update_average_map(&avg_ah_map, &id, auction.price, nbt.count);
+                            update_average_map(avg_ah_prices, &id, auction.price, nbt.count);
                         }
 
                         for entry in attributes {
@@ -684,28 +691,10 @@ async fn parse_ended_auctions(
                 }
 
                 if update_average_bin && auction.bin {
-                    update_average_map(&avg_bin_map, &id, auction.price, nbt.count);
+                    update_average_map(avg_bin_prices, &id, auction.price, nbt.count);
                 } else if update_average_auction && !auction.bin {
-                    update_average_map(&avg_ah_map, &id, auction.price, nbt.count);
+                    update_average_map(avg_ah_prices, &id, auction.price, nbt.count);
                 }
-            }
-
-            // Average all the averaged auctions and store them in the avg_ah_prices vector
-            for ele in avg_ah_map {
-                avg_ah_prices.lock().unwrap().push(AvgAh {
-                    item_id: ele.0,
-                    price: (ele.1.sum as f32) / (ele.1.count as f32),
-                    sales: ele.1.count as f32,
-                })
-            }
-
-            // Average all the averaged bins and store them in the avg_bin_prices vector
-            for ele in avg_bin_map {
-                avg_bin_prices.lock().unwrap().push(AvgAh {
-                    item_id: ele.0,
-                    price: (ele.1.sum as f32) / (ele.1.count as f32),
-                    sales: ele.1.count as f32,
-                })
             }
         }
         None => {
