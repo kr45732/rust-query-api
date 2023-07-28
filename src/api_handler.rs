@@ -189,11 +189,11 @@ pub async fn update_auctions(config: Arc<Config>) -> bool {
         );
     }
 
-    if update_pets {
+    if update_pets && !pet_prices.is_empty() {
         insert_futures.push(update_pets_fn(pet_prices).boxed());
     }
 
-    if update_average_auction {
+    if update_average_auction && !avg_ah_prices.is_empty() {
         insert_futures.push(
             update_average_fn(
                 "average auctions",
@@ -205,7 +205,7 @@ pub async fn update_auctions(config: Arc<Config>) -> bool {
         );
     }
 
-    if update_average_bin {
+    if update_average_bin && !avg_bin_prices.is_empty() {
         insert_futures.push(
             update_average_fn(
                 "average bins",
