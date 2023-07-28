@@ -289,7 +289,7 @@ async fn averages(
 ) -> hyper::Result<Response<Body>> {
     let mut key = String::new();
     let mut time = 0;
-    let mut step = 1;
+    let mut step = 60;
     let mut center = String::from("mean");
     let mut percent = 0.25;
 
@@ -328,6 +328,10 @@ async fn averages(
 
     if time < 0 {
         return bad_request("The time parameter cannot be negative");
+    }
+
+    if step <= 0 {
+        return bad_request("The step parameter must be positive");
     }
 
     if percent <= 0.0 || percent >= 1.0 {
