@@ -2,7 +2,7 @@
 name = "query_api"
 version = "3.1.0"
 edition = "2021"
-repository = "https://github.com/kr45732/rust-queryapi"
+repository = "https://github.com/kr45732/rust-query-api"
 readme = "README.md"
 
 [dependencies]
