@@ -102,14 +102,14 @@ async fn handle_response(config: Arc<Config>, req: Request<Body>) -> hyper::Resu
         }
         "/average_auction" => {
             if config.is_enabled(Feature::AverageAuction) {
-                averages(config, req, vec!["average"]).await
+                averages(config, req, vec!["average_1"]).await
             } else {
                 bad_request("Average auction feature is not enabled")
             }
         }
         "/average_bin" => {
             if config.is_enabled(Feature::AverageBin) {
-                averages(config, req, vec!["average_bin"]).await
+                averages(config, req, vec!["average_bin_1"]).await
             } else {
                 bad_request("Average bin feature is not enabled")
             }
@@ -117,7 +117,7 @@ async fn handle_response(config: Arc<Config>, req: Request<Body>) -> hyper::Resu
         "/average" => {
             if config.is_enabled(Feature::AverageAuction) && config.is_enabled(Feature::AverageBin)
             {
-                averages(config, req, vec!["average", "average_bin"]).await
+                averages(config, req, vec!["average_bin_1", "average_1"]).await
             } else {
                 bad_request("Both average auction and average bin feature are not enabled")
             }
@@ -245,7 +245,7 @@ async fn pets(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response
         if param_count != 1 {
             sql.push(',');
         }
-        sql.push_str(format!("${}", param_count).as_str());
+        sql.push_str(&format!("${}", param_count));
         param_vec.push(Box::new(pet_name.to_string()));
         param_count += 1;
     }
@@ -303,11 +303,11 @@ async fn averages(
     .query_pairs()
     {
         match query_pair.0.to_string().as_str() {
-            "time" => match query_pair.1.to_string().parse::<i64>() {
+            "time" => match query_pair.1.to_string().parse::<i32>() {
                 Ok(time_int) => time = time_int,
                 Err(e) => return bad_request(&format!("Error parsing time parameter: {}", e)),
             },
-            "step" => match query_pair.1.to_string().parse::<usize>() {
+            "step" => match query_pair.1.to_string().parse::<i32>() {
                 Ok(step_int) => step = step_int,
                 Err(e) => return bad_request(&format!("Error parsing step parameter: {}", e)),
             },
@@ -335,18 +335,14 @@ async fn averages(
     }
 
     // Map each item id to its prices and sales
-    let avg_map: DashMap<String, AvgVec> = DashMap::new();
+    let avg_map: DashMap<String, AverageDatabaseItem> = DashMap::new();
 
-    for (idx, table) in tables.into_iter().enumerate() {
+    for table in tables {
         // Find and sort using query JSON
         let results_cursor = get_client()
             .await
             .query(
-                format!(
-                    "SELECT time_t, prices FROM {} WHERE time_t > $1 ORDER BY time_t",
-                    table
-                )
-                .as_str(),
+                &format!("SELECT item_id, ARRAY_AGG((price, sales)::avg_ah_1) prices FROM {table} WHERE time_t > $1 GROUP BY item_id"),
                 &[&time],
             )
             .await;
@@ -356,51 +352,30 @@ async fn averages(
         }
 
         for row in results_cursor.unwrap() {
-            let row_parsed = AverageDatabaseItem::from(row);
-            for ele in row_parsed.prices {
-                // If the id already exists in the map, append the new values, otherwise create a new entry
-                if avg_map.contains_key(&ele.item_id) {
-                    avg_map.alter(&ele.item_id.to_owned(), |_, value| {
-                        value.update(ele, row_parsed.time_t, idx)
-                    });
-                } else {
-                    avg_map.insert(
-                        ele.item_id.to_owned(),
-                        AvgVec::from(ele, row_parsed.time_t, idx),
-                    );
-                }
+            let mut row_parsed = AverageDatabaseItem::from(row);
+            if let Some(mut value) = avg_map.get_mut(&row_parsed.item_id) {
+                value.prices.append(&mut row_parsed.prices);
+            } else {
+                avg_map.insert(row_parsed.item_id.to_string(), row_parsed);
             }
         }
     }
 
-    // Stores the values after averaging by 'step'
+    let start = time.max(get_timestamp_secs() - 604800);
+    let end = get_timestamp_secs();
+    let count = (((end - start) / 60 + 1) / step) as f32;
+
     let avg_map_final: DashMap<String, PartialAvgAh> = DashMap::new();
     for ele in avg_map {
-        let mut count: i32 = 0;
-        let mut sales: f32 = 0.0;
-        let sales_arr = ele.1.get_sales();
-
-        // Average the number of sales by the step parameter
-        for i in (0..sales_arr.len()).step_by(step) {
-            for j in i..(i + step) {
-                if j >= sales_arr.len() {
-                    break;
-                }
-
-                sales += sales_arr.get(j).unwrap();
-            }
-            count += 1;
-        }
-
         avg_map_final.insert(
             ele.0,
             PartialAvgAh {
                 price: match center.as_str() {
                     "median" => ele.1.get_median(),
                     "modified_median" => ele.1.get_modified_median(percent),
-                    _ => ele.1.get_average(center == "mean_old"),
+                    _ => ele.1.get_average(),
                 },
-                sales: sales / (count as f32),
+                sales: ele.1.get_sales(count),
             },
         );
     }
@@ -409,7 +384,7 @@ async fn averages(
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(serde_json::to_string(&avg_map_final).unwrap()))
+        .body(Body::from(serde_json::to_vec(&avg_map_final).unwrap()))
         .unwrap())
 }
 
@@ -835,12 +810,12 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
                 if !sort_by_query_end_sql.is_empty() {
                     sort_by_query_end_sql.push_str(" AND");
                 }
-                sort_by_query_end_sql.push_str(format!(" item_id = ${}", param_count).as_str());
+                sort_by_query_end_sql.push_str(&format!(" item_id = ${}", param_count));
             } else {
                 if param_count != 1 {
                     sql.push_str(" AND");
                 }
-                sql.push_str(format!(" item_id = ${}", param_count).as_str());
+                sql.push_str(&format!(" item_id = ${}", param_count));
             }
             param_vec.push(&item_id);
             param_count += 1;
@@ -850,12 +825,12 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
                 if !sort_by_query_end_sql.is_empty() {
                     sort_by_query_end_sql.push_str(" AND");
                 }
-                sort_by_query_end_sql.push_str(format!(" end_t > ${}", param_count).as_str());
+                sort_by_query_end_sql.push_str(&format!(" end_t > ${}", param_count));
             } else {
                 if param_count != 1 {
                     sql.push_str(" AND");
                 }
-                sql.push_str(format!(" end_t > ${}", param_count).as_str());
+                sql.push_str(&format!(" end_t > ${}", param_count));
             }
             param_vec.push(&end);
             param_count += 1;
@@ -865,13 +840,12 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
                 if !sort_by_query_end_sql.is_empty() {
                     sort_by_query_end_sql.push_str(" AND");
                 }
-                sort_by_query_end_sql
-                    .push_str(format!(" item_name ILIKE ${}", param_count).as_str());
+                sort_by_query_end_sql.push_str(&format!(" item_name ILIKE ${}", param_count));
             } else {
                 if param_count != 1 {
                     sql.push_str(" AND");
                 }
-                sql.push_str(format!(" item_name ILIKE ${}", param_count).as_str());
+                sql.push_str(&format!(" item_name ILIKE ${}", param_count));
             }
             param_vec.push(&item_name);
             param_count += 1;
@@ -889,14 +863,14 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
         } else if (sort_by == "starting_bid" || sort_by == "highest_bid")
             && (sort_order == "ASC" || sort_order == "DESC")
         {
-            sql.push_str(format!(" ORDER BY {} {}", sort_by, sort_order).as_str());
+            sql.push_str(&format!(" ORDER BY {} {}", sort_by, sort_order));
         };
 
         if limit > 0 {
             if sort_by_query {
-                sort_by_query_end_sql.push_str(format!(" LIMIT ${}", param_count).as_str());
+                sort_by_query_end_sql.push_str(&format!(" LIMIT ${}", param_count));
             } else {
-                sql.push_str(format!(" LIMIT ${}", param_count).as_str());
+                sql.push_str(&format!(" LIMIT ${}", param_count));
             }
             param_vec.push(&limit);
         }
@@ -1141,7 +1115,7 @@ fn param_eq<'a>(
         sql.push_str(" CASE WHEN")
     }
 
-    sql.push_str(format!(" {} = ${}", param_name, param_count).as_str());
+    sql.push_str(&format!(" {} = ${}", param_name, param_count));
     param_vec.push(param_value);
 
     if sort_by_query {
@@ -1179,7 +1153,7 @@ fn array_contains<'a>(
             sql.push(',');
         }
 
-        sql.push_str(format!("${}", param_count_mut).as_str());
+        sql.push_str(&format!("${}", param_count_mut));
         param_vec.push(enchant);
         param_count_mut += 1;
     }

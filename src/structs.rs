@@ -147,139 +147,26 @@ pub struct Bid {
 
 /* Average Auction API */
 pub struct AverageDatabaseItem {
-    pub time_t: i64,
+    pub item_id: String,
     pub prices: Vec<AvgAh>,
 }
 
-impl From<Row> for AverageDatabaseItem {
-    fn from(row: Row) -> Self {
-        Self {
-            time_t: row.get(0),
-            prices: row.get(1),
-        }
-    }
-}
-
-#[derive(Debug, ToSql, FromSql)]
-#[postgres(name = "avg_ah")]
-pub struct AvgAh {
-    pub item_id: String,
-    pub price: f32,
-    pub sales: f32,
-}
-
-#[derive(Serialize)]
-
-pub struct PartialAvgAh {
-    pub price: f32,
-    pub sales: f32,
-}
-
-pub struct AvgSum {
-    pub sum: i64,
-    pub count: i32,
-}
-
-impl AvgSum {
-    pub fn update(mut self, sum: i64, count: i32) -> Self {
-        self.sum += sum;
-        self.count += count;
-        self
+impl AverageDatabaseItem {
+    pub fn get_sales(&self, count: f32) -> f32 {
+        self.prices.iter().map(|e| e.sales).sum::<f32>() / count
     }
 
-    pub fn get_average(&self) -> i64 {
-        self.sum / self.count as i64
-    }
-}
-
-pub struct AvgVec {
-    pub auctions: DashMap<i64, AvgAh>,
-    pub bins: DashMap<i64, AvgAh>,
-}
-
-impl AvgVec {
-    pub fn from(avg_ah: AvgAh, time_t: i64, idx: usize) -> Self {
-        let s = Self {
-            auctions: DashMap::new(),
-            bins: DashMap::new(),
-        };
-        s.update(avg_ah, time_t, idx)
-    }
-
-    pub fn update(self, avg_ah: AvgAh, time_t: i64, idx: usize) -> Self {
-        if idx == 0 {
-            self.auctions.insert(time_t, avg_ah);
-        } else {
-            self.bins.insert(time_t, avg_ah);
-        }
-        self
-    }
-
-    pub fn get_sales(&self) -> Vec<f32> {
-        let merged = DashMap::new();
-        for ele in &self.auctions {
-            merged.insert(ele.key().to_owned(), ele.sales);
-        }
-        for ele in &self.bins {
-            if merged.contains_key(ele.key()) {
-                merged.alter(ele.key(), |_, e| e + ele.sales);
-            } else {
-                merged.insert(ele.key().to_owned(), ele.sales);
-            }
-        }
-        merged.iter().map(|e| *e.value()).collect()
-    }
-
-    pub fn get_average(&self, old_method: bool) -> f32 {
-        let mut auctions_sum = 0.0;
-        let mut auctions_sales = 0.0;
-        for ele in &self.auctions {
-            auctions_sum += ele.price;
-            auctions_sales += ele.sales;
-        }
-
-        let mut bins_sum = 0.0;
-        let mut bins_sales = 0.0;
-        for ele in &self.bins {
-            bins_sum += ele.price;
-            bins_sales += ele.sales;
-        }
-
-        let auctions_average = auctions_sum / self.auctions.len() as f32;
-        let bins_average = bins_sum / self.bins.len() as f32;
-        if !old_method && auctions_sales > bins_sales * 10.0 {
-            auctions_average
-        } else if !old_method && bins_sales > auctions_sales * 10.0 {
-            bins_average
-        } else {
-            auctions_average.min(bins_average)
-        }
+    pub fn get_average(&self) -> f32 {
+        self.prices.iter().map(|e| e.price).sum::<f32>() / self.prices.len() as f32
     }
 
     pub fn get_median(&self) -> f32 {
-        let mut combined_vec: Vec<f32> = Vec::new();
-
-        for ele in &self.auctions {
-            combined_vec.push(ele.price);
-        }
-
-        for ele in &self.bins {
-            combined_vec.push(ele.price);
-        }
-
+        let combined_vec: Vec<f32> = self.prices.iter().map(|e| e.price).collect();
         median(&combined_vec)
     }
 
     pub fn get_modified_median(&self, percent: f32) -> f32 {
-        let mut combined_vec: Vec<f32> = Vec::new();
-
-        for ele in &self.auctions {
-            combined_vec.push(ele.price);
-        }
-
-        for ele in &self.bins {
-            combined_vec.push(ele.price);
-        }
+        let combined_vec: Vec<f32> = self.prices.iter().map(|e| e.price).collect();
 
         let median = median(&combined_vec);
         let lower_bound = median * (1.0 - percent);
@@ -300,6 +187,45 @@ impl AvgVec {
         } else {
             sum / count as f32
         }
+    }
+}
+
+impl From<Row> for AverageDatabaseItem {
+    fn from(row: Row) -> Self {
+        Self {
+            item_id: row.get(0),
+            prices: row.get(1),
+        }
+    }
+}
+
+#[derive(Debug, ToSql, FromSql)]
+#[postgres(name = "avg_ah_1")]
+pub struct AvgAh {
+    pub price: f32,
+    pub sales: f32,
+}
+
+#[derive(Serialize)]
+
+pub struct PartialAvgAh {
+    pub price: f32,
+    pub sales: f32,
+}
+
+pub struct AvgSum {
+    pub sum: i64,
+    pub count: i32,
+}
+
+impl AvgSum {
+    pub fn update(&mut self, sum: i64, count: i32) {
+        self.sum += sum;
+        self.count += count;
+    }
+
+    pub fn get_average(&self) -> i64 {
+        self.sum / self.count as i64
     }
 }
 

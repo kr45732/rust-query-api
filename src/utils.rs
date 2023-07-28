@@ -285,42 +285,26 @@ pub async fn update_pets_fn(pet_prices: DashMap<String, AvgSum>) -> (String, Str
     }
 }
 
-pub async fn update_average_auction_fn(
-    avg_ah_prices: Mutex<Vec<AvgAh>>,
-    started_epoch: i64,
+pub async fn update_average_fn(
+    name: &str,
+    table: &str,
+    avg_prices: DashMap<String, AvgSum>,
+    time_t: i64,
 ) -> (String, String) {
-    let avg_ah_started = Instant::now();
-    match update_avg_ah_database(avg_ah_prices, started_epoch).await {
-        Ok(_) => (
+    let avg_started = Instant::now();
+    match update_avgerage_database(table, avg_prices, (time_t / 1000) as i32).await {
+        Ok(count) => (
             format!(
-                "\nSuccessfully inserted average auctions into database in {}ms",
-                avg_ah_started.elapsed().as_millis()
+                "\nSuccessfully inserted {} {} into database in {}ms",
+                count,
+                name,
+                avg_started.elapsed().as_millis()
             ),
             String::new(),
         ),
         Err(e) => (
             String::new(),
-            format!("\nError inserting average auctions into database: {}", e),
-        ),
-    }
-}
-
-pub async fn update_average_bin_fn(
-    avg_bin_prices: Mutex<Vec<AvgAh>>,
-    started_epoch: i64,
-) -> (String, String) {
-    let avg_bin_started = Instant::now();
-    match update_avg_bin_database(avg_bin_prices, started_epoch).await {
-        Ok(_) => (
-            format!(
-                "\nSuccessfully inserted average bins into database in {}ms",
-                avg_bin_started.elapsed().as_millis()
-            ),
-            String::new(),
-        ),
-        Err(e) => (
-            String::new(),
-            format!("\nError inserting average bins into database: {}", e),
+            format!("\nError inserting {} into database: {}", name, e),
         ),
     }
 }
@@ -498,8 +482,8 @@ async fn update_pets_database(pet_prices: DashMap<String, AvgSum>) -> Result<u64
         let old_price: i64 = old_pet.get("price");
         let old_sum: i64 = old_price * (old_count as i64);
 
-        if pet_prices.contains_key(&old_name) {
-            pet_prices.alter(&old_name, |_, value| value.update(old_sum, old_count));
+        if let Some(mut value) = pet_prices.get_mut(&old_name) {
+            value.update(old_sum, old_count);
         } else {
             pet_prices.insert(
                 old_name,
@@ -522,73 +506,61 @@ async fn update_pets_database(pet_prices: DashMap<String, AvgSum>) -> Result<u64
     for m in pet_prices.iter() {
         copy_writer
             .as_mut()
-            .write(&[
-                m.key() as &(dyn ToSql + Sync),
-                &m.value().get_average() as &(dyn ToSql + Sync),
-                &m.value().count as &(dyn ToSql + Sync),
-            ])
+            .write(&[m.key(), &m.value().get_average(), &m.value().count])
             .await?;
     }
 
     copy_writer.finish().await
 }
 
-async fn update_avg_ah_database(
-    mut avg_ah_prices: Mutex<Vec<AvgAh>>,
-    time_t: i64,
+async fn update_avgerage_database(
+    table: &str,
+    avg_prices: DashMap<String, AvgSum>,
+    time_t: i32, // In seconds
 ) -> Result<u64, Error> {
+    let table_str = table.to_string();
     let database = get_client().await;
 
-    // Delete auctions older than 7 days
-    tokio::spawn(async {
+    // Delete averages older than 7 days
+    tokio::spawn(async move {
         let _ = get_client()
             .await
             .simple_query(
                 &format!(
-                    "DELETE FROM average WHERE time_t < {}",
-                    (get_timestamp_millis() - Duration::from_secs(604800).as_millis())
+                    "DELETE FROM {} WHERE time_t < {}",
+                    table_str,
+                    time_t - 604800 // 7 days (in seconds)
                 )
                 .to_string(),
             )
             .await;
     });
 
-    // Insert new average auctions
-    database
-        .execute(
-            "INSERT INTO average VALUES ($1, $2)",
-            &[&time_t, avg_ah_prices.get_mut().unwrap()],
-        )
-        .await
-}
+    // Insert new averages
+    let copy_statement = database
+        .prepare(&format!("COPY {} FROM STDIN BINARY", table))
+        .await?;
+    let copy_sink = database.copy_in(&copy_statement).await?;
+    let copy_writer = BinaryCopyInWriter::new(
+        copy_sink,
+        &[Type::INT4, Type::TEXT, Type::FLOAT4, Type::FLOAT4],
+    );
+    pin_mut!(copy_writer);
 
-async fn update_avg_bin_database(
-    mut avg_bin_prices: Mutex<Vec<AvgAh>>,
-    time_t: i64,
-) -> Result<u64, Error> {
-    let database = get_client().await;
+    // Average all and write to copy
+    for ele in avg_prices {
+        copy_writer
+            .as_mut()
+            .write(&[
+                &time_t,
+                &ele.0,
+                &(ele.1.sum as f32 / ele.1.count as f32),
+                &(ele.1.count as f32),
+            ])
+            .await?;
+    }
 
-    // Delete bins older than 7 days
-    tokio::spawn(async {
-        let _ = get_client()
-            .await
-            .simple_query(
-                &format!(
-                    "DELETE FROM average_bin WHERE time_t < {}",
-                    (get_timestamp_millis() - Duration::from_secs(604800).as_millis())
-                )
-                .to_string(),
-            )
-            .await;
-    });
-
-    // Insert new bins auctions
-    database
-        .execute(
-            "INSERT INTO average_bin VALUES ($1, $2)",
-            &[&time_t, avg_bin_prices.get_mut().unwrap()],
-        )
-        .await
+    copy_writer.finish().await
 }
 
 async fn update_bins_local(bin_prices: &DashMap<String, f32>) -> Result<(), serde_json::Error> {
@@ -649,6 +621,13 @@ pub fn get_timestamp_millis() -> u128 {
         .as_millis()
 }
 
+pub fn get_timestamp_secs() -> i32 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i32
+}
+
 pub fn is_false(b: &bool) -> bool {
     !b
 }
@@ -698,8 +677,8 @@ fn partition(data: &[f32]) -> (Vec<f32>, f32, Vec<f32>) {
 
 pub fn update_average_map(map: &DashMap<String, AvgSum>, id: &str, price: i64, count: i16) {
     // If the map already has this id, then add to the existing elements, otherwise create a new entry
-    if map.contains_key(id) {
-        map.alter(id, |_, value| value.update(price, count as i32));
+    if let Some(mut value) = map.get_mut(id) {
+        value.update(price, count as i32);
     } else {
         map.insert(
             id.to_string(),

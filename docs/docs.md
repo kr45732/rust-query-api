@@ -48,23 +48,23 @@
 
 ## Average Auctions
 - `key` - key to access the API
-- `time` - unix timestamp, in milliseconds, for how far back the average auction prices should be calculated. The most is 5 days back
+- `time` - unix timestamp, in seconds, for how far back the average auction prices should be calculated. The most is 5 days back
 - `step` - how the auction sales should be averaged. For example, 1 would average it by minute, 60 would average it by hour, 1440 would average it by day, and so on
-- `center` - measure of center used to determine item prices. Supported methods are 'mean', 'mean_old', 'median', 'modified_median'
+- `center` - measure of center used to determine item prices. Supported methods are 'mean', 'median', 'modified_median'
 - `percent` - percent of median (above and below) to average when using 'modified_median' center
 
 ## Average Bins
 - `key` - key to access the API
-- `time` - unix timestamp, in milliseconds, for how far back the average bin prices should be calculated. The most is 5 days back
+- `time` - unix timestamp, in seconds, for how far back the average bin prices should be calculated. The most is 5 days back
 - `step` - how the bin sales should be averaged. For example, 1 would average it by minute, 60 would average it by hour, 1440 would average it by day, and so on
-- `center` - measure of center used to determine item prices. Supported methods are 'mean', 'mean_old', 'median', 'modified_median'
+- `center` - measure of center used to determine item prices. Supported methods are 'mean', 'median', 'modified_median'
 - `percent` - percent of median (above and below) to average when using 'modified_median' center
 
 ## Average Auctions & Bins
 - `key` - key to access the API
-- `time` - unix timestamp, in milliseconds, for how far back the average auction & bin prices should be calculated. The most is 5 days back
+- `time` - unix timestamp, in seconds, for how far back the average auction & bin prices should be calculated. The most is 5 days back
 - `step` - how the auction & bin sales should be averaged. For example, 1 would average it by minute, 60 would average it by hour, 1440 would average it by day, and so on
-- `center` - measure of center used to determine item prices. Supported methods are 'mean', 'mean_old', 'median', 'modified_median'
+- `center` - measure of center used to determine item prices. Supported methods are 'mean', 'median', 'modified_median'
 - `percent` - percent of median (above and below) to average when using 'modified_median' center
 
 ## Query Items
@@ -92,16 +92,16 @@
 - Meaning: get all new bins that make at least one million in profit compared to the lowest bin of the previous API update. Experimental and still being improved
 
 ### [Average Auction Example](average_auction_example.json)
-- Request /average_auction?key=KEY&time=1647830293999&step=60
-- Meaning: get average auction prices from the unix timestamp 1647830293999 to the present. Average sales by hour
+- Request /average_auction?key=KEY&time=1647830293&step=60
+- Meaning: get average auction prices from the unix timestamp 1647830293 to the present. Average sales by hour
 
 ### [Average Bin Example](average_bin_example.json)
-- Request /average_bin?key=KEY&time=1647830293999&step=60
-- Meaning: get average auction bin from the unix timestamp 1647830293999 to the present. Average sales by hour
+- Request /average_bin?key=KEY&time=1647830293&step=60
+- Meaning: get average auction bin from the unix timestamp 1647830293 to the present. Average sales by hour
 
 ### [Average Example](average_example.json)
-- Request /average?key=KEY&time=1647830293999&step=60
-- Meaning: get the combined average auctions and average bins from the unix timestamp 1647830293999 to the present. Average sales by hour
+- Request /average?key=KEY&time=1647830293&step=60
+- Meaning: get the combined average auctions and average bins from the unix timestamp 1647830293 to the present. Average sales by hour
 
 ### [Query Items Example](query_items_example.json)
 - Request /query_items?key=KEY
