@@ -102,14 +102,14 @@ async fn handle_response(config: Arc<Config>, req: Request<Body>) -> hyper::Resu
         }
         "/average_auction" => {
             if config.is_enabled(Feature::AverageAuction) {
-                averages(config, req, vec!["average_1"]).await
+                averages(config, req, vec!["average_auction"]).await
             } else {
                 bad_request("Average auction feature is not enabled")
             }
         }
         "/average_bin" => {
             if config.is_enabled(Feature::AverageBin) {
-                averages(config, req, vec!["average_bin_1"]).await
+                averages(config, req, vec!["average_bin"]).await
             } else {
                 bad_request("Average bin feature is not enabled")
             }
@@ -117,7 +117,7 @@ async fn handle_response(config: Arc<Config>, req: Request<Body>) -> hyper::Resu
         "/average" => {
             if config.is_enabled(Feature::AverageAuction) && config.is_enabled(Feature::AverageBin)
             {
-                averages(config, req, vec!["average_bin_1", "average_1"]).await
+                averages(config, req, vec!["average_bin", "average_auction"]).await
             } else {
                 bad_request("Both average auction and average bin feature are not enabled")
             }
@@ -342,7 +342,7 @@ async fn averages(
         let results_cursor = get_client()
             .await
             .query(
-                &format!("SELECT item_id, ARRAY_AGG((price, sales)::avg_ah_1) prices FROM {table} WHERE time_t > $1 GROUP BY item_id"),
+                &format!("SELECT item_id, ARRAY_AGG((price, sales)::avg_ah) prices FROM {table} WHERE time_t > $1 GROUP BY item_id"),
                 &[&time],
             )
             .await;

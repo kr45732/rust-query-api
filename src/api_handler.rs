@@ -197,7 +197,7 @@ pub async fn update_auctions(config: Arc<Config>) -> bool {
         insert_futures.push(
             update_average_fn(
                 "average auctions",
-                "average_1",
+                "average_auction",
                 avg_ah_prices,
                 started_epoch,
             )
@@ -207,13 +207,7 @@ pub async fn update_auctions(config: Arc<Config>) -> bool {
 
     if update_average_bin && !avg_bin_prices.is_empty() {
         insert_futures.push(
-            update_average_fn(
-                "average bins",
-                "average_bin_1",
-                avg_bin_prices,
-                started_epoch,
-            )
-            .boxed(),
+            update_average_fn("average bins", "average_bin", avg_bin_prices, started_epoch).boxed(),
         );
     }
 

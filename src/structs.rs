@@ -200,7 +200,7 @@ impl From<Row> for AverageDatabaseItem {
 }
 
 #[derive(Debug, ToSql, FromSql)]
-#[postgres(name = "avg_ah_1")]
+#[postgres(name = "avg_ah")]
 pub struct AvgAh {
     pub price: f32,
     pub sales: f32,

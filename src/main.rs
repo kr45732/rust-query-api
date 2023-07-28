@@ -163,7 +163,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             // Create avg_ah custom type
             let _ = database
                 .simple_query(
-                    "CREATE TYPE avg_ah_1 AS (
+                    "CREATE TYPE avg_ah AS (
                             price REAL,
                             sales REAL
                         )",
@@ -174,7 +174,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 // Create average auction table if doesn't exist
                 let _ = database
                     .simple_query(
-                        "CREATE TABLE IF NOT EXISTS average_1 (
+                        "CREATE TABLE IF NOT EXISTS average_auction (
                                 time_t INT,
                                 item_id TEXT,
                                 price REAL,
@@ -186,12 +186,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
                 let _ = database
                     .simple_query(
-                        "CREATE INDEX IF NOT EXISTS average_1_time_t_idx ON average_1 (time_t)",
+                        "CREATE INDEX IF NOT EXISTS average_auction_time_t_idx ON average_auction (time_t)",
                     )
                     .await?;
                 let _ = database
                     .simple_query(
-                        "CREATE INDEX IF NOT EXISTS average_1_item_id_idx ON average_1 (item_id)",
+                        "CREATE INDEX IF NOT EXISTS average_auction_item_id_idx ON average_auction (item_id)",
                     )
                     .await?;
             }
@@ -200,7 +200,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 // Create average bins table if doesn't exist
                 let _ = database
                     .simple_query(
-                        "CREATE TABLE IF NOT EXISTS average_bin_1 (
+                        "CREATE TABLE IF NOT EXISTS average_bin (
                                 time_t INT,
                                 item_id TEXT,
                                 price REAL,
@@ -212,12 +212,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
                 let _ = database
                     .simple_query(
-                        "CREATE INDEX IF NOT EXISTS average_bin_1_time_t_idx ON average_bin_1 (time_t)",
+                        "CREATE INDEX IF NOT EXISTS average_bin_time_t_idx ON average_bin (time_t)",
                     )
                     .await?;
                 let _ = database
                     .simple_query(
-                        "CREATE INDEX IF NOT EXISTS average_bin_1_item_id_idx ON average_bin_1 (item_id)",
+                        "CREATE INDEX IF NOT EXISTS average_bin_item_id_idx ON average_bin (item_id)",
                     )
                     .await?;
             }
