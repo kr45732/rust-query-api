@@ -23,7 +23,7 @@ surf = { version = "2.3.2", features = ["curl-client"] }
 hyper = { version = "0.14.27", features = ["full"] }
 
 # Logging
-log = "0.4.19"
+log = "0.4.20"
 simplelog = "0.12.1"
 
 # Misc
