@@ -339,13 +339,22 @@ async fn update_query_database(
             delete_uuids.push(format!("'{}'", ele.uuid));
         }
 
-        let _ = database
-            .simple_query(&format!(
-                "DELETE FROM query WHERE uuid in ({}) OR end_t <= {}",
-                delete_uuids.join(","),
-                last_updated
-            ))
-            .await?;
+        if delete_uuids.is_empty() {
+            let _ = database
+                .simple_query(&format!(
+                    "DELETE FROM query WHERE end_t <= {}",
+                    last_updated
+                ))
+                .await?;
+        } else {
+            let _ = database
+                .simple_query(&format!(
+                    "DELETE FROM query WHERE uuid in ({}) OR end_t <= {}",
+                    delete_uuids.join(","),
+                    last_updated
+                ))
+                .await?;
+        }
     }
 
     let copy_statement = database.prepare("COPY query FROM STDIN BINARY").await?;
