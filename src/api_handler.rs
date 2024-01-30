@@ -709,13 +709,12 @@ async fn parse_ended_auctions(
 async fn get_auction_page(page_number: i32) -> Option<Auctions> {
     let res = HTTP_CLIENT
         .get(format!(
-            "https://api.hypixel.net/skyblock/auctions?page={}",
-            page_number
+            "https://api.hypixel.net/skyblock/auctions?page={page_number}"
         ))
         .send()
         .await;
     if res.is_ok() {
-        res.unwrap().body_json().await.ok()
+        res.unwrap().json().await.ok()
     } else {
         None
     }
@@ -728,7 +727,7 @@ async fn get_ended_auctions() -> Option<EndedAuctions> {
         .send()
         .await;
     if res.is_ok() {
-        res.unwrap().body_json().await.ok()
+        res.unwrap().json().await.ok()
     } else {
         None
     }
