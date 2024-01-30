@@ -16,15 +16,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::time::Duration;
-
+use crate::webhook::Webhook;
 use deadpool_postgres::Pool;
 use lazy_static::lazy_static;
 use postgres_types::Type;
 use regex::Regex;
+use std::time::Duration;
 use tokio::sync::Mutex;
-
-use crate::webhook::Webhook;
 
 lazy_static! {
     pub static ref HTTP_CLIENT: reqwest::Client = reqwest::ClientBuilder::new()

@@ -16,25 +16,23 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::sync::Arc;
-use std::{
-    error::Error,
-    fs::{self, File},
-};
-
 use deadpool_postgres::{Manager, ManagerConfig, Pool, RecyclingMethod, Runtime};
 use dotenv::dotenv;
-use simplelog::{CombinedLogger, LevelFilter, SimpleLogger, WriteLogger};
-use tokio_postgres::NoTls;
-
-use query_api::config::{Config, Feature};
 use query_api::{
     api_handler::update_auctions,
+    config::{Config, Feature},
     server::start_server,
     statics::{BID_ARRAY, DATABASE, WEBHOOK},
     utils::{info, start_auction_loop},
     webhook::Webhook,
 };
+use simplelog::{CombinedLogger, LevelFilter, SimpleLogger, WriteLogger};
+use std::{
+    error::Error,
+    fs::{self, File},
+    sync::Arc,
+};
+use tokio_postgres::NoTls;
 
 /* Entry point to the program. Creates loggers, reads config, creates tables, starts auction loop and server */
 #[tokio::main]

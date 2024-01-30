@@ -16,9 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::collections::HashSet;
-use std::env;
-use std::str::FromStr;
+use std::{collections::HashSet, env, str::FromStr};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Feature {

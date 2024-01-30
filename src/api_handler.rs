@@ -16,15 +16,22 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::config::{Config, Feature};
-use crate::{statics::*, structs::*, utils::*};
+use crate::{
+    config::{Config, Feature},
+    statics::*,
+    structs::*,
+    utils::*,
+};
 use dashmap::{DashMap, DashSet};
-use futures::FutureExt;
-use futures::{stream::FuturesUnordered, StreamExt};
+use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
 use log::{debug, info};
 use serde_json::{json, Value};
-use std::sync::{Arc, Mutex};
-use std::{fs, time::Instant};
+use std::{
+    fs,
+    sync::{Arc, Mutex},
+    thread,
+    time::{Duration, Instant},
+};
 
 /// Update the enabled APIs
 pub async fn update_auctions(config: Arc<Config>) -> bool {
@@ -83,6 +90,7 @@ pub async fn update_auctions(config: Arc<Config>) -> bool {
 
         // May run too early sometimes
         if started_epoch == previous_started_epoch {
+            thread::sleep(Duration::from_secs(1));
             return false;
         }
 

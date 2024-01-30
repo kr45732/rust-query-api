@@ -16,21 +16,22 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::config::Config;
-use crate::{statics::*, structs::*};
-use base64::engine::general_purpose;
-use base64::Engine;
+use crate::{config::Config, statics::*, structs::*};
+use base64::{engine::general_purpose, Engine};
 use dashmap::{DashMap, DashSet};
 use deadpool_postgres::Client;
 use futures::{pin_mut, Future};
 use log::{error, info};
 use postgres_types::{ToSql, Type};
 use serde_json::Value;
-use std::cmp::Ordering;
-use std::fmt::Write;
-use std::sync::{Arc, Mutex};
-use std::time::{Instant, UNIX_EPOCH};
-use std::{fs::OpenOptions, thread, time::SystemTime};
+use std::{
+    cmp::Ordering,
+    fmt::Write,
+    fs::OpenOptions,
+    sync::{Arc, Mutex},
+    thread,
+    time::{Instant, SystemTime, UNIX_EPOCH},
+};
 use tokio::time::{self, Duration};
 use tokio_postgres::{binary_copy::BinaryCopyInWriter, Error};
 
