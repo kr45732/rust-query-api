@@ -38,7 +38,7 @@ use query_api::{
 
 /* Entry point to the program. Creates loggers, reads config, creates tables, starts auction loop and server */
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     // Read config
     println!("Reading config");
     if dotenv().is_err() {
@@ -260,7 +260,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     info(String::from("Starting server..."));
-    start_server(config.clone()).await;
+    start_server(config.clone()).await?;
 
     Ok(())
 }

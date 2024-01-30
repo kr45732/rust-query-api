@@ -27,10 +27,10 @@ use tokio::sync::Mutex;
 use crate::webhook::Webhook;
 
 lazy_static! {
-    pub static ref HTTP_CLIENT: surf::Client = surf::Config::new()
-        .set_timeout(Some(Duration::from_secs(15)))
-        .set_max_connections_per_host(70)
-        .try_into()
+    pub static ref HTTP_CLIENT: reqwest::Client = reqwest::ClientBuilder::new()
+        .connect_timeout(Duration::from_secs(15))
+        .gzip(true)
+        .build()
         .unwrap();
     pub static ref MC_CODE_REGEX: Regex = Regex::new("(?i)\u{00A7}[0-9A-FK-OR]").unwrap();
     pub static ref IS_UPDATING: Mutex<bool> = Mutex::new(false);

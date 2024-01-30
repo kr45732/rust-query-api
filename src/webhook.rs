@@ -118,7 +118,7 @@ impl Webhook {
     {
         let mut msg = Message::new();
         let message = t(&mut msg);
-        HTTP_CLIENT.post(&self.url).body_json(&message)?.await?;
+        HTTP_CLIENT.post(&self.url).json(&message).send().await?;
         Ok(())
     }
 }

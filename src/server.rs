@@ -16,47 +16,67 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::fs;
-use std::sync::Arc;
-
+use crate::{
+    config::{Config, Feature},
+    statics::*,
+    structs::*,
+    utils::*,
+};
 use dashmap::DashMap;
 use futures::TryStreamExt;
+use http_body_util::{combinators::BoxBody, BodyExt, Full};
 use hyper::{
+    body::{Body, Bytes},
     header,
-    service::{make_service_fn, service_fn},
-    Body, Method, Request, Response, Server, StatusCode,
+    service::service_fn,
+    Error, Method, Request, Response, StatusCode,
+};
+use hyper_util::{
+    rt::{TokioExecutor, TokioIo},
+    server::conn::auto,
 };
 use log::info;
 use postgres_types::ToSql;
+use reqwest::Url;
+use serde::Serialize;
 use serde_json::json;
-use surf::Url;
+use std::{fs, net::SocketAddr, sync::Arc};
+use tokio::net::TcpListener;
 use tokio_postgres::Row;
 
-use crate::config::{Config, Feature};
-use crate::{statics::*, structs::*, utils::*};
-
 /// Starts the server listening on URL
-pub async fn start_server(config: Arc<Config>) {
-    let server_address = config.full_url.parse().unwrap();
-    let make_service = make_service_fn(|_| {
+pub async fn start_server(
+    config: Arc<Config>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let address: SocketAddr = config.full_url.parse().unwrap();
+    let listener = TcpListener::bind(address).await?;
+
+    info(format!("Listening on http://{}", address));
+
+    loop {
+        let (tcp, _) = listener.accept().await?;
+        let io = TokioIo::new(tcp);
         let captured_config = config.clone();
-        async {
-            Ok::<_, hyper::Error>(service_fn(move |req| {
-                handle_response(captured_config.clone(), req)
-            }))
-        }
-    });
 
-    let server = Server::bind(&server_address).serve(make_service);
-
-    info(format!("Listening on http://{}", server_address));
-    if let Err(e) = server.await {
-        error(format!("Error when starting server: {}", e));
+        tokio::task::spawn(async move {
+            if let Err(err) = auto::Builder::new(TokioExecutor::new())
+                .serve_connection(
+                    io,
+                    service_fn(move |req| handle_response(captured_config.clone(), req)),
+                )
+                .await
+            {
+                println!("Error serving connection: {:?}", err);
+            }
+        });
     }
 }
 
 /* Handles http requests to the server */
-async fn handle_response(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
+async fn handle_response(
+    config: Arc<Config>,
+    req: Request<impl Body>,
+) -> Result<Response<BoxBody<Bytes, Error>>, Error> {
     info!("{} {}", req.method(), req.uri().path());
 
     if req.method() != Method::GET {
@@ -140,8 +160,10 @@ async fn handle_response(config: Arc<Config>, req: Request<Body>) -> hyper::Resu
     }
 }
 
-/* /debug */
-async fn debug_log(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
+async fn debug_log(
+    config: Arc<Config>,
+    req: Request<impl Body>,
+) -> Result<Response<BoxBody<Bytes, Error>>, Error> {
     let mut key = String::new();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
@@ -162,19 +184,21 @@ async fn debug_log(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Res
         return unauthorized();
     }
 
-    let file_result = fs::read_to_string("debug.log");
+    let file_result = fs::read("debug.log");
     if file_result.is_err() {
         return internal_error("Unable to open or read debug.log");
     }
 
     Ok(Response::builder()
         .status(StatusCode::OK)
-        .body(Body::from(file_result.unwrap()))
+        .body(file_body(file_result))
         .unwrap())
 }
 
-/* /info */
-async fn info_log(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
+async fn info_log(
+    config: Arc<Config>,
+    req: Request<impl Body>,
+) -> Result<Response<BoxBody<Bytes, Error>>, Error> {
     let mut key = String::new();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
@@ -195,19 +219,21 @@ async fn info_log(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Resp
         return unauthorized();
     }
 
-    let file_result = fs::read_to_string("info.log");
+    let file_result = fs::read("info.log");
     if file_result.is_err() {
         return internal_error("Unable to open or read info.log");
     }
 
     Ok(Response::builder()
         .status(StatusCode::OK)
-        .body(Body::from(file_result.unwrap()))
+        .body(file_body(file_result))
         .unwrap())
 }
 
-/* /pets */
-async fn pets(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
+async fn pets(
+    config: Arc<Config>,
+    req: Request<impl Body>,
+) -> Result<Response<BoxBody<Bytes, Error>>, Error> {
     let mut query = String::new();
     let mut key = String::new();
 
@@ -277,16 +303,15 @@ async fn pets(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(serde_json::to_vec(&results_vec).unwrap()))
+        .body(json_body(&results_vec))
         .unwrap())
 }
 
-/* /average_auction or /average_bin or /average */
 async fn averages(
     config: Arc<Config>,
-    req: Request<Body>,
+    req: Request<impl Body>,
     tables: Vec<&str>,
-) -> hyper::Result<Response<Body>> {
+) -> Result<Response<BoxBody<Bytes, Error>>, Error> {
     let mut key = String::new();
     let mut time = 0;
     let mut step = 60;
@@ -388,12 +413,14 @@ async fn averages(
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(serde_json::to_vec(&avg_map_final).unwrap()))
+        .body(json_body(&avg_map_final))
         .unwrap())
 }
 
-/// HTTP Handler for query
-async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
+async fn query(
+    config: Arc<Config>,
+    req: Request<impl Body>,
+) -> Result<Response<BoxBody<Bytes, Error>>, Error> {
     let mut query = String::new();
     let mut sort_by = String::new();
     let mut sort_order = String::new();
@@ -913,12 +940,14 @@ async fn query(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Respons
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(serde_json::to_vec(&results_vec).unwrap()))
+        .body(json_body(&results_vec))
         .unwrap())
 }
 
-/* /query_items */
-async fn query_items(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
+async fn query_items(
+    config: Arc<Config>,
+    req: Request<impl Body>,
+) -> Result<Response<BoxBody<Bytes, Error>>, Error> {
     let mut key = String::new();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
@@ -939,7 +968,7 @@ async fn query_items(config: Arc<Config>, req: Request<Body>) -> hyper::Result<R
         return unauthorized();
     }
 
-    let file_result = fs::read_to_string("query_items.json");
+    let file_result = fs::read("query_items.json");
     if file_result.is_err() {
         return internal_error("Unable to open or read query_items.json");
     }
@@ -947,12 +976,14 @@ async fn query_items(config: Arc<Config>, req: Request<Body>) -> hyper::Result<R
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(file_result.unwrap()))
+        .body(file_body(file_result))
         .unwrap())
 }
 
-/* /lowestbin */
-async fn lowestbin(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
+async fn lowestbin(
+    config: Arc<Config>,
+    req: Request<impl Body>,
+) -> Result<Response<BoxBody<Bytes, Error>>, Error> {
     let mut key = String::new();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
@@ -969,7 +1000,7 @@ async fn lowestbin(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Res
         return unauthorized();
     }
 
-    let file_result = fs::read_to_string("lowestbin.json");
+    let file_result = fs::read("lowestbin.json");
     if file_result.is_err() {
         return internal_error("Unable to open or read lowestbin.json");
     }
@@ -977,12 +1008,14 @@ async fn lowestbin(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Res
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(file_result.unwrap()))
+        .body(file_body(file_result))
         .unwrap())
 }
 
-/* /underbin */
-async fn underbin(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Response<Body>> {
+async fn underbin(
+    config: Arc<Config>,
+    req: Request<impl Body>,
+) -> Result<Response<BoxBody<Bytes, Error>>, Error> {
     let mut key = String::new();
 
     // Reads the query parameters from the request and stores them in the corresponding variable
@@ -999,7 +1032,7 @@ async fn underbin(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Resp
         return unauthorized();
     }
 
-    let file_result = fs::read_to_string("underbin.json");
+    let file_result = fs::read("underbin.json");
     if file_result.is_err() {
         return internal_error("Unable to open or read underbin.json");
     }
@@ -1007,34 +1040,30 @@ async fn underbin(config: Arc<Config>, req: Request<Body>) -> hyper::Result<Resp
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(file_result.unwrap()))
+        .body(file_body(file_result))
         .unwrap())
 }
 
-/* / */
-async fn base(config: Arc<Config>) -> hyper::Result<Response<Body>> {
+async fn base(config: Arc<Config>) -> Result<Response<BoxBody<Bytes, Error>>, Error> {
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(
-            json!({
-                "success":true,
-                "enabled_features": {
-                    "query":config.is_enabled(Feature::Query),
-                    "pets":config.is_enabled(Feature::Pets),
-                    "lowestbin":config.is_enabled(Feature::Lowestbin),
-                    "underbin": config.is_enabled(Feature::Underbin),
-                    "average_auction":config.is_enabled(Feature::AverageAuction),
-                    "average_bin":config.is_enabled(Feature::AverageBin),
-                },
-                "statistics": {
-                    "is_updating":*IS_UPDATING.lock().await,
-                    "total_updates":*TOTAL_UPDATES.lock().await,
-                    "last_updated":*LAST_UPDATED.lock().await
-                }
-            })
-            .to_string(),
-        ))
+        .body(json_body(&json!({
+            "success":true,
+            "enabled_features": {
+                "query":config.is_enabled(Feature::Query),
+                "pets":config.is_enabled(Feature::Pets),
+                "lowestbin":config.is_enabled(Feature::Lowestbin),
+                "underbin": config.is_enabled(Feature::Underbin),
+                "average_auction":config.is_enabled(Feature::AverageAuction),
+                "average_bin":config.is_enabled(Feature::AverageBin),
+            },
+            "statistics": {
+                "is_updating":*IS_UPDATING.lock().await,
+                "total_updates":*TOTAL_UPDATES.lock().await,
+                "last_updated":*LAST_UPDATED.lock().await
+            }
+        })))
         .unwrap())
 }
 
@@ -1172,32 +1201,45 @@ fn array_contains<'a>(
     param_count_mut
 }
 
-fn http_err(status: StatusCode, reason: &str) -> hyper::Result<Response<Body>> {
+fn http_err(status: StatusCode, reason: &str) -> Result<Response<BoxBody<Bytes, Error>>, Error> {
     Ok(Response::builder()
         .status(status)
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(
-            json!({"success": false, "reason": reason}).to_string(),
-        ))
+        .body(json_body(&json!({"success": false, "reason": reason})))
         .unwrap())
 }
 
-fn bad_request(reason: &str) -> hyper::Result<Response<Body>> {
+fn bad_request(reason: &str) -> Result<Response<BoxBody<Bytes, Error>>, Error> {
     http_err(StatusCode::BAD_REQUEST, reason)
 }
 
-fn internal_error(reason: &str) -> hyper::Result<Response<Body>> {
+fn internal_error(reason: &str) -> Result<Response<BoxBody<Bytes, Error>>, Error> {
     http_err(StatusCode::INTERNAL_SERVER_ERROR, reason)
 }
 
-fn unauthorized() -> hyper::Result<Response<Body>> {
+fn unauthorized() -> Result<Response<BoxBody<Bytes, Error>>, Error> {
     http_err(StatusCode::UNAUTHORIZED, "Unauthorized")
 }
 
-fn not_found() -> hyper::Result<Response<Body>> {
+fn not_found() -> Result<Response<BoxBody<Bytes, Error>>, Error> {
     http_err(StatusCode::NOT_FOUND, "Not found")
 }
 
-fn not_implemented() -> hyper::Result<Response<Body>> {
+fn not_implemented() -> Result<Response<BoxBody<Bytes, Error>>, Error> {
     http_err(StatusCode::NOT_IMPLEMENTED, "Unsupported method")
+}
+
+fn json_body<T>(json: &T) -> BoxBody<Bytes, Error>
+where
+    T: ?Sized + Serialize,
+{
+    Full::new(serde_json::to_vec(json).unwrap().into())
+        .map_err(|never| match never {})
+        .boxed()
+}
+
+fn file_body(file: Result<Vec<u8>, std::io::Error>) -> BoxBody<Bytes, Error> {
+    Full::from(file.unwrap())
+        .map_err(|never| match never {})
+        .boxed()
 }

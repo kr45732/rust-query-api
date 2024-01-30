@@ -66,9 +66,9 @@ async fn get_duration_until_api_update() -> Duration {
             .send()
             .await;
         match res {
-            Ok(res_unwrap) => match res_unwrap.header("age") {
+            Ok(res_unwrap) => match res_unwrap.headers().get("age") {
                 Some(age_header) => {
-                    let age = age_header.as_str().parse::<u64>().unwrap();
+                    let age = age_header.to_str().unwrap().parse::<u64>().unwrap();
 
                     // Cloudfare doesn't return an exact time in ms, so the +2 accounts for that
                     let time = 60 - age + 2;
