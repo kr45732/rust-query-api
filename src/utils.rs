@@ -61,12 +61,13 @@ async fn get_duration_until_api_update() -> Duration {
     let mut num_attempts = 0;
     loop {
         num_attempts += 1;
-        let res = HTTP_CLIENT
+
+        if let Ok(res) = HTTP_CLIENT
             .get("https://api.hypixel.net/skyblock/auctions?page=0")
             .send()
-            .await;
-        match res {
-            Ok(res_unwrap) => match res_unwrap.headers().get("age") {
+            .await
+        {
+            match res.headers().get("age") {
                 Some(age_header) => {
                     let age = age_header.to_str().unwrap().parse::<u64>().unwrap();
 
@@ -87,16 +88,16 @@ async fn get_duration_until_api_update() -> Duration {
                     return Duration::from_secs(time);
                 }
                 None => return Duration::from_millis(1),
-            },
-            Err(_) => {
-                // Retry in 15 seconds
-                thread::sleep(Duration::from_secs(15));
             }
         }
-        if num_attempts == 15 {
-            panic(String::from(
-                "Failed 15 consecutive attempts to contact the Hypixel API",
+
+        if num_attempts % 5 == 0 {
+            error(format!(
+                "Failed {num_attempts} consecutive attempts to contact the Hypixel API. Retrying in a minute.",
             ));
+            thread::sleep(Duration::from_secs(60));
+        } else {
+            thread::sleep(Duration::from_secs(15));
         }
     }
 }
@@ -135,26 +136,6 @@ pub fn error(desc: String) {
                 })
                 .await;
         }
-    });
-}
-
-/* Send a panic message to the Discord webhook and panic */
-pub fn panic(desc: String) {
-    tokio::spawn(async move {
-        if let Some(webhook) = WEBHOOK.lock().await.as_ref() {
-            let _ = webhook
-                .send(|message| {
-                    message.embed(|embed| {
-                        embed
-                            .title("Force Panic")
-                            .color(0xFF0000)
-                            .description(&desc)
-                    })
-                })
-                .await;
-        }
-
-        panic!("{}", desc);
     });
 }
 
