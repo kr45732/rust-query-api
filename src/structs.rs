@@ -299,9 +299,18 @@ pub struct PartialExtraAttr {
     pub ethermerge: Option<i16>,
     pub ability_scroll: Option<Vec<String>>,
     pub gems: Option<DashMap<String, Value>>,
+    pub is_shiny: Option<i16>,
 }
 
 impl PartialExtraAttr {
+    pub fn is_shiny(&self) -> bool {
+        if let Some(is_shiny_value) = &self.is_shiny {
+            return is_shiny_value == &1;
+        }
+
+        false
+    }
+
     pub fn get_stars(&self) -> Option<i16> {
         if self.upgrade_level.is_some() {
             self.upgrade_level

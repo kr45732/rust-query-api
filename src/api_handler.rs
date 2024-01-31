@@ -442,6 +442,9 @@ fn parse_auctions(
                         }
                     }
                 }
+                if extra_attrs.is_shiny() {
+                    lowestbin_id.push_str("_SHINY");
+                }
 
                 if is_full_update {
                     update_lower_else_insert(&lowestbin_id, lowestbin_price, bin_prices);
@@ -696,6 +699,9 @@ async fn parse_ended_auctions(
                             }
                         }
                     }
+                }
+                if extra_attrs.is_shiny() {
+                    id.push_str("_SHINY");
                 }
 
                 if update_average_bin && auction.bin {
