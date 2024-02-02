@@ -7,7 +7,7 @@ readme = "README.md"
 
 [dependencies]
 # Runtime
-tokio = { version = "1.35.1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread"] }
 
 # Serde
 serde = { version = "1.0.196", features = ["derive"] }
