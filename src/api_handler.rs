@@ -35,7 +35,7 @@ use std::{
 
 /// Update the enabled APIs
 pub async fn update_auctions(config: Arc<Config>) -> bool {
-    info(String::from("Fetching auctions..."));
+    info!("Fetching auctions...");
 
     *IS_UPDATING.lock().await = true;
     let started = Instant::now();
