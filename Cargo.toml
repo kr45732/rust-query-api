@@ -26,7 +26,7 @@ http-body-util = "0.1.0"
 
 # Logging
 log = "0.4.20"
-simplelog = "0.12.1"
+simplelog = "0.12.2"
 
 # Misc
 dashmap = { version = "5.5.3", features = ["serde"] }
